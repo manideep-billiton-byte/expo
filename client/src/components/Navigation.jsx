@@ -12,7 +12,7 @@ const NavItem = ({ icon: Icon, label, active = false, onClick }) => (
     </div>
 );
 
-const Navigation = ({ activeScreen = 'Control Room', onNavigate }) => {
+const Navigation = ({ activeScreen = 'dashboard', onNavigate }) => {
     const items = [
         { icon: Building2, label: 'Control Room', screen: 'dashboard' },
         { icon: Building2, label: 'Organizations', screen: 'tenants' },
@@ -32,16 +32,34 @@ const Navigation = ({ activeScreen = 'Control Room', onNavigate }) => {
     ];
 
     return (
-        <div className="nav-bar">
-            {items.map((item, idx) => (
-                <NavItem
-                    key={idx}
-                    icon={item.icon}
-                    label={item.label}
-                    active={activeScreen === item.screen}
-                    onClick={() => onNavigate && onNavigate(item.screen)}
-                />
-            ))}
+        <div className="sidebar-nav">
+            <div className="sidebar-logo">
+                <div style={{
+                    background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
+                    color: 'white',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 'bold',
+                    fontSize: '18px'
+                }}>E</div>
+                <span style={{ fontWeight: 800, fontSize: '20px', color: '#1e3a8a' }}>EventHub</span>
+            </div>
+
+            <div className="nav-list">
+                {items.map((item, idx) => (
+                    <NavItem
+                        key={idx}
+                        icon={item.icon}
+                        label={item.label}
+                        active={activeScreen === item.screen}
+                        onClick={() => onNavigate && onNavigate(item.screen)}
+                    />
+                ))}
+            </div>
         </div>
     );
 };

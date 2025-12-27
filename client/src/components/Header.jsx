@@ -3,22 +3,17 @@ import { Search, Bell, Settings, User, ChevronDown } from 'lucide-react';
 
 const Header = () => {
     return (
-        <div className="header">
-            <div className="logo" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{
-                    background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
-                    color: 'white',
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold',
-                    fontSize: '18px'
-                }}>E</div>
-                <span style={{ fontWeight: 700, fontSize: '18px', color: '#1e3a8a' }}>EventHub</span>
-            </div>
+        <div className="header" style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px 32px',
+            background: 'white',
+            borderBottom: '1px solid #e2e8f0',
+            position: 'sticky',
+            top: 0,
+            zIndex: 90
+        }}>
 
             <div className="search-bar" style={{ position: 'relative', width: '400px' }}>
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
