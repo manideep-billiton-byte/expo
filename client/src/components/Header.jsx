@@ -1,3 +1,4 @@
+import React from 'react';
 import {
     Search, Bell, Settings as SettingsIcon, ChevronDown,
     ChevronUp, Building2, Users, Calendar, Image, Eye,
@@ -34,7 +35,22 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
     return (
         <div className="header-wrapper">
             <div className="header-main">
-                <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                    <div className="logo" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginRight: '8px' }}>
+                        <div style={{
+                            background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
+                            color: 'white',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            fontSize: '16px'
+                        }}>E</div>
+                        <span style={{ fontWeight: 800, fontSize: '18px', color: '#1e3a8a' }}>EventHub</span>
+                    </div>
                     <div
                         onClick={onToggleNav}
                         style={{
