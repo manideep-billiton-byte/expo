@@ -1,10 +1,52 @@
 import React, { useState } from 'react';
-import { Image, TrendingUp, Users, UserCheck, Search, Download, Plus, MoreHorizontal } from 'lucide-react';
+import { Image, TrendingUp, Users, UserCheck, Search, Download, Plus, MoreHorizontal, X, ChevronRight, ChevronDown, Check, Building2, MapPin, CheckCircle2, FileText, Send } from 'lucide-react';
 
 const ExhibitorsManagement = () => {
     const [activeTab, setActiveTab] = useState('All Exhibitors');
     const [searchQuery, setSearchQuery] = useState('');
     const [entriesPerPage, setEntriesPerPage] = useState(10);
+    const [showModal, setShowModal] = useState(false);
+    const [modalStep, setModalStep] = useState(1);
+
+    const [exhibitorData, setExhibitorData] = useState({
+        companyName: '',
+        gstNumber: '',
+        address: '',
+        industry: '',
+        logo: null,
+        contactPerson: '',
+        email: '',
+        mobile: '',
+        assignedEvent: '',
+        stallNumber: '',
+        stallCategory: '',
+        accessStatus: 'Active',
+        leadCapture: {
+            visitorQR: true,
+            stallQR: true,
+            ocr: false,
+            manual: true
+        },
+        communication: {
+            whatsapp: true,
+            email: true,
+            sms: false
+        }
+    });
+
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    const handleOpenModal = () => {
+        setModalStep(1);
+        setShowSuccess(false);
+        setShowModal(true);
+    };
+
+    const handleCloseModal = () => {
+        setShowModal(false);
+        setModalStep(1);
+        setShowSuccess(false);
+    };
 
     const tabs = ['All Exhibitors', 'Active', 'Pending', 'Stalls', 'Leads'];
 
@@ -37,7 +79,10 @@ const ExhibitorsManagement = () => {
                         <Download size={16} />
                         Export
                     </button>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#2563eb', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: 'white', cursor: 'pointer' }}>
+                    <button
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#2563eb', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: 'white', cursor: 'pointer' }}
+                        onClick={handleOpenModal}
+                    >
                         <Plus size={16} />
                         Add Exhibitors
                     </button>
@@ -242,6 +287,347 @@ const ExhibitorsManagement = () => {
             <div style={{ textAlign: 'center', marginTop: '32px', paddingBottom: '24px' }}>
                 <p style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>Powered By Billiton</p>
             </div>
+
+            {/* Add Exhibitor Modal */}
+            {showModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }} onClick={handleCloseModal}>
+                    <div style={{
+                        background: 'white', borderRadius: '24px', padding: '40px',
+                        width: '800px', maxWidth: '95%', maxHeight: '90vh',
+                        overflowY: 'auto', position: 'relative',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }} onClick={e => e.stopPropagation()}>
+
+                        {/* Close Button */}
+                        <button onClick={handleCloseModal} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                            <X size={24} />
+                        </button>
+
+                        {showSuccess ? (
+                            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                                <div style={{
+                                    width: '80px', height: '80px', background: '#f0fdf4',
+                                    borderRadius: '50%', display: 'flex', alignItems: 'center',
+                                    justifyContent: 'center', margin: '0 auto 24px'
+                                }}>
+                                    <CheckCircle2 size={48} color="#22c55e" />
+                                </div>
+                                <h2 style={{ fontSize: '28px', fontWeight: 800, color: '#1e293b', marginBottom: '12px' }}>Exhibitor Created!</h2>
+                                <p style={{ fontSize: '16px', color: '#64748b', marginBottom: '40px' }}>The exhibitor has been added successfully.</p>
+
+                                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                                    <button
+                                        onClick={handleCloseModal}
+                                        style={{ padding: '12px 32px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                                    >
+                                        Close
+                                    </button>
+                                    <button style={{ padding: '12px 32px', borderRadius: '12px', border: 'none', background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
+                                        Create Order
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ marginBottom: '32px' }}>
+                                    <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Add New Exhibitor</h2>
+                                    <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Fill in the exhibitor details</p>
+                                </div>
+
+                                {/* Tabs Navigation */}
+                                <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', marginBottom: '40px' }}>
+                                    {['Profile', 'Event & Stall', 'Lead Capture', 'Communication'].map((tabName, idx) => {
+                                        const stepNum = idx + 1;
+                                        const isActive = modalStep === stepNum;
+                                        const isCompleted = modalStep > stepNum;
+                                        return (
+                                            <div
+                                                key={tabName}
+                                                onClick={() => setModalStep(stepNum)}
+                                                style={{
+                                                    flex: 1, textAlign: 'center', paddingBottom: '16px',
+                                                    borderBottom: isActive ? '3px solid #0d89a4' : '3px solid transparent',
+                                                    color: isActive ? '#0d89a4' : (isCompleted ? '#1e293b' : '#94a3b8'),
+                                                    fontWeight: (isActive || isCompleted) ? 700 : 500,
+                                                    fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                                }}
+                                            >
+                                                {tabName}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Step Content */}
+                                <div style={{ minHeight: '400px' }}>
+                                    {modalStep === 1 && (
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Company Name *</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Enter company name"
+                                                        value={exhibitorData.companyName}
+                                                        onChange={e => setExhibitorData({ ...exhibitorData, companyName: e.target.value })}
+                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>GST Number</label>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="27XXXXX1234X1ZX"
+                                                            value={exhibitorData.gstNumber}
+                                                            onChange={e => setExhibitorData({ ...exhibitorData, gstNumber: e.target.value })}
+                                                            style={{ flex: 1, padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                        />
+                                                        <button style={{ padding: '0 20px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, fontSize: '14px', cursor: 'pointer' }}>Verify</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ marginBottom: '20px' }}>
+                                                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Business Address</label>
+                                                <textarea
+                                                    placeholder="Enter business address"
+                                                    value={exhibitorData.address}
+                                                    onChange={e => setExhibitorData({ ...exhibitorData, address: e.target.value })}
+                                                    style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', minHeight: '100px', resize: 'vertical' }}
+                                                />
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Industry / Sector</label>
+                                                    <select
+                                                        value={exhibitorData.industry}
+                                                        onChange={e => setExhibitorData({ ...exhibitorData, industry: e.target.value })}
+                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                    >
+                                                        <option value="">Select industry</option>
+                                                        <option value="it">Information Technology</option>
+                                                        <option value="healthcare">Healthcare</option>
+                                                        <option value="manufacturing">Manufacturing</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Company Logo</label>
+                                                    <input
+                                                        type="file"
+                                                        style={{ width: '100%', padding: '9px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white', cursor: 'pointer' }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Primary Contact *</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Enter contact name"
+                                                        value={exhibitorData.contactPerson}
+                                                        onChange={e => setExhibitorData({ ...exhibitorData, contactPerson: e.target.value })}
+                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Email *</label>
+                                                    <input
+                                                        type="email"
+                                                        placeholder="Enter email"
+                                                        value={exhibitorData.email}
+                                                        onChange={e => setExhibitorData({ ...exhibitorData, email: e.target.value })}
+                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div style={{ marginBottom: '20px' }}>
+                                                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Mobile Number *</label>
+                                                <input
+                                                    type="tel"
+                                                    placeholder="+91 XXXXX XXXXX"
+                                                    value={exhibitorData.mobile}
+                                                    onChange={e => setExhibitorData({ ...exhibitorData, mobile: e.target.value })}
+                                                    style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {modalStep === 2 && (
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Assigned Event *</label>
+                                                    <select
+                                                        value={exhibitorData.assignedEvent}
+                                                        onChange={e => setExhibitorData({ ...exhibitorData, assignedEvent: e.target.value })}
+                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                    >
+                                                        <option value="">Select event</option>
+                                                        <option value="tech_summit">Tech Summit 2025</option>
+                                                        <option value="health_expo">Health Expo 2024</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Stall Number</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g., A-101"
+                                                        value={exhibitorData.stallNumber}
+                                                        onChange={e => setExhibitorData({ ...exhibitorData, stallNumber: e.target.value })}
+                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Stall Category</label>
+                                                    <select
+                                                        value={exhibitorData.stallCategory}
+                                                        onChange={e => setExhibitorData({ ...exhibitorData, stallCategory: e.target.value })}
+                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                    >
+                                                        <option value="">Select category</option>
+                                                        <option value="premium">Premium Stall</option>
+                                                        <option value="standard">Standard Stall</option>
+                                                        <option value="economy">Economy Stall</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Access Status</label>
+                                                    <select
+                                                        value={exhibitorData.accessStatus}
+                                                        onChange={e => setExhibitorData({ ...exhibitorData, accessStatus: e.target.value })}
+                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                    >
+                                                        <option value="Active">Active</option>
+                                                        <option value="Inactive">Inactive</option>
+                                                        <option value="Pending">Pending</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {modalStep === 3 && (
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                                                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', marginBottom: '20px' }}>Lead Capture Settings</h3>
+
+                                                {[
+                                                    { id: 'visitorQR', label: 'Enable Visitor QR Scan' },
+                                                    { id: 'stallQR', label: 'Enable Stall QR' },
+                                                    { id: 'ocr', label: 'Enable Business Card OCR' },
+                                                    { id: 'manual', label: 'Manual Lead Entry' }
+                                                ].map((setting, idx) => (
+                                                    <div key={setting.id} style={{
+                                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                        padding: '12px 0', borderBottom: idx === 3 ? 'none' : '1px solid #e2e8f0'
+                                                    }}>
+                                                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#475569' }}>{setting.label}</span>
+                                                        <div
+                                                            onClick={() => setExhibitorData({
+                                                                ...exhibitorData,
+                                                                leadCapture: { ...exhibitorData.leadCapture, [setting.id]: !exhibitorData.leadCapture[setting.id] }
+                                                            })}
+                                                            style={{
+                                                                width: '44px', height: '24px', borderRadius: '12px',
+                                                                background: exhibitorData.leadCapture[setting.id] ? '#0d89a4' : '#e2e8f0',
+                                                                position: 'relative', cursor: 'pointer', transition: 'all 0.3s ease'
+                                                            }}
+                                                        >
+                                                            <div style={{
+                                                                width: '18px', height: '18px', borderRadius: '50%', background: 'white',
+                                                                position: 'absolute', top: '3px',
+                                                                left: exhibitorData.leadCapture[setting.id] ? '23px' : '3px',
+                                                                transition: 'all 0.3s ease', boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                            }} />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {modalStep === 4 && (
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                                                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', marginBottom: '20px' }}>Messaging Settings</h3>
+
+                                                {[
+                                                    { id: 'whatsapp', label: 'WhatsApp Messaging' },
+                                                    { id: 'email', label: 'Email Messaging' },
+                                                    { id: 'sms', label: 'SMS Messaging' }
+                                                ].map((setting, idx) => (
+                                                    <div key={setting.id} style={{
+                                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                        padding: '12px 0', borderBottom: idx === 2 ? 'none' : '1px solid #e2e8f0'
+                                                    }}>
+                                                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#475569' }}>{setting.label}</span>
+                                                        <div
+                                                            onClick={() => setExhibitorData({
+                                                                ...exhibitorData,
+                                                                communication: { ...exhibitorData.communication, [setting.id]: !exhibitorData.communication[setting.id] }
+                                                            })}
+                                                            style={{
+                                                                width: '44px', height: '24px', borderRadius: '12px',
+                                                                background: exhibitorData.communication[setting.id] ? '#0d89a4' : '#e2e8f0',
+                                                                position: 'relative', cursor: 'pointer', transition: 'all 0.3s ease'
+                                                            }}
+                                                        >
+                                                            <div style={{
+                                                                width: '18px', height: '18px', borderRadius: '50%', background: 'white',
+                                                                position: 'absolute', top: '3px',
+                                                                left: exhibitorData.communication[setting.id] ? '23px' : '3px',
+                                                                transition: 'all 0.3s ease', boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                            }} />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Modal Footer */}
+                                    <div style={{
+                                        marginTop: '40px', paddingTop: '24px', borderTop: '1px solid #f1f5f9',
+                                        display: 'flex', justifyContent: 'flex-end', gap: '12px'
+                                    }}>
+                                        {modalStep === 1 ? (
+                                            <button onClick={handleCloseModal} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                                        ) : (
+                                            <button onClick={() => setModalStep(modalStep - 1)} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Back</button>
+                                        )}
+
+                                        <button
+                                            onClick={() => modalStep < 4 ? setModalStep(modalStep + 1) : setShowSuccess(true)}
+                                            style={{
+                                                padding: '10px 32px', borderRadius: '8px', border: 'none',
+                                                background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer',
+                                                display: 'flex', alignItems: 'center', gap: '8px'
+                                            }}
+                                        >
+                                            {modalStep === 4 ? 'Create Exhibitor' : 'Next'}
+                                            {modalStep < 4 && <ChevronRight size={18} />}
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

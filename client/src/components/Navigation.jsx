@@ -15,7 +15,7 @@ const NavItem = ({ icon: Icon, label, active = false, onClick }) => (
 const Navigation = ({ activeScreen = 'Control Room', onNavigate }) => {
     const items = [
         { icon: Building2, label: 'Control Room', screen: 'dashboard' },
-        { icon: Building2, label: 'Tenants', screen: 'tenants' },
+        { icon: Building2, label: 'Organizations', screen: 'tenants' },
         { icon: Users, label: 'Users', screen: 'users' },
         { icon: Calendar, label: 'Events', screen: 'events' },
         { icon: Image, label: 'Exhibitors', screen: 'exhibitors' },

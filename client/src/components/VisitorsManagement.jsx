@@ -1,10 +1,44 @@
 import React, { useState } from 'react';
-import { Eye, User, Info, Search, Download, MoreHorizontal } from 'lucide-react';
+import { Eye, User, Info, Search, Download, MoreHorizontal, Plus, X, Check, ChevronRight, Mail, MessageSquare, Send, Smartphone, Calendar, MapPin, Building2, Download as DownloadIcon, Share2, Copy } from 'lucide-react';
 
 const VisitorsManagement = () => {
     const [activeTab, setActiveTab] = useState('All Visitors');
     const [searchQuery, setSearchQuery] = useState('');
     const [entriesPerPage, setEntriesPerPage] = useState(10);
+    const [showModal, setShowModal] = useState(false);
+    const [modalStep, setModalStep] = useState(1);
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    const [visitorData, setVisitorData] = useState({
+        firstName: '',
+        lastName: '',
+        email: '',
+        mobile: '',
+        gender: '',
+        age: '',
+        organization: '',
+        designation: '',
+        event: '',
+        visitorCategory: '',
+        validDates: '',
+        communication: {
+            whatsapp: true,
+            email: true,
+            sms: false
+        }
+    });
+
+    const handleOpenModal = () => {
+        setModalStep(1);
+        setShowSuccess(false);
+        setShowModal(true);
+    };
+
+    const handleCloseModal = () => {
+        setShowModal(false);
+        setModalStep(1);
+        setShowSuccess(false);
+    };
 
     const tabs = ['All Visitors', 'Registered', 'Check-In', 'QR & Pass', 'Check-Out'];
 
@@ -31,10 +65,19 @@ const VisitorsManagement = () => {
                     <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#1e3a8a', margin: 0, letterSpacing: '-0.02em' }}>Visitors Management</h1>
                     <p style={{ fontSize: '13px', color: '#64748b', marginTop: '6px' }}>Privacy-safe visitor data management across events</p>
                 </div>
-                <button style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
-                    <Download size={16} />
-                    Export Report
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+                        <Download size={16} />
+                        Export Report
+                    </button>
+                    <button
+                        onClick={handleOpenModal}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#2563eb', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: 'white', cursor: 'pointer' }}
+                    >
+                        <Plus size={16} />
+                        Register Visitor
+                    </button>
+                </div>
             </div>
 
             {/* Privacy Notice */}
@@ -261,6 +304,301 @@ const VisitorsManagement = () => {
             <div style={{ textAlign: 'center', marginTop: '32px', paddingBottom: '24px' }}>
                 <p style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>Powered By Billiton</p>
             </div>
+
+            {/* Register Visitor Modal */}
+            {showModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }} onClick={handleCloseModal}>
+                    <div style={{
+                        background: 'white', borderRadius: '24px', padding: '40px',
+                        width: '800px', maxWidth: '95%', maxHeight: '90vh',
+                        overflowY: 'auto', position: 'relative',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                        animation: 'fadeIn 0.2s ease-out'
+                    }} onClick={e => e.stopPropagation()}>
+
+                        {showSuccess ? (
+                            <div style={{ textAlign: 'center', padding: '20px' }}>
+                                <div style={{ width: '80px', height: '80px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                                    <Check size={40} color="#10b981" />
+                                </div>
+                                <h2 style={{ fontSize: '28px', fontWeight: 800, color: '#1e293b', marginBottom: '12px' }}>Visitor Registered!</h2>
+                                <p style={{ color: '#64748b', fontSize: '16px', marginBottom: '40px' }}>Registration completed successfully. Visitor pass has been generated.</p>
+
+                                <div style={{ background: '#f8fafc', borderRadius: '20px', padding: '32px', maxWidth: '400px', margin: '0 auto 40px', border: '1.5px solid #e2e8f0' }}>
+                                    <div style={{ background: 'white', padding: '16px', borderRadius: '12px', marginBottom: '20px', display: 'inline-block' }}>
+                                        {/* Placeholder for QR Code */}
+                                        <div style={{ width: '160px', height: '160px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Smartphone size={60} color="#94a3b8" />
+                                        </div>
+                                    </div>
+                                    <h3 style={{ fontWeight: 700, fontSize: '18px', color: '#1e293b', marginBottom: '4px' }}>{visitorData.firstName} {visitorData.lastName}</h3>
+                                    <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px' }}>ID: VIS-2024-001</p>
+
+                                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                                        <button style={{ flex: 1, padding: '10px', borderRadius: '10px', background: 'white', border: '1.5px solid #e2e8f0', color: '#475569', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                            <DownloadIcon size={16} /> PNG
+                                        </button>
+                                        <button style={{ flex: 1, padding: '10px', borderRadius: '10px', background: 'white', border: '1.5px solid #e2e8f0', color: '#475569', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                            <DownloadIcon size={16} /> PDF
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                                    <button onClick={handleCloseModal} style={{ padding: '12px 32px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Close</button>
+                                    <button style={{ padding: '12px 32px', borderRadius: '12px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                        <Share2 size={18} /> Share Pass
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <button onClick={handleCloseModal} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                                    <X size={24} />
+                                </button>
+
+                                <div style={{ marginBottom: '32px' }}>
+                                    <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Register New Visitor</h2>
+                                    <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Complete all steps to generate visitor pass</p>
+                                </div>
+
+                                {/* Tabs Navigation */}
+                                <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', marginBottom: '40px' }}>
+                                    {['Basic Info', 'Event & Pass', 'Communication'].map((tabName, idx) => {
+                                        const stepNum = idx + 1;
+                                        const isActive = modalStep === stepNum;
+                                        const isCompleted = modalStep > stepNum;
+                                        return (
+                                            <div
+                                                key={tabName}
+                                                onClick={() => setModalStep(stepNum)}
+                                                style={{
+                                                    padding: '12px 16px',
+                                                    fontSize: '14px',
+                                                    fontWeight: 600,
+                                                    color: isActive ? '#0d89a4' : (isCompleted ? '#0d89a4' : '#64748b'),
+                                                    borderBottom: isActive ? '2.5px solid #0d89a4' : '2.5px solid transparent',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    flex: 1,
+                                                    justifyContent: 'center'
+                                                }}
+                                            >
+                                                <div style={{
+                                                    width: '20px', height: '20px', borderRadius: '50%',
+                                                    background: (isActive || isCompleted) ? '#0d89a4' : '#f1f5f9',
+                                                    color: (isActive || isCompleted) ? 'white' : '#94a3b8',
+                                                    fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                }}>
+                                                    {isCompleted ? <Check size={12} /> : stepNum}
+                                                </div>
+                                                {tabName}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <div>
+                                    {modalStep === 1 && (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', textAlign: 'left' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>First Name *</label>
+                                                <input
+                                                    type="text" placeholder="Enter first name"
+                                                    value={visitorData.firstName}
+                                                    onChange={e => setVisitorData({ ...visitorData, firstName: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Last Name *</label>
+                                                <input
+                                                    type="text" placeholder="Enter last name"
+                                                    value={visitorData.lastName}
+                                                    onChange={e => setVisitorData({ ...visitorData, lastName: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Email ID *</label>
+                                                <input
+                                                    type="email" placeholder="Enter email"
+                                                    value={visitorData.email}
+                                                    onChange={e => setVisitorData({ ...visitorData, email: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Mobile Number *</label>
+                                                <input
+                                                    type="tel" placeholder="+91 XXXXX XXXXX"
+                                                    value={visitorData.mobile}
+                                                    onChange={e => setVisitorData({ ...visitorData, mobile: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Gender</label>
+                                                <select
+                                                    value={visitorData.gender}
+                                                    onChange={e => setVisitorData({ ...visitorData, gender: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                >
+                                                    <option value="">Select gender</option>
+                                                    <option value="male">Male</option>
+                                                    <option value="female">Female</option>
+                                                    <option value="other">Other</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Age Group</label>
+                                                <select
+                                                    value={visitorData.age}
+                                                    onChange={e => setVisitorData({ ...visitorData, age: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                >
+                                                    <option value="">Select age group</option>
+                                                    <option value="18-25">18-25</option>
+                                                    <option value="26-40">26-40</option>
+                                                    <option value="41-60">41-60</option>
+                                                    <option value="60+">60+</option>
+                                                </select>
+                                            </div>
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Organization / Company</label>
+                                                <input
+                                                    type="text" placeholder="Enter organization name"
+                                                    value={visitorData.organization}
+                                                    onChange={e => setVisitorData({ ...visitorData, organization: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {modalStep === 2 && (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', textAlign: 'left' }}>
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Select Event *</label>
+                                                <select
+                                                    value={visitorData.event}
+                                                    onChange={e => setVisitorData({ ...visitorData, event: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                >
+                                                    <option value="">Select event</option>
+                                                    <option value="e1">Tech Expo 2024</option>
+                                                    <option value="e2">Healthcare 2024</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Visitor Category *</label>
+                                                <select
+                                                    value={visitorData.visitorCategory}
+                                                    onChange={e => setVisitorData({ ...visitorData, visitorCategory: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                >
+                                                    <option value="">Select category</option>
+                                                    <option value="delegate">Delegate</option>
+                                                    <option value="visitor">Visitor</option>
+                                                    <option value="vip">VIP</option>
+                                                    <option value="student">Student</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Pass Validity *</label>
+                                                <select
+                                                    value={visitorData.validDates}
+                                                    onChange={e => setVisitorData({ ...visitorData, validDates: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                >
+                                                    <option value="">Select duration</option>
+                                                    <option value="day1">Day 1 Only</option>
+                                                    <option value="day2">Day 2 Only</option>
+                                                    <option value="all">Full Event Pass</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {modalStep === 3 && (
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                                                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', marginBottom: '20px' }}>Communication Settings</h3>
+                                                {[
+                                                    { id: 'whatsapp', label: 'WhatsApp Notification', icon: MessageSquare },
+                                                    { id: 'email', label: 'Email Confirmation', icon: Mail },
+                                                    { id: 'sms', label: 'SMS Ticket', icon: Send }
+                                                ].map((setting, idx) => (
+                                                    <div key={setting.id} style={{
+                                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                        padding: '12px 0', borderBottom: idx === 2 ? 'none' : '1px solid #e2e8f0'
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                            <div style={{ background: 'white', padding: '8px', borderRadius: '8px', border: '1.5px solid #f1f5f9' }}>
+                                                                <setting.icon size={18} color="#64748b" />
+                                                            </div>
+                                                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#475569' }}>{setting.label}</span>
+                                                        </div>
+                                                        <div
+                                                            onClick={() => setVisitorData({
+                                                                ...visitorData,
+                                                                communication: { ...visitorData.communication, [setting.id]: !visitorData.communication[setting.id] }
+                                                            })}
+                                                            style={{
+                                                                width: '44px', height: '24px', borderRadius: '12px',
+                                                                background: visitorData.communication[setting.id] ? '#0d89a4' : '#e2e8f0',
+                                                                position: 'relative', cursor: 'pointer', transition: 'all 0.3s ease'
+                                                            }}
+                                                        >
+                                                            <div style={{
+                                                                width: '18px', height: '18px', borderRadius: '50%', background: 'white',
+                                                                position: 'absolute', top: '3px',
+                                                                left: visitorData.communication[setting.id] ? '23px' : '3px',
+                                                                transition: 'all 0.3s ease', boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                            }} />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div style={{
+                                        marginTop: '40px', paddingTop: '24px', borderTop: '1px solid #f1f5f9',
+                                        display: 'flex', justifyContent: 'flex-end', gap: '12px'
+                                    }}>
+                                        {modalStep === 1 ? (
+                                            <button onClick={handleCloseModal} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                                        ) : (
+                                            <button onClick={() => setModalStep(modalStep - 1)} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Back</button>
+                                        )}
+
+                                        <button
+                                            onClick={() => modalStep < 3 ? setModalStep(modalStep + 1) : setShowSuccess(true)}
+                                            style={{
+                                                padding: '10px 32px', borderRadius: '8px', border: 'none',
+                                                background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer',
+                                                display: 'flex', alignItems: 'center', gap: '8px'
+                                            }}
+                                        >
+                                            {modalStep === 3 ? 'Register Visitor' : 'Next'}
+                                            {modalStep < 3 && <ChevronRight size={18} />}
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -7,6 +7,7 @@ import ExhibitorsManagement from './components/ExhibitorsManagement';
 import TenantManagement from './components/TenantManagement';
 import UserManagement from './components/UserManagement';
 import VisitorsManagement from './components/VisitorsManagement';
+import BillingManagement from './components/BillingManagement';
 import {
     Building2, Calendar, Image as ImageIcon, Users,
     MapPin, MousePointer2, IndianRupee, UserCheck,
@@ -33,6 +34,7 @@ const Index = () => {
     const [activeScreen, setActiveScreen] = useState('dashboard');
 
     const handleNavigate = (screen) => {
+        console.log('Navigating to:', screen);
         setActiveScreen(screen);
     };
 
@@ -83,6 +85,16 @@ const Index = () => {
                 <Header />
                 <Navigation activeScreen={activeScreen} onNavigate={handleNavigate} />
                 <VisitorsManagement />
+            </>
+        );
+    }
+
+    if (activeScreen === 'billing') {
+        return (
+            <>
+                <Header />
+                <Navigation activeScreen={activeScreen} onNavigate={handleNavigate} />
+                <BillingManagement />
             </>
         );
     }
