@@ -1,18 +1,22 @@
-import React from 'react';
 import {
     Building2, Users, Calendar, Image, Eye, CreditCard,
     MessageSquare, Receipt, Cpu, LineChart, ShieldCheck,
-    Settings, UserCheck, LifeBuoy
+    Settings, UserCheck, LifeBuoy, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
-const NavItem = ({ icon: Icon, label, active = false, onClick }) => (
-    <div className={`nav-item ${active ? 'active' : ''}`} onClick={onClick} style={{ cursor: 'pointer' }}>
+const NavItem = ({ icon: Icon, label, active = false, onClick, isCollapsed }) => (
+    <div
+        className={`nav-item ${active ? 'active' : ''}`}
+        onClick={onClick}
+        style={{ cursor: 'pointer', position: 'relative' }}
+        title={isCollapsed ? label : ''}
+    >
         <Icon size={18} />
-        <span>{label}</span>
+        {!isCollapsed && <span>{label}</span>}
     </div>
 );
 
-const Navigation = ({ activeScreen = 'dashboard', onNavigate }) => {
+const Sidebar = ({ activeScreen = 'dashboard', onNavigate, isCollapsed, onToggle }) => {
     const items = [
         { icon: Building2, label: 'Control Room', screen: 'dashboard' },
         { icon: Building2, label: 'Organizations', screen: 'tenants' },
@@ -39,6 +43,7 @@ const Navigation = ({ activeScreen = 'dashboard', onNavigate }) => {
                     color: 'white',
                     width: '36px',
                     height: '36px',
+                    minWidth: '36px',
                     borderRadius: '8px',
                     display: 'flex',
                     alignItems: 'center',
@@ -46,7 +51,7 @@ const Navigation = ({ activeScreen = 'dashboard', onNavigate }) => {
                     fontWeight: 'bold',
                     fontSize: '18px'
                 }}>E</div>
-                <span style={{ fontWeight: 800, fontSize: '20px', color: '#1e3a8a' }}>EventHub</span>
+                {!isCollapsed && <span style={{ fontWeight: 800, fontSize: '20px', color: '#1e3a8a' }}>EventHub</span>}
             </div>
 
             <div className="nav-list">
@@ -56,12 +61,27 @@ const Navigation = ({ activeScreen = 'dashboard', onNavigate }) => {
                         icon={item.icon}
                         label={item.label}
                         active={activeScreen === item.screen}
+                        isCollapsed={isCollapsed}
                         onClick={() => onNavigate && onNavigate(item.screen)}
                     />
                 ))}
+            </div>
+
+            <div
+                onClick={onToggle}
+                style={{
+                    padding: '20px',
+                    display: 'flex',
+                    justifyContent: isCollapsed ? 'center' : 'flex-end',
+                    cursor: 'pointer',
+                    borderTop: '1px solid #f1f5f9',
+                    color: '#64748b'
+                }}
+            >
+                {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
             </div>
         </div>
     );
 };
 
-export default Navigation;
+export default Sidebar;

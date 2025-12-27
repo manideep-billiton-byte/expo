@@ -31,6 +31,13 @@ body {
     box-sizing: border-box;
 }
 
+/* Layout Variables */
+:root {
+    --sidebar-width: 260px;
+    --header-height: 140px;
+    --transition-speed: 0.3s;
+}
+
 /* Layout Wrapper */
 .layout-wrapper {
     display: flex;
@@ -39,8 +46,9 @@ body {
     background-color: #f8fafc;
 }
 
+/* Sidebar Navigation */
 .sidebar-nav {
-    width: 260px;
+    width: var(--sidebar-width);
     height: 100vh;
     background: white;
     border-right: 1px solid #e2e8f0;
@@ -51,17 +59,51 @@ body {
     top: 0;
     z-index: 100;
     padding: 24px 0;
-    transition: all 0.3s ease;
+    transition: width var(--transition-speed) ease;
 }
 
 .main-content {
     flex: 1;
-    margin-left: 260px;
+    margin-left: var(--sidebar-width);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    transition: margin-left var(--transition-speed) ease;
 }
 
+/* Header & Top Nav */
+.header-wrapper {
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    height: var(--header-height);
+    transition: height var(--transition-speed) ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 32px;
+    height: 64px;
+}
+
+.top-nav-bar {
+    display: flex;
+    gap: 16px;
+    padding: 0 32px 12px;
+    flex: 1;
+    overflow-x: auto;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 12px;
+}
+
+/* Scrollable Container */
 .dashboard-container {
     width: 100%;
     padding: 24px 32px;
@@ -73,9 +115,11 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
-/* Nav Item Refactor */
+/* Nav List */
 .nav-list {
     display: flex;
     flex-direction: column;
@@ -85,6 +129,7 @@ body {
     flex: 1;
 }
 
+/* Common Nav Item */
 .nav-item {
     display: flex;
     align-items: center;
@@ -99,15 +144,10 @@ body {
     white-space: nowrap;
 }
 
-.nav-item:hover {
-    color: #2563eb;
-    background: rgba(37, 99, 235, 0.05);
-}
-
-.nav-item.active {
-    color: #2563eb;
-    background: rgba(37, 99, 235, 0.08);
-    font-weight: 600;
+/* Top Nav Item specific */
+.top-nav-bar .nav-item {
+    padding: 8px 16px;
+    font-size: 13px;
 }
 
 /* Card System */

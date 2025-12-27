@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import Header from './components/Header';
-import Navigation from './components/Navigation';
+import Layout from './components/Layout';
 import StatsCard from './components/StatsCard';
 import EventManagement from './components/EventManagement';
 import ExhibitorsManagement from './components/ExhibitorsManagement';
@@ -75,6 +74,7 @@ const Index = () => {
                             <StatsCard label="Active Users" value="892" change="Online now" icon={UserCheck} colorClass="text-teal-500" />
                         </div>
 
+                        {/* ... rest of the dashboard content ... */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '24px', marginBottom: '24px' }} className="fade-in">
                             <div className="card">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -406,13 +406,9 @@ const Index = () => {
     };
 
     return (
-        <div className="layout-wrapper">
-            <Navigation activeScreen={activeScreen} onNavigate={handleNavigate} />
-            <div className="main-content">
-                <Header />
-                {renderContent()}
-            </div>
-        </div>
+        <Layout activeScreen={activeScreen} onNavigate={handleNavigate}>
+            {renderContent()}
+        </Layout>
     );
 };
 
