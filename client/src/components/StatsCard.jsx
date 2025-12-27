@@ -1,10 +1,10 @@
 import React from 'react';
 
-const StatsCard = ({ label, value, change, icon: Icon, colorClass }) => {
+const StatsCard = ({ label, value, change, icon: Icon, colorClass, customClass }) => {
     const isPositive = change && change.startsWith('+');
 
     return (
-        <div className="card stat-card hover-lift">
+        <div className={`card stat-card ${customClass}`}>
             <div className="stat-header">
                 <span className="stat-label">{label}</span>
                 {Icon && (
