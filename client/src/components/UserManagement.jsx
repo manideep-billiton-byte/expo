@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Users, User, Search, Download, Plus, MoreHorizontal, X, ArrowLeft, Check, Shield, ShieldCheck, Mail, Lock, Globe, Settings, CreditCard, MessageSquare, Cpu, LineChart, Receipt, Calendar, Image, Eye, UserCheck, LifeBuoy, Building2, Send, Copy, ChevronDown } from 'lucide-react';
 
 const UserManagement = () => {
@@ -9,7 +9,7 @@ const UserManagement = () => {
     const [modalStep, setModalStep] = useState(1);
     const [showPassword, setShowPassword] = useState(false);
 
-    const [userData, setUserData] = useState({
+    const defaultUserData = {
         role: '',
         firstName: '',
         lastName: '',
@@ -23,7 +23,7 @@ const UserManagement = () => {
             crossEvent: true,
             dataExport: false
         },
-        loginType: 'manual', // Default to manual as per screenshot
+        loginType: 'manual',
         password: '',
         forceReset: true,
         security: {
@@ -31,6 +31,16 @@ const UserManagement = () => {
             ipRestriction: false,
             sessionTimeout: '30 minutes'
         }
+    };
+
+    const [users, setUsers] = useState([]);
+    const [usersLoading, setUsersLoading] = useState(false);
+    const [orgs, setOrgs] = useState([]);
+    const [orgsLoading, setOrgsLoading] = useState(false);
+    const [createUserLoading, setCreateUserLoading] = useState(false);
+
+    const [userData, setUserData] = useState({
+        ...defaultUserData
     });
 
     const roles = [
@@ -67,18 +77,109 @@ const UserManagement = () => {
     const handleCloseModal = () => {
         setShowModal(false);
         setModalStep(1);
+        setShowPassword(false);
+        setUserData({ ...defaultUserData });
+    };
+
+    const loadOrgs = async () => {
+        setOrgsLoading(true);
+        try {
+            const resp = await fetch('/api/organizations');
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Failed to load organizations');
+            setOrgs(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load organizations', err);
+            setOrgs([]);
+        } finally {
+            setOrgsLoading(false);
+        }
+    };
+
+    const loadUsers = async () => {
+        setUsersLoading(true);
+        try {
+            const resp = await fetch('/api/users');
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Failed to load users');
+
+            const mapped = (Array.isArray(data) ? data : []).map((row) => {
+                const created = row.created_at ? new Date(row.created_at) : null;
+                const lastLogin = created ? created.toLocaleString() : '';
+
+                return {
+                    id: String(row.id ?? ''),
+                    name: `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim(),
+                    email: row.email ?? '',
+                    status: row.status ?? 'active',
+                    role: row.role ?? '',
+                    lastLogin,
+                    organization: row.organization_name ?? ''
+                };
+            });
+
+            setUsers(mapped);
+        } catch (err) {
+            console.error('Failed to load users', err);
+            setUsers([]);
+        } finally {
+            setUsersLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadOrgs();
+        loadUsers();
+    }, []);
+
+    const handleCreateUser = async () => {
+        setCreateUserLoading(true);
+        try {
+            const payload = {
+                role: userData.role,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                email: userData.email,
+                mobile: userData.mobile,
+                organizationId: userData.organization || null,
+                department: userData.department,
+                permissions: userData.permissions,
+                additionalPermissions: userData.additionalPermissions,
+                loginType: userData.loginType,
+                password: userData.loginType === 'manual' ? userData.password : null,
+                forceReset: userData.forceReset,
+                security: userData.security
+            };
+
+            const resp = await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Failed to create user');
+
+            if (userData.loginType !== 'manual') {
+                const inviteResp = await fetch('/api/send-invite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: userData.email, mobile: userData.mobile })
+                });
+                const inviteData = await inviteResp.json();
+                if (!inviteResp.ok) throw new Error(inviteData.error || 'Failed to send invite');
+            }
+
+            handleCloseModal();
+            await loadUsers();
+        } catch (err) {
+            console.error('Create user failed', err);
+            alert('Failed to create user: ' + (err.message || err));
+        } finally {
+            setCreateUserLoading(false);
+        }
     };
 
     const tabs = ['All Users', 'Platform Admins', 'Organization Users', 'Roles', 'Activity Logs'];
-
-    const users = [
-        { id: 'EM456789', name: 'Sarah Wilson', email: 'sarah@globalsolutions.io', status: 'active', role: 'Organizer', lastLogin: '2024-12-22 10:15', organization: 'EventPro Solutions' },
-        { id: 'EM456789', name: 'Sarah Wilson', email: 'sarah@globalsolutions.io', status: 'active', role: 'Super Admin', lastLogin: '2024-12-22 10:15', organization: 'Global Exhibitors' },
-        { id: 'EM456789', name: 'Sarah Wilson', email: 'sarah@globalsolutions.io', status: 'active', role: 'Support', lastLogin: '2024-12-22 10:15', organization: 'EventPro Solutions' },
-        { id: 'EM456789', name: 'Sarah Wilson', email: 'sarah@globalsolutions.io', status: 'active', role: 'Exhibitor Admin', lastLogin: '2024-12-22 10:15', organization: 'Global Exhibitors' },
-        { id: 'EM456789', name: 'Sarah Wilson', email: 'sarah@globalsolutions.io', status: 'Pending', role: 'Exhibitor Admin', lastLogin: '2024-12-22 10:15', organization: 'EventPro Solutions' },
-        { id: 'EM456789', name: 'Sarah Wilson', email: 'sarah@globalsolutions.io', status: 'active', role: 'Support', lastLogin: '2024-12-22 10:15', organization: '123 -Organization ...' },
-    ];
 
     const getStatusBadge = (status) => {
         const statusStyles = {
@@ -318,7 +419,7 @@ const UserManagement = () => {
                     backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
                     justifyContent: 'center', alignItems: 'center', zIndex: 1000,
                     backdropFilter: 'blur(4px)'
-                }} onClick={handleCloseModal}>
+                }}>
                     <div style={{
                         background: 'white', borderRadius: '24px', padding: '40px',
                         width: '800px', maxWidth: '95%', maxHeight: '90vh',
@@ -425,8 +526,11 @@ const UserManagement = () => {
                                         style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
                                     >
                                         <option value="">Select organization</option>
-                                        <option value="org1">TechEvents Inc.</option>
-                                        <option value="org2">Global Solutions</option>
+                                        {orgs.map((o) => (
+                                            <option key={o.id} value={String(o.id)}>
+                                                {o.org_name}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div>
@@ -734,7 +838,8 @@ const UserManagement = () => {
                             )}
 
                             <button
-                                onClick={() => modalStep < 4 ? setModalStep(modalStep + 1) : console.log('Final Data:', userData)}
+                                onClick={() => modalStep < 4 ? setModalStep(modalStep + 1) : handleCreateUser()}
+                                disabled={createUserLoading}
                                 style={{
                                     padding: '10px 32px', borderRadius: '8px', border: 'none',
                                     background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer',
@@ -743,7 +848,9 @@ const UserManagement = () => {
                             >
                                 {modalStep === 4 ? (
                                     <>
-                                        {userData.loginType === 'manual' ? 'Create User' : 'Send Invite'}
+                                        {userData.loginType === 'manual'
+                                            ? (createUserLoading ? 'Creating...' : 'Create User')
+                                            : (createUserLoading ? 'Sending...' : 'Send Invite')}
                                         <ChevronDown size={16} />
                                     </>
                                 ) : 'Next'}

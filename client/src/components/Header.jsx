@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     Search, Bell, Settings as SettingsIcon, ChevronDown,
     ChevronUp, Building2, Users, Calendar, Image, Eye,
     CreditCard, MessageSquare, Receipt, Cpu, LineChart,
-    ShieldCheck, UserCheck, LifeBuoy
+    ShieldCheck, UserCheck, LifeBuoy, LogOut
 } from 'lucide-react';
 
 const NavItem = ({ icon: Icon, label, active = false, onClick }) => (
@@ -13,10 +13,28 @@ const NavItem = ({ icon: Icon, label, active = false, onClick }) => (
     </div>
 );
 
-const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onToggleNav }) => {
-    const items = [
+const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onToggleNav, onLogout, userType = 'master' }) => {
+    const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+    const profileDropdownRef = useRef(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+                setShowProfileDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    // Master admin navigation items
+    const masterItems = [
         { icon: Building2, label: 'Control Room', screen: 'dashboard' },
-        { icon: Building2, label: 'Organizations', screen: 'tenants' },
+        { icon: Building2, label: 'Organization', screen: 'tenants' },
         { icon: Users, label: 'Users', screen: 'users' },
         { icon: Calendar, label: 'Events', screen: 'events' },
         { icon: Image, label: 'Exhibitors', screen: 'exhibitors' },
@@ -24,13 +42,40 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
         { icon: CreditCard, label: 'Billing', screen: 'billing' },
         { icon: MessageSquare, label: 'Communication', screen: 'communication' },
         { icon: Receipt, label: 'GST', screen: 'gst' },
-        { icon: Cpu, label: 'API', screen: 'api' },
         { icon: LineChart, label: 'Analytics', screen: 'analytics' },
         { icon: ShieldCheck, label: 'Compliance', screen: 'compliance' },
-        { icon: SettingsIcon, label: 'Config', screen: 'config' },
-        { icon: UserCheck, label: 'RBAC', screen: 'rbac' },
+        { icon: SettingsIcon, label: 'System Config', screen: 'config' },
+        { icon: UserCheck, label: 'Access Control', screen: 'rbac' },
         { icon: LifeBuoy, label: 'Support', screen: 'support' },
     ];
+
+    // Organization navigation items (limited)
+    const organizationItems = [
+        { icon: Building2, label: 'Dashboard', screen: 'dashboard' },
+        { icon: Users, label: 'Users', screen: 'users' },
+        { icon: Calendar, label: 'Events', screen: 'events' },
+        { icon: Image, label: 'Exhibitors', screen: 'exhibitors' },
+        { icon: Eye, label: 'Visitors', screen: 'visitors' },
+        { icon: CreditCard, label: 'Billing', screen: 'billing' },
+    ];
+
+    // Exhibitor navigation items
+    const exhibitorItems = [
+        { icon: Building2, label: 'Dashboard', screen: 'dashboard' },
+        { icon: Users, label: 'Leads', screen: 'leads' },
+        { icon: Cpu, label: 'Scanner', screen: 'scanner' },
+        { icon: Calendar, label: 'Events', screen: 'events' },
+        { icon: LineChart, label: 'Analytics', screen: 'analytics' },
+        { icon: CreditCard, label: 'Inventory and Billing', screen: 'billing' },
+        { icon: Users, label: 'Users', screen: 'users' },
+    ];
+
+    const items = userType === 'exhibitor' ? exhibitorItems : (userType === 'organization' ? organizationItems : masterItems);
+
+    const userEmail = localStorage.getItem('userEmail') || 'admin@eventhub.com';
+    const organizationName = localStorage.getItem('organizationName');
+    const exhibitorName = localStorage.getItem('exhibitorName');
+    const displayName = userType === 'exhibitor' ? (exhibitorName || 'Exhibitor') : (userType === 'organization' ? (organizationName || 'Organization') : 'Master Admin');
 
     return (
         <div className="header-wrapper">
@@ -40,16 +85,24 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
                         <div style={{
                             background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
                             color: 'white',
-                            width: '32px',
+                            width: '38px',
                             height: '32px',
                             borderRadius: '8px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: 'bold',
-                            fontSize: '16px'
-                        }}>E</div>
-                        <span style={{ fontWeight: 800, fontSize: '18px', color: '#1e3a8a' }}>EventHub</span>
+                            fontSize: '16px',
+                            position: 'relative',
+                            letterSpacing: '-2px'
+                        }}>
+                            <span style={{ position: 'relative', zIndex: 1 }}>E</span>
+                            <span style={{ position: 'absolute', right: '6px', fontSize: '14px' }}>H</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontWeight: 800, fontSize: '18px', color: '#1e3a8a', lineHeight: 1 }}>EventHub</span>
+                            <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 500, letterSpacing: '0.02em' }}>Manage. Exhibit. Attend.</span>
+                        </div>
                     </div>
                     <div
                         onClick={onToggleNav}
@@ -65,12 +118,16 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
                     >
                         {isNavCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
                     </div>
-                    <div className="search-bar" style={{ position: 'relative', width: '300px' }}>
+                    {/* search moved to center for better alignment */}
+                </div>
+
+                <div className="header-center" style={{ display: 'flex', justifyContent: 'center', flex: 1 }}>
+                    <div className="search-bar" style={{ position: 'relative', width: '420px', maxWidth: '60%' }}>
                         <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                         <input
                             type="text"
-                            placeholder="Search everything..."
-                            style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '13px' }}
+                            placeholder="Search tenants, events, exhibitors..."
+                            style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '14px' }}
                         />
                     </div>
                 </div>
@@ -78,17 +135,69 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
                 <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                     <div style={{ position: 'relative', cursor: 'pointer' }}>
                         <Bell size={20} color="#64748b" />
-                        <div style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: 'white', fontSize: '10px', width: '14px', height: '14px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>1</div>
+                        <div style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: 'white', fontSize: '10px', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>3</div>
                     </div>
                     <SettingsIcon size={20} color="#64748b" style={{ cursor: 'pointer' }} />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>Master Admin</div>
-                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>admin@eventhub.com</div>
+                    <div style={{ cursor: 'pointer' }} onClick={() => onNavigate && onNavigate('support')} title="Support">
+                        <LifeBuoy size={18} color="#64748b" />
+                    </div>
+                    <div style={{ position: 'relative' }} ref={profileDropdownRef}>
+                        <div
+                            style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+                            onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                        >
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>{displayName}</div>
+                                <div style={{ fontSize: '11px', color: '#94a3b8' }}>{userEmail}</div>
+                            </div>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '14px' }}>
+                                {userType === 'exhibitor' ? 'EXH' : (userType === 'organization' ? 'ORG' : 'MA')}
+                            </div>
+                            <ChevronDown size={16} color="#94a3b8" style={{ transition: 'transform 0.2s', transform: showProfileDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }} />
                         </div>
-                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '14px' }}>
-                            MA
-                        </div>
+
+                        {showProfileDropdown && (
+                            <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                right: 0,
+                                marginTop: '8px',
+                                background: 'white',
+                                borderRadius: '12px',
+                                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                                border: '1px solid #e2e8f0',
+                                minWidth: '180px',
+                                zIndex: 1000,
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{ padding: '8px 0' }}>
+                                    <div
+                                        onClick={() => {
+                                            if (onLogout) {
+                                                onLogout();
+                                            }
+                                            setShowProfileDropdown(false);
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            padding: '10px 16px',
+                                            cursor: 'pointer',
+                                            color: '#ef4444',
+                                            fontSize: '14px',
+                                            fontWeight: 500,
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.target.style.background = '#fef2f2'}
+                                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                    >
+                                        <LogOut size={16} />
+                                        <span>Logout</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from './Header';
 
-const Layout = ({ children, activeScreen, onNavigate }) => {
+const Layout = ({ children, activeScreen, onNavigate, userType = 'master', onLogout }) => {
     const [isTopNavCollapsed, setIsTopNavCollapsed] = useState(false);
 
     // Update CSS variables when toggle state changes
@@ -18,6 +18,8 @@ const Layout = ({ children, activeScreen, onNavigate }) => {
                     onNavigate={onNavigate}
                     isNavCollapsed={isTopNavCollapsed}
                     onToggleNav={() => setIsTopNavCollapsed(!isTopNavCollapsed)}
+                    userType={userType}
+                    onLogout={onLogout}
                 />
                 <div className="content-area">
                     {children}

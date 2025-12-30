@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, TrendingUp, Users, UserCheck, Search, Download, Plus, MoreHorizontal, X, ChevronRight, ChevronDown, Check, Building2, MapPin, CheckCircle2, FileText, Send } from 'lucide-react';
 
 const ExhibitorsManagement = () => {
@@ -8,7 +8,7 @@ const ExhibitorsManagement = () => {
     const [showModal, setShowModal] = useState(false);
     const [modalStep, setModalStep] = useState(1);
 
-    const [exhibitorData, setExhibitorData] = useState({
+    const defaultExhibitorData = {
         companyName: '',
         gstNumber: '',
         address: '',
@@ -32,6 +32,16 @@ const ExhibitorsManagement = () => {
             email: true,
             sms: false
         }
+    };
+
+    const [exhibitors, setExhibitors] = useState([]);
+    const [exhibitorsLoading, setExhibitorsLoading] = useState(false);
+    const [events, setEvents] = useState([]);
+    const [eventsLoading, setEventsLoading] = useState(false);
+    const [createExhibitorLoading, setCreateExhibitorLoading] = useState(false);
+
+    const [exhibitorData, setExhibitorData] = useState({
+        ...defaultExhibitorData
     });
 
     const [showSuccess, setShowSuccess] = useState(false);
@@ -46,18 +56,113 @@ const ExhibitorsManagement = () => {
         setShowModal(false);
         setModalStep(1);
         setShowSuccess(false);
+        setExhibitorData({ ...defaultExhibitorData });
+    };
+
+    const loadEvents = async () => {
+        setEventsLoading(true);
+        try {
+            const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+            const resp = await fetch(`${API_BASE}/api/events`);
+            let data;
+            const txt = await resp.clone().text();
+            try { data = JSON.parse(txt); } catch (e) { data = txt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to load events');
+            setEvents(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load events', err);
+            setEvents([]);
+        } finally {
+            setEventsLoading(false);
+        }
+    };
+
+    const loadExhibitors = async () => {
+        setExhibitorsLoading(true);
+        try {
+            const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+            const resp = await fetch(`${API_BASE}/api/exhibitors`);
+            let data;
+            const txt = await resp.clone().text();
+            try { data = JSON.parse(txt); } catch (e) { data = txt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to load exhibitors');
+
+            const mapped = (Array.isArray(data) ? data : []).map((row) => {
+                const createdDate = row.created_at ? new Date(row.created_at).toLocaleDateString() : '';
+                const lastDate = row.created_at ? new Date(row.created_at).toLocaleDateString() : '';
+                return {
+                    id: String(row.id ?? ''),
+                    company: row.company_name ?? '',
+                    email: row.email ?? '',
+                    status: row.access_status ?? 'Active',
+                    event: row.event_name ?? '',
+                    tenant: row.organization_name ?? '',
+                    leads: '-',
+                    staff: '-',
+                    lastActive: createdDate,
+                    lastDate
+                };
+            });
+
+            setExhibitors(mapped);
+        } catch (err) {
+            console.error('Failed to load exhibitors', err);
+            setExhibitors([]);
+        } finally {
+            setExhibitorsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadEvents();
+        loadExhibitors();
+    }, []);
+
+    const handleCreateExhibitor = async () => {
+        setCreateExhibitorLoading(true);
+        try {
+            const payload = {
+                companyName: exhibitorData.companyName,
+                gstNumber: exhibitorData.gstNumber,
+                address: exhibitorData.address,
+                industry: exhibitorData.industry,
+                logoUrl: null,
+                contactPerson: exhibitorData.contactPerson,
+                email: exhibitorData.email,
+                mobile: exhibitorData.mobile,
+                eventId: exhibitorData.assignedEvent || null,
+                stallNumber: exhibitorData.stallNumber,
+                stallCategory: exhibitorData.stallCategory,
+                accessStatus: exhibitorData.accessStatus,
+                leadCapture: exhibitorData.leadCapture,
+                communication: exhibitorData.communication
+            };
+
+            const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+            const resp = await fetch(`${API_BASE}/api/exhibitors`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            let data;
+            const txt = await resp.clone().text();
+            try { data = JSON.parse(txt); } catch (e) { data = txt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to create exhibitor');
+
+            setShowSuccess(true);
+            if (data && data.credentials) {
+                alert(`Exhibitor created successfully!\n\nLogin Credentials:\nEmail: ${data.credentials.email}\nPassword: ${data.credentials.password}\n\n${data.credentials.note || ''}`);
+            }
+            await loadExhibitors();
+        } catch (err) {
+            console.error('Create exhibitor failed', err);
+            alert('Failed to create exhibitor: ' + (err.message || err));
+        } finally {
+            setCreateExhibitorLoading(false);
+        }
     };
 
     const tabs = ['All Exhibitors', 'Active', 'Pending', 'Stalls', 'Leads'];
-
-    const exhibitors = [
-        { id: 'HC456789', company: 'ABC Company', email: 'admin@techevents.com', status: 'Active', event: 'ABC Event', tenant: 'XYZ ORG', leads: '1233', staff: '1500', lastActive: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'HC456789', company: 'ABC Company', email: 'admin@techevents.com', status: 'Active', event: 'ABC Event', tenant: 'XYZ ORG', leads: '1233', staff: '1500', lastActive: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'HC456789', company: 'ABC Company', email: 'admin@techevents.com', status: 'Inactive', event: 'ABC Event', tenant: 'XYZ ORG', leads: '1233', staff: '1500', lastActive: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'HC456789', company: 'ABC Company', email: 'admin@techevents.com', status: 'Active', event: 'ABC Event', tenant: 'XYZ ORG', leads: '1233', staff: '1500', lastActive: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'HC456789', company: 'ABC Company', email: 'admin@techevents.com', status: 'Inactive', event: 'ABC Event', tenant: 'XYZ ORG', leads: '1233', staff: '1500', lastActive: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'HC456789', company: 'ABC Company', email: 'admin@techevents.com', status: 'Active', event: 'ABC Event', tenant: 'XYZ ORG', leads: '1233', staff: '1500', lastActive: '2/20/2024', lastDate: '12/17/2024' },
-    ];
 
     const getStatusBadge = (status) => {
         const statusStyles = {
@@ -295,7 +400,7 @@ const ExhibitorsManagement = () => {
                     backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
                     justifyContent: 'center', alignItems: 'center', zIndex: 1000,
                     backdropFilter: 'blur(4px)'
-                }} onClick={handleCloseModal}>
+                }}>
                     <div style={{
                         background: 'white', borderRadius: '24px', padding: '40px',
                         width: '800px', maxWidth: '95%', maxHeight: '90vh',
@@ -474,8 +579,11 @@ const ExhibitorsManagement = () => {
                                                         style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
                                                     >
                                                         <option value="">Select event</option>
-                                                        <option value="tech_summit">Tech Summit 2025</option>
-                                                        <option value="health_expo">Health Expo 2024</option>
+                                                        {events.map((ev) => (
+                                                            <option key={ev.id} value={String(ev.id)}>
+                                                                {ev.event_name}
+                                                            </option>
+                                                        ))}
                                                     </select>
                                                 </div>
                                                 <div>
@@ -611,14 +719,15 @@ const ExhibitorsManagement = () => {
                                         )}
 
                                         <button
-                                            onClick={() => modalStep < 4 ? setModalStep(modalStep + 1) : setShowSuccess(true)}
+                                            onClick={() => modalStep < 4 ? setModalStep(modalStep + 1) : handleCreateExhibitor()}
+                                            disabled={createExhibitorLoading}
                                             style={{
                                                 padding: '10px 32px', borderRadius: '8px', border: 'none',
                                                 background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer',
                                                 display: 'flex', alignItems: 'center', gap: '8px'
                                             }}
                                         >
-                                            {modalStep === 4 ? 'Create Exhibitor' : 'Next'}
+                                            {modalStep === 4 ? (createExhibitorLoading ? 'Creating...' : 'Create Exhibitor') : 'Next'}
                                             {modalStep < 4 && <ChevronRight size={18} />}
                                         </button>
                                     </div>

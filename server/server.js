@@ -1,7 +1,14 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2/promise');
+const organizationController = require('./controllers/organizationController');
+const eventController = require('./controllers/eventController');
+const exhibitorController = require('./controllers/exhibitorController');
+const visitorController = require('./controllers/visitorController');
+const invoiceController = require('./controllers/invoiceController');
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+const pool = require('./db');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -47,6 +54,170 @@ app.get('/api/dashboard', (req, res) => {
     res.json(dashboardData);
 });
 
-app.listen(port, () => {
+// Invite endpoint
+app.post('/api/send-invite', organizationController.inviteOrganization);
+// Create organization directly
+app.post('/api/create-organization', organizationController.createOrganization);
+// List organizations
+app.get('/api/organizations', organizationController.getOrganizations);
+// Organization login
+app.post('/api/organization-login', organizationController.loginOrganization);
+// Create plan
+app.post('/api/create-plan', organizationController.createPlan);
+// Verify coupon
+app.post('/api/verify-coupon', organizationController.verifyCoupon);
+// List plans
+app.get('/api/plans', organizationController.getPlans);
+// Exhibitor login
+app.post('/api/exhibitor-login', exhibitorController.loginExhibitor);
+// Visitor login
+app.post('/api/visitor-login', visitorController.loginVisitor);
+
+// Unified login endpoint (organization/exhibitor/visitor)
+app.post('/api/login', async (req, res) => {
+    const { email, password, type } = req.body || {};
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const tryOrder = Array.isArray(type) ? type : (type ? [type] : ['organization', 'exhibitor', 'visitor']);
+
+    const handlers = {
+        organization: organizationController.loginOrganization,
+        exhibitor: exhibitorController.loginExhibitor,
+        visitor: visitorController.loginVisitor
+    };
+
+    // Try each handler in order. If handler rejects with invalid credentials, continue.
+    for (const t of tryOrder) {
+        const handler = handlers[t];
+        if (!handler) continue;
+
+        let handled = false;
+
+        const wrappedRes = {
+            status: (code) => {
+                return {
+                    json: (payload) => {
+                        // only treat invalid-credentials as "try next"
+                        if (code === 401 && payload && (payload.error || '').toLowerCase().includes('invalid')) {
+                            return;
+                        }
+                        handled = true;
+                        return res.status(code).json(payload);
+                    }
+                };
+            },
+            json: (payload) => {
+                handled = true;
+                // normalize org login response to unified shape
+                if (payload && payload.success && payload.organization) {
+                    return res.json({
+                        success: true,
+                        userType: 'organization',
+                        user: {
+                            id: payload.organization.id,
+                            name: payload.organization.orgName,
+                            email: payload.organization.email
+                        }
+                    });
+                }
+                return res.json(payload);
+            }
+        };
+
+        await handler(req, wrappedRes);
+
+        // If handler produced a non-401 response it already returned via res.
+        if (handled) return;
+    }
+
+    return res.status(401).json({ error: 'Invalid email or password' });
+});
+// Create user
+app.post('/api/users', organizationController.createUser);
+
+// Plans & Coupons
+app.post('/api/create-plan', organizationController.createPlan);
+app.post('/api/verify-coupon', organizationController.verifyCoupon);
+
+// Events
+app.get('/api/events', eventController.getEvents);
+app.post('/api/events', eventController.createEvent);
+
+// Exhibitors
+app.get('/api/exhibitors', exhibitorController.getExhibitors);
+app.post('/api/exhibitors', exhibitorController.createExhibitor);
+
+// Visitors
+app.get('/api/visitors', visitorController.getVisitors);
+app.post('/api/visitors', visitorController.createVisitor);
+
+// Invoices
+app.get('/api/invoices', invoiceController.getInvoices);
+app.post('/api/invoices', invoiceController.createInvoice);
+
+// Debug: list registered routes
+app.get('/__routes', (req, res) => {
+    try {
+        const stack = app._router ? app._router.stack : [];
+        const routes = stack
+            .filter(r => r && r.route && r.route.path)
+            .map(r => ({ path: r.route.path, methods: r.route.methods }));
+        res.json({ routes, hasRouter: !!app._router });
+    } catch (e) {
+        res.status(500).json({ error: String(e) });
+    }
+});
+
+// Debug: check table columns
+app.get('/__table/:tableName', async (req, res) => {
+    try {
+        const { tableName } = req.params;
+        const result = await pool.query(`
+            SELECT column_name, data_type, is_nullable, column_default
+            FROM information_schema.columns
+            WHERE table_name = $1
+            ORDER BY ordinal_position
+        `, [tableName]);
+        res.json({ table: tableName, columns: result.rows });
+    } catch (e) {
+        res.status(500).json({ error: String(e) });
+    }
+});
+
+app.listen(port, async () => {
     console.log(`Server running on port ${port}`);
+    // Run schema.sql and migrations on startup
+    try {
+        const schemaPath = path.join(__dirname, 'schema.sql');
+        if (fs.existsSync(schemaPath)) {
+            const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+            await pool.query(schemaSql);
+            console.log('Database schema synchronized from schema.sql');
+        }
+
+        const migrationsDir = path.join(__dirname, 'migrations');
+        if (fs.existsSync(migrationsDir)) {
+            const files = fs.readdirSync(migrationsDir).sort();
+            for (const file of files) {
+                if (file.endsWith('.sql')) {
+                    const migPath = path.join(migrationsDir, file);
+                    const sql = fs.readFileSync(migPath, 'utf8');
+                    // Special handling for 001_create_organization_invites.sql which has functions/triggers
+                    if (file === '001_create_organization_invites.sql') {
+                        const splitIdx = sql.search(/CREATE OR REPLACE FUNCTION/i);
+                        const safeSql = splitIdx >= 0 ? sql.slice(0, splitIdx) : sql;
+                        await pool.query(safeSql);
+                    } else {
+                        await pool.query(sql);
+                    }
+                    console.log(`Ran migration: ${file}`);
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Database initialization error:', err.message || err);
+    }
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2 } from 'lucide-react';
 
 const EventManagement = () => {
@@ -7,6 +7,12 @@ const EventManagement = () => {
     const [entriesPerPage, setEntriesPerPage] = useState(10);
     const [showModal, setShowModal] = useState(false);
     const [modalStep, setModalStep] = useState(1);
+
+    const [events, setEvents] = useState([]);
+    const [eventsLoading, setEventsLoading] = useState(false);
+    const [orgs, setOrgs] = useState([]);
+    const [orgsLoading, setOrgsLoading] = useState(false);
+    const [createEventLoading, setCreateEventLoading] = useState(false);
 
     const [eventData, setEventData] = useState({
         eventName: '',
@@ -52,6 +58,8 @@ const EventManagement = () => {
 
     const [showSuccess, setShowSuccess] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [qrDataUrl, setQrDataUrl] = useState('');
+    const [createdEvent, setCreatedEvent] = useState(null);
 
     const handleOpenModal = () => {
         setModalStep(1);
@@ -72,17 +80,167 @@ const EventManagement = () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
+    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+
+    const loadOrgs = async () => {
+        setOrgsLoading(true);
+        try {
+            const resp = await fetch(`${API_BASE}/api/organizations`);
+            let data;
+            const txt = await resp.clone().text();
+            try { data = JSON.parse(txt); } catch (e) { data = txt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to load organizations');
+            setOrgs(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load organizations', err);
+            setOrgs([]);
+        } finally {
+            setOrgsLoading(false);
+        }
+    };
+
+    const loadEvents = async () => {
+        setEventsLoading(true);
+        try {
+            const resp = await fetch(`${API_BASE}/api/events`);
+            let data;
+            const txt = await resp.clone().text();
+            try { data = JSON.parse(txt); } catch (e) { data = txt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to load events');
+
+            const mapped = (Array.isArray(data) ? data : []).map((row) => {
+                const createdDate = row.created_at ? new Date(row.created_at).toLocaleDateString() : '';
+                const lastDate = row.created_at ? new Date(row.created_at).toLocaleDateString() : '';
+
+                return {
+                    id: String(row.id ?? ''),
+                    name: row.event_name ?? '',
+                    email: row.organizer_email ?? '',
+                    status: row.status ?? 'Draft',
+                    venue: row.venue ?? '',
+                    exhibitors: '-',
+                    visitors: '-',
+                    createdDate,
+                    lastDate
+                };
+            });
+
+            setEvents(mapped);
+        } catch (err) {
+            console.error('Failed to load events', err);
+            setEvents([]);
+        } finally {
+            setEventsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadOrgs();
+        loadEvents();
+    }, []);
+
+    const handleCreateEvent = async () => {
+        setCreateEventLoading(true);
+        try {
+            const payload = {
+                eventName: eventData.eventName,
+                description: eventData.description,
+                eventType: eventData.eventType,
+                eventMode: eventData.eventMode,
+                industry: eventData.industry,
+                startDate: eventData.startDate,
+                endDate: eventData.endDate,
+                venue: eventData.venue,
+                city: eventData.city,
+                state: eventData.state,
+                country: eventData.country,
+                organizerName: eventData.organizerName,
+                contactPerson: eventData.contactPerson,
+                organizerEmail: eventData.organizerEmail,
+                organizerMobile: eventData.organizerMobile,
+                registration: eventData.registration,
+                leadCapture: eventData.leadCapture,
+                communication: eventData.communication
+            };
+
+            const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+            const resp = await fetch(`${API_BASE}/api/events`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            let data;
+            const bodyTxt = await resp.clone().text();
+            try { data = JSON.parse(bodyTxt); } catch (e) { data = bodyTxt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to create event');
+
+            setCreatedEvent(data);
+            // prefer server-provided registration link or token
+            const regText = (data && (data.registration_link || data.qr_token)) || `event:${(data && data.id) || Date.now()}`;
+            try {
+                const url = generateDummyQR(regText, 256);
+                setQrDataUrl(url);
+            } catch (gErr) {
+                console.warn('QR generation failed', gErr);
+            }
+
+            setShowSuccess(true);
+            await loadEvents();
+        } catch (err) {
+            console.error('Create event failed', err);
+            alert('Failed to create event: ' + (err.message || err));
+        } finally {
+            setCreateEventLoading(false);
+        }
+    };
+
+    // Simple deterministic dummy QR generator (renders a black/white pattern)
+    const generateDummyQR = (text = '', size = 256) => {
+        // simple hash to seed a PRNG
+        let h = 2166136261 >>> 0;
+        for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619) >>> 0;
+        const rand = () => {
+            h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+            return (h >>> 0) / 4294967295;
+        };
+
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, size, size);
+
+        const modules = 21; // simple grid
+        const moduleSize = Math.floor(size / modules);
+        for (let y = 0; y < modules; y++) {
+            for (let x = 0; x < modules; x++) {
+                // create finder-like corners
+                let draw = false;
+                if ((x < 3 && y < 3) || (x >= modules - 3 && y < 3) || (x < 3 && y >= modules - 3)) draw = true;
+                else draw = rand() > 0.5;
+
+                if (draw) {
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(x * moduleSize, y * moduleSize, moduleSize, moduleSize);
+                }
+            }
+        }
+
+        return canvas.toDataURL('image/png');
+    };
+
+    const downloadQR = (filename = 'event_qr.png') => {
+        if (!qrDataUrl) return;
+        const a = document.createElement('a');
+        a.href = qrDataUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    };
 
     const tabs = ['All Events', 'Active', 'Pending', 'Upcoming', 'Cancelled'];
-
-    const events = [
-        { id: 'HC456789', name: 'Tech Summit 2025', email: 'admin@techevents.com', status: 'Live', venue: 'Hyderabad - KPHB', exhibitors: '1233', visitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'HC456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Draft', venue: 'Kakinada , Sarjanapuram', exhibitors: '2933', visitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'HC456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Completed', venue: 'Jaggampeta, Bus stand', exhibitors: '1333', visitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'HC456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Upcoming', venue: 'Visakhapatnam', exhibitors: '3433', visitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'HC456789', name: 'ABC Events', email: 'admin@techevents.com', status: 'Live', venue: 'Hyderabad', exhibitors: '1322', visitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'HC456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Draft', venue: 'Kakinada Town', exhibitors: '1343', visitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-    ];
 
     const getStatusBadge = (status) => {
         const statusStyles = {
@@ -320,7 +478,7 @@ const EventManagement = () => {
                     backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
                     justifyContent: 'center', alignItems: 'center', zIndex: 1000,
                     backdropFilter: 'blur(4px)'
-                }} onClick={handleCloseModal}>
+                }}>
                     <div style={{
                         background: 'white', borderRadius: '24px', padding: '40px',
                         width: '800px', maxWidth: '95%', maxHeight: '90vh',
@@ -345,23 +503,26 @@ const EventManagement = () => {
 
                                 <div style={{ border: '2px dashed #0d89a4', borderRadius: '16px', padding: '32px', background: '#f8fafc', marginBottom: '32px', display: 'inline-block', width: '100%' }}>
                                     <p style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '20px' }}>Event Registration QR Code</p>
-                                    <div style={{ width: '160px', height: '160px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {/* Mock QR Code */}
-                                        <div style={{ width: '128px', height: '128px', border: '8px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                                            <div style={{ width: '64px', height: '64px', background: '#000' }}></div>
-                                            <div style={{ position: 'absolute', top: 0, left: 0, width: '24px', height: '24px', background: '#fff' }}></div>
-                                            <div style={{ position: 'absolute', top: 0, left: 0, width: '16px', height: '16px', background: '#000' }}></div>
-                                        </div>
+                                    <div style={{ width: '180px', height: '180px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {qrDataUrl ? (
+                                            <img src={qrDataUrl} alt="QR" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '8px', background: 'white' }} />
+                                        ) : (
+                                            <div style={{ width: '128px', height: '128px', border: '8px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                                                <div style={{ width: '64px', height: '64px', background: '#000' }}></div>
+                                            </div>
+                                        )}
                                     </div>
                                     <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '24px' }}>Scan to register for this event</p>
                                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                                        <button style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <button onClick={() => downloadQR((createdEvent && `event_${createdEvent.id || Date.now()}.png`) || 'event_qr.png')} style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <Download size={18} />
                                             Download PNG
                                         </button>
-                                        <button style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <button onClick={() => {
+                                            if (qrDataUrl) window.open(qrDataUrl, '_blank');
+                                        }} style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <Download size={18} />
-                                            Download PDF
+                                            Open Image
                                         </button>
                                     </div>
                                 </div>
@@ -907,14 +1068,15 @@ const EventManagement = () => {
                                     )}
 
                                     <button
-                                        onClick={() => modalStep < 5 ? setModalStep(modalStep + 1) : setShowSuccess(true)}
+                                        onClick={() => modalStep < 5 ? setModalStep(modalStep + 1) : handleCreateEvent()}
+                                        disabled={createEventLoading}
                                         style={{
                                             padding: '10px 32px', borderRadius: '8px', border: 'none',
                                             background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer',
                                             display: 'flex', alignItems: 'center', gap: '8px'
                                         }}
                                     >
-                                        {modalStep === 5 ? 'Create Event & Generate QR' : 'Next'}
+                                        {modalStep === 5 ? (createEventLoading ? 'Creating...' : 'Create Event & Generate QR') : 'Next'}
                                         {modalStep < 5 && <ChevronRight size={18} />}
                                     </button>
                                 </div>

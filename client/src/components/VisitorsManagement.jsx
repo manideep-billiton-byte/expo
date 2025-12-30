@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Eye, User, Info, Search, Download, MoreHorizontal, Plus, X, Check, ChevronRight, Mail, MessageSquare, Send, Smartphone, Calendar, MapPin, Building2, Download as DownloadIcon, Share2, Copy } from 'lucide-react';
 
 const VisitorsManagement = () => {
+    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
     const [activeTab, setActiveTab] = useState('All Visitors');
     const [searchQuery, setSearchQuery] = useState('');
     const [entriesPerPage, setEntriesPerPage] = useState(10);
@@ -9,7 +10,7 @@ const VisitorsManagement = () => {
     const [modalStep, setModalStep] = useState(1);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    const [visitorData, setVisitorData] = useState({
+    const defaultVisitorData = {
         firstName: '',
         lastName: '',
         email: '',
@@ -26,11 +27,22 @@ const VisitorsManagement = () => {
             email: true,
             sms: false
         }
+    };
+
+    const [visitors, setVisitors] = useState([]);
+    const [visitorsLoading, setVisitorsLoading] = useState(false);
+    const [events, setEvents] = useState([]);
+    const [eventsLoading, setEventsLoading] = useState(false);
+    const [createVisitorLoading, setCreateVisitorLoading] = useState(false);
+
+    const [visitorData, setVisitorData] = useState({
+        ...defaultVisitorData
     });
 
     const handleOpenModal = () => {
         setModalStep(1);
         setShowSuccess(false);
+        setVisitorData({ ...defaultVisitorData });
         setShowModal(true);
     };
 
@@ -38,17 +50,125 @@ const VisitorsManagement = () => {
         setShowModal(false);
         setModalStep(1);
         setShowSuccess(false);
+        setVisitorData({ ...defaultVisitorData });
+    };
+
+    const maskEmail = (email) => {
+        if (!email) return '';
+        const atIndex = email.indexOf('@');
+        if (atIndex <= 1) return email;
+        const name = email.slice(0, atIndex);
+        const domain = email.slice(atIndex);
+        return `${name[0]}${'*'.repeat(Math.max(1, name.length - 2))}${name[name.length - 1]}${domain}`;
+    };
+
+    const maskPhone = (phone) => {
+        if (!phone) return '';
+        const digits = String(phone);
+        if (digits.length <= 4) return digits;
+        return `${digits.slice(0, 3)}${'*'.repeat(Math.max(1, digits.length - 6))}${digits.slice(-3)}`;
+    };
+
+    const loadEvents = async () => {
+        setEventsLoading(true);
+        try {
+            const resp = await fetch(`${API_BASE}/api/events`);
+            let data;
+            const txt = await resp.clone().text();
+            try { data = JSON.parse(txt); } catch (e) { data = txt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to load events');
+            setEvents(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load events', err);
+            setEvents([]);
+        } finally {
+            setEventsLoading(false);
+        }
+    };
+
+    const loadVisitors = async () => {
+        setVisitorsLoading(true);
+        try {
+            const resp = await fetch(`${API_BASE}/api/visitors`);
+            let data;
+            const txt = await resp.clone().text();
+            try { data = JSON.parse(txt); } catch (e) { data = txt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to load visitors');
+
+            const mapped = (Array.isArray(data) ? data : []).map((row) => {
+                const created = row.created_at ? new Date(row.created_at) : null;
+                return {
+                    name: `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim(),
+                    contact: {
+                        email: maskEmail(row.email ?? ''),
+                        phone: maskPhone(row.mobile ?? '')
+                    },
+                    events: '-',
+                    lastEvent: row.event_name ?? '',
+                    consent: 'Check-In',
+                    date: created ? created.toLocaleDateString() : '',
+                    registered: 'Mobile',
+                    checkIn: '',
+                    checkOut: ''
+                };
+            });
+
+            setVisitors(mapped);
+        } catch (err) {
+            console.error('Failed to load visitors', err);
+            setVisitors([]);
+        } finally {
+            setVisitorsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadEvents();
+        loadVisitors();
+    }, []);
+
+    const handleCreateVisitor = async () => {
+        setCreateVisitorLoading(true);
+        try {
+            const payload = {
+                firstName: visitorData.firstName,
+                lastName: visitorData.lastName,
+                email: visitorData.email,
+                mobile: visitorData.mobile,
+                gender: visitorData.gender,
+                age: visitorData.age,
+                organization: visitorData.organization,
+                designation: visitorData.designation,
+                eventId: visitorData.event || null,
+                visitorCategory: visitorData.visitorCategory,
+                validDates: visitorData.validDates,
+                communication: visitorData.communication
+            };
+
+            const resp = await fetch(`${API_BASE}/api/visitors`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            let data;
+            const txt = await resp.clone().text();
+            try { data = JSON.parse(txt); } catch (e) { data = txt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to register visitor');
+
+            setShowSuccess(true);
+            if (data && data.credentials) {
+                alert(`Visitor registered successfully!\n\nLogin Credentials:\nEmail: ${data.credentials.email}\nPassword: ${data.credentials.password}\n\n${data.credentials.note || ''}`);
+            }
+            await loadVisitors();
+        } catch (err) {
+            console.error('Register visitor failed', err);
+            alert('Failed to register visitor: ' + (err.message || err));
+        } finally {
+            setCreateVisitorLoading(false);
+        }
     };
 
     const tabs = ['All Visitors', 'Registered', 'Check-In', 'QR & Pass', 'Check-Out'];
-
-    const visitors = [
-        { name: 'Arun Verma', contact: { email: 'arun.v***@gmail.com', phone: '+91 9****21045' }, events: '5 attended', lastEvent: 'TechExpo 2024', consent: 'Check-In', date: '1/5/2024', registered: 'Mobile', checkIn: '10:55:23', checkOut: '2:25:13' },
-        { name: 'Arun Verma', contact: { email: 'arun.v***@gmail.com', phone: '+91 9****21045' }, events: '5 attended', lastEvent: 'TechExpo 2024', consent: 'Check-In', date: '1/5/2024', registered: 'Mobile', checkIn: '10:55:23', checkOut: '2:25:13' },
-        { name: 'Arun Verma', contact: { email: 'arun.v***@gmail.com', phone: '+91 9****21045' }, events: '5 attended', lastEvent: 'TechExpo 2024', consent: 'Check-Out', date: '1/5/2024', registered: 'Mobile', checkIn: '10:55:23', checkOut: '2:25:13' },
-        { name: 'Arun Verma', contact: { email: 'arun.v***@gmail.com', phone: '+91 9****21045' }, events: '5 attended', lastEvent: 'TechExpo 2024', consent: 'Check-In', date: '1/5/2024', registered: 'Mobile', checkIn: '10:55:23', checkOut: '2:25:13' },
-        { name: 'Arun Verma', contact: { email: 'arun.v***@gmail.com', phone: '+91 9****21045' }, events: '5 attended', lastEvent: 'TechExpo 2024', consent: 'Check-In', date: '1/5/2024', registered: 'Mobile', checkIn: '10:55:23', checkOut: '2:25:13' },
-    ];
 
     const getConsentBadge = (consent) => {
         const statusStyles = {
@@ -312,7 +432,7 @@ const VisitorsManagement = () => {
                     backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
                     justifyContent: 'center', alignItems: 'center', zIndex: 1000,
                     backdropFilter: 'blur(4px)'
-                }} onClick={handleCloseModal}>
+                }}>
                     <div style={{
                         background: 'white', borderRadius: '24px', padding: '40px',
                         width: '800px', maxWidth: '95%', maxHeight: '90vh',
@@ -481,36 +601,14 @@ const VisitorsManagement = () => {
                                                     style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
                                                 />
                                             </div>
-                                        </div>
-                                    )}
-
-                                    {modalStep === 2 && (
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', textAlign: 'left' }}>
                                             <div style={{ gridColumn: 'span 2' }}>
-                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Select Event *</label>
-                                                <select
-                                                    value={visitorData.event}
-                                                    onChange={e => setVisitorData({ ...visitorData, event: e.target.value })}
-                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
-                                                >
-                                                    <option value="">Select event</option>
-                                                    <option value="e1">Tech Expo 2024</option>
-                                                    <option value="e2">Healthcare 2024</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Visitor Category *</label>
-                                                <select
-                                                    value={visitorData.visitorCategory}
-                                                    onChange={e => setVisitorData({ ...visitorData, visitorCategory: e.target.value })}
-                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
-                                                >
-                                                    <option value="">Select category</option>
-                                                    <option value="delegate">Delegate</option>
-                                                    <option value="visitor">Visitor</option>
-                                                    <option value="vip">VIP</option>
-                                                    <option value="student">Student</option>
-                                                </select>
+                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Designation</label>
+                                                <input
+                                                    type="text" placeholder="Enter designation"
+                                                    value={visitorData.designation}
+                                                    onChange={e => setVisitorData({ ...visitorData, designation: e.target.value })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                />
                                             </div>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Pass Validity *</label>
@@ -582,14 +680,15 @@ const VisitorsManagement = () => {
                                         )}
 
                                         <button
-                                            onClick={() => modalStep < 3 ? setModalStep(modalStep + 1) : setShowSuccess(true)}
+                                            onClick={() => modalStep < 3 ? setModalStep(modalStep + 1) : handleCreateVisitor()}
+                                            disabled={createVisitorLoading}
                                             style={{
                                                 padding: '10px 32px', borderRadius: '8px', border: 'none',
                                                 background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer',
                                                 display: 'flex', alignItems: 'center', gap: '8px'
                                             }}
                                         >
-                                            {modalStep === 3 ? 'Register Visitor' : 'Next'}
+                                            {modalStep === 3 ? (createVisitorLoading ? 'Registering...' : 'Register Visitor') : 'Next'}
                                             {modalStep < 3 && <ChevronRight size={18} />}
                                         </button>
                                     </div>

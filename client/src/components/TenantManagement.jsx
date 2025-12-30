@@ -1,10 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building2, Search, Download, Plus, MoreHorizontal, X, UserPlus, Users, ArrowLeft } from 'lucide-react';
 
 const TenantManagement = () => {
     const [activeTab, setActiveTab] = useState('All Organizations');
     const [searchQuery, setSearchQuery] = useState('');
     const [entriesPerPage, setEntriesPerPage] = useState(10);
+
+    const [organizations, setOrganizations] = useState([]);
+    const [organizationsLoading, setOrganizationsLoading] = useState(false);
+    const [organizationsError, setOrganizationsError] = useState('');
+
+    const loadOrganizations = async () => {
+        setOrganizationsLoading(true);
+        setOrganizationsError('');
+        try {
+            const resp = await fetch('/api/organizations');
+            let data;
+            const txt = await resp.clone().text();
+            try { data = JSON.parse(txt); } catch (e) { data = txt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to load organizations');
+            setOrganizations(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load organizations', err);
+            setOrganizationsError(err?.message || String(err));
+            setOrganizations([]);
+        } finally {
+            setOrganizationsLoading(false);
+        }
+    };
 
     // Modal State
     const [showModal, setShowModal] = useState(false);
@@ -18,6 +41,7 @@ const TenantManagement = () => {
         password: '',
         confirmPassword: ''
     });
+    const [createOrgErrors, setCreateOrgErrors] = useState({});
     const [gstData, setGstData] = useState({ gstNumber: '' });
 
     // Wizard State
@@ -35,6 +59,38 @@ const TenantManagement = () => {
         // Subscription
         plan: 'Free'
     });
+
+    // Coupon State
+    const [couponCode, setCouponCode] = useState('');
+    const [verifiedPlan, setVerifiedPlan] = useState(null);
+    const [couponAppliedPlan, setCouponAppliedPlan] = useState(null);
+    const [verifyLoading, setVerifyLoading] = useState(false);
+
+    const handleVerifyCoupon = async () => {
+        if (!couponCode) return;
+        setVerifyLoading(true);
+        try {
+            const res = await fetch('/api/verify-coupon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: couponCode })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setVerifiedPlan(data.coupon);
+                setCouponAppliedPlan(data.coupon);
+            } else {
+                alert(data.error || 'Invalid Coupon');
+                setVerifiedPlan(null);
+                setCouponAppliedPlan(null);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to verify coupon: ' + (err?.message || err));
+        } finally {
+            setVerifyLoading(false);
+        }
+    };
 
     const wizardTabs = [
         { id: 'BASIC', label: 'Basic Info' },
@@ -61,6 +117,7 @@ const TenantManagement = () => {
             password: '',
             confirmPassword: ''
         });
+        setCreateOrgErrors({});
         setGstData({ gstNumber: '' });
         setWizardData({
             orgName: '', tradeName: '', tenantType: '', industry: '', size: '',
@@ -73,7 +130,54 @@ const TenantManagement = () => {
         setWizardTab('BASIC');
     };
 
+    const validateCreateOrgStep1 = () => {
+        const nextErrors = {};
+
+        const emailVal = (createOrgData.email || '').trim();
+        const mobileVal = (createOrgData.mobile || '').trim();
+        const passwordVal = createOrgData.password || '';
+        const confirmVal = createOrgData.confirmPassword || '';
+
+        if (!emailVal) {
+            nextErrors.email = 'Email is required';
+        } else if (!/^\S+@\S+\.\S+$/.test(emailVal)) {
+            nextErrors.email = 'Enter a valid email address';
+        }
+
+        if (!mobileVal) {
+            nextErrors.mobile = 'Mobile number is required';
+        } else if (!/^\d{8,15}$/.test(mobileVal.replace(/\D/g, ''))) {
+            nextErrors.mobile = 'Enter a valid mobile number';
+        }
+
+        if (!createOrgData.businessType) {
+            nextErrors.businessType = 'Business type is required';
+        }
+
+        if (!createOrgData.isRegistered) {
+            nextErrors.isRegistered = 'Please select yes or no';
+        }
+
+        if (!passwordVal) {
+            nextErrors.password = 'Password is required';
+        } else if (passwordVal.length < 6) {
+            nextErrors.password = 'Password must be at least 6 characters';
+        }
+
+        if (!confirmVal) {
+            nextErrors.confirmPassword = 'Confirm password is required';
+        } else if (passwordVal !== confirmVal) {
+            nextErrors.confirmPassword = 'Passwords do not match';
+        }
+
+        setCreateOrgErrors(nextErrors);
+        return Object.keys(nextErrors).length === 0;
+    };
+
     const handleStep1Continue = () => {
+        if (!validateCreateOrgStep1()) {
+            return;
+        }
         if (createOrgData.isRegistered === 'yes') {
             setModalStep('GST_VERIFICATION');
         } else {
@@ -83,25 +187,243 @@ const TenantManagement = () => {
         }
     };
 
-    const handleInviteUser = () => {
-        console.log('Inviting user:', inviteData);
-        // Implement invite logic here
-        handleCloseModal();
+    const gstWhitelist = [
+        '09AAACH7409R1ZZ',
+        '29AAACH7409R1ZX',
+        '36AAACH7409R1Z2',
+        '33AAACH7409R1Z8',
+        '24AAACH7409R2Z6',
+        '19AAACH7409R1ZY',
+        '08AAACH7409R1Z1',
+        '23AAACH7409R1Z9',
+        '20AAACH7409R1ZF',
+        '27AAACH7409R1Z1'
+    ];
+
+    const handleVerifyGst = () => {
+        const val = (gstData.gstNumber || '').toUpperCase().trim();
+        if (!val) {
+            alert('Please enter GST number');
+            return;
+        }
+        if (gstWhitelist.includes(val)) {
+            alert('GST verified successfully');
+
+            // Extract state code from GST (first 2 digits)
+            const stateCode = val.substring(0, 2);
+            // Extract PAN from GST (characters 3-12)
+            const panNumber = val.substring(2, 12);
+
+            // State mapping based on GST state codes
+            const stateMapping = {
+                '09': { state: 'Uttar Pradesh', district: 'Noida' },
+                '29': { state: 'Karnataka', district: 'Bengaluru Urban' },
+                '36': { state: 'Telangana', district: 'Hyderabad' },
+                '33': { state: 'Tamil Nadu', district: 'Chennai' },
+                '24': { state: 'Gujarat', district: 'Ahmedabad' },
+                '19': { state: 'West Bengal', district: 'Kolkata' },
+                '08': { state: 'Rajasthan', district: 'Jaipur' },
+                '23': { state: 'Madhya Pradesh', district: 'Indore' },
+                '20': { state: 'Jharkhand', district: 'Ranchi' },
+                '27': { state: 'Maharashtra', district: 'Mumbai' }
+            };
+
+            const stateInfo = stateMapping[stateCode] || { state: '', district: '' };
+
+            // Auto-fill data based on verified GST - Using Karnataka sample data as base
+            const autoFillData = {
+                gstNumber: val,
+                panNumber: panNumber, // PAN is embedded in GST (chars 3-12)
+                regNumber: stateCode === '29' ? 'U72200KA2021PTC145678' : `BRN-${stateInfo.state.substring(0, 2).toUpperCase()}-2021-456789`,
+                dateInc: '2021-03-15',
+                isVerified: true,
+                state: stateInfo.state,
+                district: stateInfo.district,
+                town: stateInfo.district, // Default town to district
+                orgName: 'HCL Technologies Ltd',
+                tradeName: 'HCL Tech',
+                industry: 'Information Technology',
+                tenantType: 'Enterprise',
+                size: '1000+'
+            };
+
+            // Update wizard data with verified GST and auto-filled info
+            setWizardData(prev => ({
+                ...prev,
+                ...autoFillData
+            }));
+
+            setWizardTab('BASIC');
+            setModalStep('WIZARD');
+        } else {
+            alert('GST not found or not valid for verification');
+        }
+    };
+
+    const handleInviteUser = async () => {
+        if (!inviteData.email && !inviteData.mobile) {
+            alert('Please provide either email or mobile number');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/send-invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: inviteData.email || null,
+                    mobile: inviteData.mobile || null
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('Invitation sent successfully');
+                handleCloseModal();
+            } else {
+                throw new Error(data.error || 'Failed to send invite');
+            }
+        } catch (err) {
+            console.error('Error sending invite:', err);
+            alert(err.message || 'Failed to send invite');
+        }
+    };
+
+    const handleCreateOrganization = async () => {
+        try {
+            // Validate required fields
+            if (!wizardData.orgName || wizardData.orgName.trim() === '') {
+                alert('Organization name is required. Please fill in the Basic Info tab.');
+                return;
+            }
+
+            if (!validateCreateOrgStep1()) {
+                alert('Please fix the highlighted errors in Step 1 before submitting.');
+                setModalStep('CREATE_ORG');
+                return;
+            }
+
+            // Check email in multiple places (createOrgData or wizardData.contactEmail)
+            const emailValue = createOrgData.email?.trim() || wizardData.contactEmail?.trim() || '';
+            if (!emailValue) {
+                alert('Email is required. Please fill in the basic information.');
+                return;
+            }
+
+            // Prepare the organization data
+            const orgData = {
+                orgName: wizardData.orgName.trim(),
+                tradeName: wizardData.tradeName || wizardData.orgName.trim(),
+                tenantType: wizardData.tenantType || '',
+                industry: wizardData.industry || '',
+                size: wizardData.size || '',
+                apiAccess: wizardData.apiAccess || false,
+                businessType: createOrgData.businessType || '',
+                isRegistered: createOrgData.isRegistered === 'yes' || createOrgData.isRegistered === true,
+                email: emailValue,
+                mobile: createOrgData.mobile || '',
+                password: createOrgData.password || '',
+                state: wizardData.state || '',
+                district: wizardData.district || '',
+                town: wizardData.town || '',
+                address: wizardData.address || '',
+                contactName: wizardData.contactName || '',
+                contactEmail: wizardData.contactEmail || emailValue,
+                contactPhone: wizardData.contactPhone || createOrgData.mobile || '',
+                altPhone: wizardData.altPhone || '',
+                website: wizardData.website || '',
+                gstNumber: wizardData.gstNumber || '',
+                panNumber: wizardData.panNumber || '',
+                regNumber: wizardData.regNumber || '',
+                dateInc: wizardData.dateInc || null,
+                isVerified: wizardData.isVerified || false,
+                features: wizardData.features || [],
+                plan: wizardData.plan || 'Free'
+            };
+
+            const response = await fetch('/api/create-organization', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(orgData),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                const errorMsg = data.details || data.error || 'Failed to create organization';
+                throw new Error(errorMsg);
+            }
+
+            // Show credentials if provided
+            if (data.credentials) {
+                const credMessage = `Organization created successfully!\n\nLogin Credentials:\nEmail: ${data.credentials.email}\nPassword: ${data.credentials.password}\n\n${data.credentials.note}`;
+                alert(credMessage);
+            } else {
+                alert('Organization created successfully!');
+            }
+            
+            handleCloseModal();
+
+            await loadOrganizations();
+
+        } catch (error) {
+            console.error('Error creating organization:', error);
+            alert(`Error: ${error.message}`);
+        }
+    };
+
+    useEffect(() => {
+        loadOrganizations();
+    }, []);
+
+    // Add this function to handle wizard form submission
+    const handleWizardSubmit = () => {
+        // If this is the last tab, submit the form
+        if (wizardTab === 'SUBSCRIPTION') {
+            handleCreateOrganization();
+        } else {
+            // Otherwise, go to the next tab
+            const currentIndex = wizardTabs.findIndex(tab => tab.id === wizardTab);
+            if (currentIndex < wizardTabs.length - 1) {
+                setWizardTab(wizardTabs[currentIndex + 1].id);
+            }
+        }
     };
 
     const tabs = ['All Organizations', 'Active', 'Pending', 'Suspended', 'Plans'];
 
-    const tenants = [
-        { id: 'EM456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Active', plan: 'Started', events: '13', exhibitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'EM456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Active', plan: 'Started', events: '13', exhibitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'EM456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Inactive', plan: 'Advanced', events: '13', exhibitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'EM456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Suspended', plan: 'Started', events: '13', exhibitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'EM456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Active', plan: 'Started', events: '13', exhibitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'EM456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Active', plan: 'Started', events: '13', exhibitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'EM456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Suspended', plan: 'Started', events: '13', exhibitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'EM456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Active', plan: 'Started', events: '13', exhibitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-        { id: 'EM456789', name: 'TechEvents Inc.', email: 'admin@techevents.com', status: 'Inactive', plan: 'Started', events: '13', exhibitors: '1500', createdDate: '2/20/2024', lastDate: '12/17/2024' },
-    ];
+    const normalizedTenants = organizations.map((row) => {
+        const createdAt = row.created_at ? new Date(row.created_at) : null;
+        const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
+
+        return {
+            id: String(row.id ?? ''),
+            name: row.org_name ?? row.name ?? row.trade_name ?? '',
+            email: row.primary_email ?? row.contact_email ?? row.email ?? '',
+            status: row.status ?? 'Active',
+            plan: row.plan ?? row.subscription_plan ?? row.plan_name ?? 'Free',
+            events: row.events_count ?? '-',
+            exhibitors: row.exhibitors_count ?? '-',
+            createdDate: createdAt ? createdAt.toLocaleDateString() : '',
+            lastDate: updatedAt ? updatedAt.toLocaleDateString() : (createdAt ? createdAt.toLocaleDateString() : '')
+        };
+    });
+
+    const filteredTenants = normalizedTenants
+        .filter((t) => {
+            if (!searchQuery) return true;
+            const q = searchQuery.toLowerCase();
+            return (
+                (t.id || '').toLowerCase().includes(q) ||
+                (t.name || '').toLowerCase().includes(q) ||
+                (t.email || '').toLowerCase().includes(q)
+            );
+        })
+        .filter((t) => {
+            if (activeTab === 'All Organizations' || activeTab === 'Plans') return true;
+            return String(t.status || '').toLowerCase() === String(activeTab || '').toLowerCase();
+        });
 
     const getStatusBadge = (status) => {
         const statusStyles = {
@@ -217,7 +539,26 @@ const TenantManagement = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {tenants.map((tenant, idx) => (
+                            {organizationsLoading ? (
+                                <tr>
+                                    <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                                        Loading organizations...
+                                    </td>
+                                </tr>
+                            ) : organizationsError ? (
+                                <tr>
+                                    <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#991b1b', fontWeight: 700, background: '#fff1f2' }}>
+                                        {organizationsError}
+                                    </td>
+                                </tr>
+                            ) : filteredTenants.length === 0 ? (
+                                <tr>
+                                    <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                                        No organizations found
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredTenants.slice(0, entriesPerPage).map((tenant, idx) => (
                                 <tr key={idx} className="hover-lift">
                                     <td style={{ fontWeight: 600, color: '#475569' }}>{tenant.id}</td>
                                     <td>
@@ -240,7 +581,8 @@ const TenantManagement = () => {
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -248,7 +590,7 @@ const TenantManagement = () => {
                 {/* Pagination */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #f1f5f9' }}>
                     <div style={{ fontSize: '13px', color: '#64748b' }}>
-                        Showing 1 to 9 of 9 entries
+                        Showing {Math.min(filteredTenants.length, entriesPerPage)} of {filteredTenants.length} entries
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <button style={{ padding: '8px 12px', border: '1px solid #e2e8f0', background: 'white', borderRadius: '6px', fontSize: '13px', color: '#64748b', cursor: 'pointer' }}>«</button>
@@ -279,7 +621,7 @@ const TenantManagement = () => {
                         alignItems: 'center',
                         zIndex: 1000,
                         backdropFilter: 'blur(4px)'
-                    }} onClick={handleCloseModal}>
+                    }}>
 
                         {/* Modal Content */}
                         <div style={{
@@ -294,6 +636,21 @@ const TenantManagement = () => {
                             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
                             animation: 'fadeIn 0.2s ease-out'
                         }} onClick={e => e.stopPropagation()}>
+
+                            <button
+                                onClick={handleCloseModal}
+                                style={{
+                                    position: 'absolute',
+                                    top: '20px',
+                                    right: '20px',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#94a3b8'
+                                }}
+                            >
+                                <X size={24} />
+                            </button>
 
                             {/* Close Button - Optional based on design, but good UX */}
                             {/* <button 
@@ -413,9 +770,15 @@ const TenantManagement = () => {
                                                 type="email"
                                                 placeholder="Enter your email"
                                                 value={createOrgData.email}
-                                                onChange={(e) => setCreateOrgData({ ...createOrgData, email: e.target.value })}
-                                                style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                                                onChange={(e) => {
+                                                    setCreateOrgData({ ...createOrgData, email: e.target.value });
+                                                    setCreateOrgErrors(prev => ({ ...prev, email: undefined }));
+                                                }}
+                                                style={{ width: '100%', padding: '10px 14px', border: createOrgErrors.email ? '1px solid #ef4444' : '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                                             />
+                                            {createOrgErrors.email && (
+                                                <div style={{ marginTop: '6px', fontSize: '12px', color: '#ef4444', fontWeight: 500 }}>{createOrgErrors.email}</div>
+                                            )}
                                         </div>
 
                                         <div>
@@ -426,9 +789,15 @@ const TenantManagement = () => {
                                                 type="tel"
                                                 placeholder="Enter your mobile number"
                                                 value={createOrgData.mobile}
-                                                onChange={(e) => setCreateOrgData({ ...createOrgData, mobile: e.target.value })}
-                                                style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                                                onChange={(e) => {
+                                                    setCreateOrgData({ ...createOrgData, mobile: e.target.value });
+                                                    setCreateOrgErrors(prev => ({ ...prev, mobile: undefined }));
+                                                }}
+                                                style={{ width: '100%', padding: '10px 14px', border: createOrgErrors.mobile ? '1px solid #ef4444' : '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                                             />
+                                            {createOrgErrors.mobile && (
+                                                <div style={{ marginTop: '6px', fontSize: '12px', color: '#ef4444', fontWeight: 500 }}>{createOrgErrors.mobile}</div>
+                                            )}
                                         </div>
 
                                         <div>
@@ -437,7 +806,10 @@ const TenantManagement = () => {
                                             </label>
                                             <select
                                                 value={createOrgData.businessType}
-                                                onChange={(e) => setCreateOrgData({ ...createOrgData, businessType: e.target.value })}
+                                                onChange={(e) => {
+                                                    setCreateOrgData({ ...createOrgData, businessType: e.target.value });
+                                                    setCreateOrgErrors(prev => ({ ...prev, businessType: undefined }));
+                                                }}
                                                 style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', background: 'white' }}
                                             >
                                                 <option value="">Select business type</option>
@@ -446,6 +818,9 @@ const TenantManagement = () => {
                                                 <option value="partnership">Partnership</option>
                                                 <option value="sole_proprietorship">Sole Proprietorship</option>
                                             </select>
+                                            {createOrgErrors.businessType && (
+                                                <div style={{ marginTop: '6px', fontSize: '12px', color: '#ef4444', fontWeight: 500 }}>{createOrgErrors.businessType}</div>
+                                            )}
                                         </div>
 
                                         <div>
@@ -459,7 +834,10 @@ const TenantManagement = () => {
                                                         name="isRegistered"
                                                         value="yes"
                                                         checked={createOrgData.isRegistered === 'yes'}
-                                                        onChange={(e) => setCreateOrgData({ ...createOrgData, isRegistered: e.target.value })}
+                                                        onChange={(e) => {
+                                                            setCreateOrgData({ ...createOrgData, isRegistered: e.target.value });
+                                                            setCreateOrgErrors(prev => ({ ...prev, isRegistered: undefined }));
+                                                        }}
                                                         style={{ width: '16px', height: '16px', accentColor: '#0f172a' }}
                                                     />
                                                     Yes, it's registered
@@ -470,12 +848,18 @@ const TenantManagement = () => {
                                                         name="isRegistered"
                                                         value="no"
                                                         checked={createOrgData.isRegistered === 'no'}
-                                                        onChange={(e) => setCreateOrgData({ ...createOrgData, isRegistered: e.target.value })}
+                                                        onChange={(e) => {
+                                                            setCreateOrgData({ ...createOrgData, isRegistered: e.target.value });
+                                                            setCreateOrgErrors(prev => ({ ...prev, isRegistered: undefined }));
+                                                        }}
                                                         style={{ width: '16px', height: '16px', accentColor: '#0f172a' }}
                                                     />
                                                     No, not registered
                                                 </label>
                                             </div>
+                                            {createOrgErrors.isRegistered && (
+                                                <div style={{ marginTop: '8px', fontSize: '12px', color: '#ef4444', fontWeight: 500 }}>{createOrgErrors.isRegistered}</div>
+                                            )}
                                         </div>
 
                                         <div style={{ display: 'flex', gap: '20px' }}>
@@ -487,9 +871,15 @@ const TenantManagement = () => {
                                                     type="password"
                                                     placeholder="Enter password"
                                                     value={createOrgData.password}
-                                                    onChange={(e) => setCreateOrgData({ ...createOrgData, password: e.target.value })}
-                                                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                                                    onChange={(e) => {
+                                                        setCreateOrgData({ ...createOrgData, password: e.target.value });
+                                                        setCreateOrgErrors(prev => ({ ...prev, password: undefined }));
+                                                    }}
+                                                    style={{ width: '100%', padding: '10px 14px', border: createOrgErrors.password ? '1px solid #ef4444' : '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                                                 />
+                                                {createOrgErrors.password && (
+                                                    <div style={{ marginTop: '6px', fontSize: '12px', color: '#ef4444', fontWeight: 500 }}>{createOrgErrors.password}</div>
+                                                )}
                                             </div>
                                             <div style={{ flex: 1 }}>
                                                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>
@@ -499,9 +889,15 @@ const TenantManagement = () => {
                                                     type="password"
                                                     placeholder="Confirm password"
                                                     value={createOrgData.confirmPassword}
-                                                    onChange={(e) => setCreateOrgData({ ...createOrgData, confirmPassword: e.target.value })}
-                                                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                                                    onChange={(e) => {
+                                                        setCreateOrgData({ ...createOrgData, confirmPassword: e.target.value });
+                                                        setCreateOrgErrors(prev => ({ ...prev, confirmPassword: undefined }));
+                                                    }}
+                                                    style={{ width: '100%', padding: '10px 14px', border: createOrgErrors.confirmPassword ? '1px solid #ef4444' : '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                                                 />
+                                                {createOrgErrors.confirmPassword && (
+                                                    <div style={{ marginTop: '6px', fontSize: '12px', color: '#ef4444', fontWeight: 500 }}>{createOrgErrors.confirmPassword}</div>
+                                                )}
                                             </div>
                                         </div>
 
@@ -569,7 +965,7 @@ const TenantManagement = () => {
                                             <div style={{ display: 'flex', gap: '12px' }}>
                                                 <input
                                                     type="text"
-                                                    placeholder="E.G., 27AABCU9603R1ZM"
+                                                    placeholder="Enter GST Number (e.g., 27AAACH7409R1Z1)"
                                                     value={gstData.gstNumber}
                                                     onChange={(e) => setGstData({ ...gstData, gstNumber: e.target.value })}
                                                     style={{
@@ -582,9 +978,9 @@ const TenantManagement = () => {
                                                         textTransform: 'uppercase'
                                                     }}
                                                 />
-                                                <button style={{
+                                                <button onClick={handleVerifyGst} style={{
                                                     padding: '10px 24px',
-                                                    background: '#94a3b8', // Grey as per UI for verify button likely disabled initially or neutral
+                                                    background: '#2563eb',
                                                     color: 'white',
                                                     border: 'none',
                                                     borderRadius: '8px',
@@ -598,6 +994,23 @@ const TenantManagement = () => {
                                             <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', textAlign: 'left' }}>
                                                 GST number format: 22AAAAA0000A1Z5
                                             </p>
+                                            <div style={{ marginTop: '12px', fontSize: '13px', color: '#64748b' }}>
+                                                <div style={{ fontWeight: 600, marginBottom: '6px' }}>T Registration Details : Statewise (where HCL Presence is there)</div>
+                                                <div style={{ fontSize: '13px' }}>
+                                                    <ol>
+                                                        <li>Uttar Pradesh — 09AAACH7409R1ZZ</li>
+                                                        <li>Karnataka — 29AAACH7409R1ZX</li>
+                                                        <li>Telangana — 36AAACH7409R1Z2</li>
+                                                        <li>Tamil Nadu — 33AAACH7409R1Z8</li>
+                                                        <li>Gujarat — 24AAACH7409R2Z6</li>
+                                                        <li>West Bengal — 19AAACH7409R1ZY</li>
+                                                        <li>Rajasthan — 08AAACH7409R1Z1</li>
+                                                        <li>Madhya Pradesh — 23AAACH7409R1Z9</li>
+                                                        <li>Jharkhand — 20AAACH7409R1ZF</li>
+                                                        <li>Maharashtra — 27AAACH7409R1Z1</li>
+                                                    </ol>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div style={{ textAlign: 'left' }}>
@@ -983,19 +1396,102 @@ const TenantManagement = () => {
                                                 <div style={{ marginBottom: '20px', fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>Choose Your Subscription Plan</div>
                                                 <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '24px' }}>Select the plan that best fits your organization's needs</div>
 
+                                                {/* Coupon Section */}
+                                                <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                                                    <div style={{ flex: 1, maxWidth: '300px' }}>
+                                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Have a Coupon Code?</label>
+                                                        <input
+                                                            value={couponCode}
+                                                            onChange={e => setCouponCode(e.target.value)}
+                                                            placeholder="Enter code (e.g. CUSTOM-XY7Z)"
+                                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1.5px solid #e2e8f0', outline: 'none' }}
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        onClick={handleVerifyCoupon}
+                                                        disabled={!couponCode || verifyLoading}
+                                                        style={{ padding: '10px 20px', background: '#0f172a', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 600, cursor: 'pointer', height: '42px' }}
+                                                    >
+                                                        {verifyLoading ? '...' : 'Apply Coupon'}
+                                                    </button>
+                                                </div>
+
+                                                {verifiedPlan && (
+                                                    <div style={{
+                                                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                                                        background: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)',
+                                                        zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                    }}>
+                                                        <div style={{
+                                                            background: 'white', borderRadius: '24px', width: '100%', maxWidth: '400px',
+                                                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden'
+                                                        }} onClick={e => e.stopPropagation()}>
+                                                            <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Plan Unlocked!</h3>
+                                                                <button onClick={() => setVerifiedPlan(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} color="#94a3b8" /></button>
+                                                            </div>
+                                                            <div style={{ padding: '24px' }}>
+                                                                <div style={{ background: '#ecfdf5', border: '1px solid #d1fae5', borderRadius: '16px', padding: '24px', textAlign: 'center', marginBottom: '24px' }}>
+                                                                    <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#064e3b', marginBottom: '8px' }}>{verifiedPlan.plan_name}</h2>
+                                                                    <p style={{ color: '#059669', fontSize: '14px', marginBottom: '16px' }}>{verifiedPlan.description}</p>
+                                                                    <div style={{ fontSize: '32px', fontWeight: 800, color: '#064e3b' }}>
+                                                                        {verifiedPlan.pricing?.monthly ? `₹${verifiedPlan.pricing.monthly}` : 'Custom'}
+                                                                        <span style={{ fontSize: '14px', fontWeight: 500, color: '#059669' }}>/mo</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Show Selected Coupon Code */}
+                                                                <div style={{ textAlign: 'center', marginBottom: '20px', color: '#64748b', fontSize: '13px' }}>
+                                                                    Code: <strong>{verifiedPlan.coupon_code}</strong>
+                                                                </div>
+
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setWizardData({ ...wizardData, plan: verifiedPlan.plan_name || 'Coupon Plan' });
+                                                                        setVerifiedPlan(null);
+                                                                    }}
+                                                                    style={{ width: '100%', padding: '14px', background: '#059669', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 600, fontSize: '16px', cursor: 'pointer' }}
+                                                                >
+                                                                    Select This Plan
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
                                                     {[
                                                         { id: 'Free', name: 'Free', price: '₹0', users: 'Up to 5 users', analytics: 'Basic analytics', support: 'Email support', recommended: true },
                                                         { id: 'Basic', name: 'Basic', price: '₹999', users: 'Up to 25 users', analytics: 'Advanced analytics', support: 'Priority email support', recommended: false },
                                                         { id: 'Professional', name: 'Professional', price: '₹2,499', users: 'Up to 100 users', analytics: 'Custom branding', support: 'Phone support', recommended: false },
                                                         { id: 'Enterprise', name: 'Enterprise', price: '₹4,999', users: 'Unlimited users', analytics: 'Dedicated support', support: 'Audit logs', recommended: false },
+                                                        ...(couponAppliedPlan ? [{
+                                                            id: 'CouponPlan',
+                                                            name: 'Coupon Plan',
+                                                            price: couponAppliedPlan?.pricing?.monthly ? `₹${couponAppliedPlan.pricing.monthly}` : 'Custom',
+                                                            users: 'Unlocked by coupon',
+                                                            analytics: 'Coupon applied',
+                                                            support: `Code: ${couponAppliedPlan?.coupon_code || ''}`,
+                                                            recommended: false,
+                                                            __coupon: true
+                                                        }] : []),
                                                         { id: 'Custom', name: 'Custom Plan', price: 'Contact', sub: 'for pricing', users: 'Custom user limits', analytics: 'Custom features', support: 'Dedicated account manager', recommended: false }
-                                                    ].filter((_, i) => i < 4).map(plan => ( // Showing first 4 like screenshot first row, adding custom as fallback or separate row if needed, screenshot shows 4 main + custom. Doing 4 for now in grid.
+                                                    ].map(plan => (
                                                         <div
                                                             key={plan.id}
-                                                            onClick={() => setWizardData({ ...wizardData, plan: plan.id })}
+                                                            onClick={() => {
+                                                                if (plan.__coupon) {
+                                                                    setWizardData({ ...wizardData, plan: couponAppliedPlan?.plan_name || 'Coupon Plan' });
+                                                                } else {
+                                                                    setWizardData({ ...wizardData, plan: plan.id });
+                                                                }
+                                                            }}
                                                             style={{
-                                                                border: `1px solid ${wizardData.plan === plan.id ? '#0f172a' : '#e2e8f0'}`,
+                                                                border: `1px solid ${(
+                                                                    plan.__coupon
+                                                                        ? (wizardData.plan === (couponAppliedPlan?.plan_name || 'Coupon Plan'))
+                                                                        : (wizardData.plan === plan.id)
+                                                                ) ? '#0f172a' : '#e2e8f0'}`,
                                                                 borderRadius: '8px',
                                                                 padding: '20px',
                                                                 cursor: 'pointer',
@@ -1019,10 +1515,18 @@ const TenantManagement = () => {
                                                                 <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>{plan.name}</span>
                                                                 <div style={{
                                                                     width: '16px', height: '16px', borderRadius: '50%',
-                                                                    border: `1px solid ${wizardData.plan === plan.id ? '#0f172a' : '#cbd5e1'}`,
+                                                                    border: `1px solid ${(
+                                                                        plan.__coupon
+                                                                            ? (wizardData.plan === (couponAppliedPlan?.plan_name || 'Coupon Plan'))
+                                                                            : (wizardData.plan === plan.id)
+                                                                    ) ? '#0f172a' : '#cbd5e1'}`,
                                                                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                                                                 }}>
-                                                                    {wizardData.plan === plan.id && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0f172a' }} />}
+                                                                    {(
+                                                                        plan.__coupon
+                                                                            ? (wizardData.plan === (couponAppliedPlan?.plan_name || 'Coupon Plan'))
+                                                                            : (wizardData.plan === plan.id)
+                                                                    ) && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0f172a' }} />}
                                                                 </div>
                                                             </div>
 
@@ -1044,51 +1548,6 @@ const TenantManagement = () => {
                                                             </div>
                                                         </div>
                                                     ))}
-
-                                                    {/* Custom Plan (Full Width or separate) - Adding as 5th item wrapping if grid allows or separate container. 
-                                                        Screenshot shows 2 rows. Grid 4 cols means Custom will wrap to new row.
-                                                    */}
-                                                    <div
-                                                        onClick={() => setWizardData({ ...wizardData, plan: 'Custom' })}
-                                                        style={{
-                                                            border: `1px solid ${wizardData.plan === 'Custom' ? '#0f172a' : '#e2e8f0'}`,
-                                                            borderRadius: '8px',
-                                                            padding: '20px',
-                                                            cursor: 'pointer',
-                                                            position: 'relative',
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            height: '100%'
-                                                        }}
-                                                    >
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>Custom Plan</span>
-                                                            <div style={{
-                                                                width: '16px', height: '16px', borderRadius: '50%',
-                                                                border: `1px solid ${wizardData.plan === 'Custom' ? '#0f172a' : '#cbd5e1'}`,
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                            }}>
-                                                                {wizardData.plan === 'Custom' && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0f172a' }} />}
-                                                            </div>
-                                                        </div>
-
-                                                        <div style={{ marginBottom: '16px' }}>
-                                                            <span style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>Contact</span>
-                                                            <span style={{ fontSize: '12px', color: '#64748b' }}> for pricing</span>
-                                                        </div>
-
-                                                        <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
-                                                            Tailored solution by Master Admin
-                                                        </div>
-
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
-                                                            {['Custom user limits', 'Custom features', 'Dedicated account manager', 'Custom SLA'].map((feat, i) => (
-                                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#334155' }}>
-                                                                    <span style={{ color: '#0f172a' }}>✓</span> {feat}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             </div>
                                         )}
@@ -1114,7 +1573,11 @@ const TenantManagement = () => {
                                             onClick={() => {
                                                 const currentIndex = wizardTabs.findIndex(t => t.id === wizardTab);
                                                 if (currentIndex < wizardTabs.length - 1) setWizardTab(wizardTabs[currentIndex + 1].id);
-                                                else console.log('Final Submit', wizardData);
+                                                else {
+                                                    // Final submit: create organization
+                                                    // Use the existing handleCreateOrganization function
+                                                    handleCreateOrganization();
+                                                }
                                             }}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '8px',
@@ -1142,7 +1605,7 @@ const TenantManagement = () => {
                                             <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '8px' }}>Enter Email ID</label>
                                             <input
                                                 type="email"
-                                                placeholder="Enter Email ID"
+                                                placeholder="user@billiton.com"
                                                 value={inviteData.email}
                                                 onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
                                                 style={{
@@ -1160,7 +1623,7 @@ const TenantManagement = () => {
                                             <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '8px' }}>Enter Mobile</label>
                                             <input
                                                 type="tel"
-                                                placeholder="Enter Mobile"
+                                                placeholder="7893911194"
                                                 value={inviteData.mobile}
                                                 onChange={(e) => setInviteData({ ...inviteData, mobile: e.target.value })}
                                                 style={{
