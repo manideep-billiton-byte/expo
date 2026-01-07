@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Search, Download, Plus, MoreHorizontal, X, UserPlus, Users, ArrowLeft } from 'lucide-react';
+import { verifyGSTINViaAPI, validateGSTINFormat } from '../utils/gstinValidator';
 
 const TenantManagement = () => {
     const [activeTab, setActiveTab] = useState('All Organizations');
@@ -43,6 +44,8 @@ const TenantManagement = () => {
     });
     const [createOrgErrors, setCreateOrgErrors] = useState({});
     const [gstData, setGstData] = useState({ gstNumber: '' });
+    const [gstVerifying, setGstVerifying] = useState(false);
+    const [gstError, setGstError] = useState('');
 
     // Wizard State
     const [wizardTab, setWizardTab] = useState('BASIC'); // BASIC, CONTACT, GST, FEATURES, SUBSCRIPTION
@@ -187,76 +190,74 @@ const TenantManagement = () => {
         }
     };
 
-    const gstWhitelist = [
-        '09AAACH7409R1ZZ',
-        '29AAACH7409R1ZX',
-        '36AAACH7409R1Z2',
-        '33AAACH7409R1Z8',
-        '24AAACH7409R2Z6',
-        '19AAACH7409R1ZY',
-        '08AAACH7409R1Z1',
-        '23AAACH7409R1Z9',
-        '20AAACH7409R1ZF',
-        '27AAACH7409R1Z1'
-    ];
+    const handleVerifyGst = async () => {
+        const val = (gstData.gstNumber || '').trim();
 
-    const handleVerifyGst = () => {
-        const val = (gstData.gstNumber || '').toUpperCase().trim();
+        // Clear previous errors
+        setGstError('');
+
         if (!val) {
-            alert('Please enter GST number');
+            setGstError('Please enter GST number');
             return;
         }
-        if (gstWhitelist.includes(val)) {
-            alert('GST verified successfully');
 
-            // Extract state code from GST (first 2 digits)
-            const stateCode = val.substring(0, 2);
-            // Extract PAN from GST (characters 3-12)
-            const panNumber = val.substring(2, 12);
+        // Frontend validation
+        const formatValidation = validateGSTINFormat(val);
+        if (!formatValidation.isValid) {
+            setGstError(formatValidation.error);
+            return;
+        }
 
-            // State mapping based on GST state codes
-            const stateMapping = {
-                '09': { state: 'Uttar Pradesh', district: 'Noida' },
-                '29': { state: 'Karnataka', district: 'Bengaluru Urban' },
-                '36': { state: 'Telangana', district: 'Hyderabad' },
-                '33': { state: 'Tamil Nadu', district: 'Chennai' },
-                '24': { state: 'Gujarat', district: 'Ahmedabad' },
-                '19': { state: 'West Bengal', district: 'Kolkata' },
-                '08': { state: 'Rajasthan', district: 'Jaipur' },
-                '23': { state: 'Madhya Pradesh', district: 'Indore' },
-                '20': { state: 'Jharkhand', district: 'Ranchi' },
-                '27': { state: 'Maharashtra', district: 'Mumbai' }
-            };
+        // Set loading state
+        setGstVerifying(true);
 
-            const stateInfo = stateMapping[stateCode] || { state: '', district: '' };
+        try {
+            // Call API to verify GSTIN
+            const result = await verifyGSTINViaAPI(val);
 
-            // Auto-fill data based on verified GST - Using Karnataka sample data as base
-            const autoFillData = {
-                gstNumber: val,
-                panNumber: panNumber, // PAN is embedded in GST (chars 3-12)
-                regNumber: stateCode === '29' ? 'U72200KA2021PTC145678' : `BRN-${stateInfo.state.substring(0, 2).toUpperCase()}-2021-456789`,
-                dateInc: '2021-03-15',
-                isVerified: true,
-                state: stateInfo.state,
-                district: stateInfo.district,
-                town: stateInfo.district, // Default town to district
-                orgName: 'HCL Technologies Ltd',
-                tradeName: 'HCL Tech',
-                industry: 'Information Technology',
-                tenantType: 'Enterprise',
-                size: '1000+'
-            };
+            if (result.success && result.data) {
+                // Successful verification
+                const data = result.data;
 
-            // Update wizard data with verified GST and auto-filled info
-            setWizardData(prev => ({
-                ...prev,
-                ...autoFillData
-            }));
+                // Auto-fill data based on verified GST
+                const autoFillData = {
+                    gstNumber: data.gstin,
+                    panNumber: data.panNumber,
+                    dateInc: data.registrationDate || '',
+                    isVerified: true,
+                    state: data.state,
+                    district: data.district,
+                    town: data.district, // Default town to district
+                    orgName: data.legalName,
+                    tradeName: data.tradeName || data.legalName,
+                    address: data.address || ''
+                };
 
-            setWizardTab('BASIC');
-            setModalStep('WIZARD');
-        } else {
-            alert('GST not found or not valid for verification');
+                // Update wizard data with verified GST and auto-filled info
+                setWizardData(prev => ({
+                    ...prev,
+                    ...autoFillData
+                }));
+
+                // Show success message
+                alert(`GST verified successfully!\n\nCompany: ${data.legalName}\nStatus: ${data.status}\nState: ${data.state}`);
+
+                // Move to wizard
+                setWizardTab('BASIC');
+                setModalStep('WIZARD');
+            } else {
+                // Verification failed
+                const errorMessage = result.error || 'GST verification failed';
+                setGstError(errorMessage);
+                alert(errorMessage);
+            }
+        } catch (error) {
+            console.error('GST verification error:', error);
+            const errorMessage = 'Unable to verify GSTIN. Please try again later.';
+            setGstError(errorMessage);
+            alert(errorMessage);
+        } finally {
+            setGstVerifying(false);
         }
     };
 
@@ -362,7 +363,7 @@ const TenantManagement = () => {
             } else {
                 alert('Organization created successfully!');
             }
-            
+
             handleCloseModal();
 
             await loadOrganizations();
@@ -559,28 +560,28 @@ const TenantManagement = () => {
                                 </tr>
                             ) : (
                                 filteredTenants.slice(0, entriesPerPage).map((tenant, idx) => (
-                                <tr key={idx} className="hover-lift">
-                                    <td style={{ fontWeight: 600, color: '#475569' }}>{tenant.id}</td>
-                                    <td>
-                                        <div style={{ fontWeight: 600, color: '#1e293b' }}>{tenant.name}</div>
-                                        <div style={{ fontSize: '12px', color: '#94a3b8' }}>{tenant.email}</div>
-                                    </td>
-                                    <td>
-                                        <span className={`badge ${getStatusBadge(tenant.status)}`}>
-                                            {tenant.status}
-                                        </span>
-                                    </td>
-                                    <td style={{ color: '#475569' }}>{tenant.plan}</td>
-                                    <td style={{ fontWeight: 600 }}>{tenant.events}</td>
-                                    <td style={{ fontWeight: 600 }}>{tenant.exhibitors}</td>
-                                    <td style={{ fontSize: '13px', color: '#64748b' }}>{tenant.createdDate}</td>
-                                    <td style={{ fontSize: '13px', color: '#64748b' }}>{tenant.lastDate}</td>
-                                    <td>
-                                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                                            <MoreHorizontal size={18} color="#64748b" />
-                                        </button>
-                                    </td>
-                                </tr>
+                                    <tr key={idx} className="hover-lift">
+                                        <td style={{ fontWeight: 600, color: '#475569' }}>{tenant.id}</td>
+                                        <td>
+                                            <div style={{ fontWeight: 600, color: '#1e293b' }}>{tenant.name}</div>
+                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{tenant.email}</div>
+                                        </td>
+                                        <td>
+                                            <span className={`badge ${getStatusBadge(tenant.status)}`}>
+                                                {tenant.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ color: '#475569' }}>{tenant.plan}</td>
+                                        <td style={{ fontWeight: 600 }}>{tenant.events}</td>
+                                        <td style={{ fontWeight: 600 }}>{tenant.exhibitors}</td>
+                                        <td style={{ fontSize: '13px', color: '#64748b' }}>{tenant.createdDate}</td>
+                                        <td style={{ fontSize: '13px', color: '#64748b' }}>{tenant.lastDate}</td>
+                                        <td>
+                                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                                <MoreHorizontal size={18} color="#64748b" />
+                                            </button>
+                                        </td>
+                                    </tr>
                                 ))
                             )}
                         </tbody>
@@ -967,35 +968,64 @@ const TenantManagement = () => {
                                                     type="text"
                                                     placeholder="Enter GST Number (e.g., 27AAACH7409R1Z1)"
                                                     value={gstData.gstNumber}
-                                                    onChange={(e) => setGstData({ ...gstData, gstNumber: e.target.value })}
+                                                    onChange={(e) => {
+                                                        setGstData({ ...gstData, gstNumber: e.target.value });
+                                                        setGstError(''); // Clear error when user types
+                                                    }}
+                                                    disabled={gstVerifying}
                                                     style={{
                                                         flex: 1,
                                                         padding: '10px 14px',
-                                                        border: '1px solid #cbd5e1',
+                                                        border: gstError ? '1px solid #ef4444' : '1px solid #cbd5e1',
                                                         borderRadius: '8px',
                                                         fontSize: '14px',
                                                         outline: 'none',
-                                                        textTransform: 'uppercase'
+                                                        textTransform: 'uppercase',
+                                                        backgroundColor: gstVerifying ? '#f1f5f9' : 'white',
+                                                        cursor: gstVerifying ? 'not-allowed' : 'text'
                                                     }}
                                                 />
-                                                <button onClick={handleVerifyGst} style={{
-                                                    padding: '10px 24px',
-                                                    background: '#2563eb',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '8px',
-                                                    fontSize: '14px',
-                                                    fontWeight: 500,
-                                                    cursor: 'pointer'
-                                                }}>
-                                                    Verify
+                                                <button
+                                                    onClick={handleVerifyGst}
+                                                    disabled={gstVerifying}
+                                                    style={{
+                                                        padding: '10px 24px',
+                                                        background: gstVerifying ? '#94a3b8' : '#2563eb',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        fontSize: '14px',
+                                                        fontWeight: 500,
+                                                        cursor: gstVerifying ? 'not-allowed' : 'pointer',
+                                                        minWidth: '100px'
+                                                    }}
+                                                >
+                                                    {gstVerifying ? 'Verifying...' : 'Verify'}
                                                 </button>
                                             </div>
+
+                                            {/* Error Message */}
+                                            {gstError && (
+                                                <div style={{
+                                                    marginTop: '8px',
+                                                    padding: '10px 12px',
+                                                    backgroundColor: '#fef2f2',
+                                                    border: '1px solid #fecaca',
+                                                    borderRadius: '6px',
+                                                    display: 'flex',
+                                                    alignItems: 'flex-start',
+                                                    gap: '8px'
+                                                }}>
+                                                    <span style={{ color: '#ef4444', fontSize: '14px' }}>⚠</span>
+                                                    <span style={{ fontSize: '13px', color: '#991b1b', flex: 1 }}>{gstError}</span>
+                                                </div>
+                                            )}
+
                                             <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px', textAlign: 'left' }}>
                                                 GST number format: 22AAAAA0000A1Z5
                                             </p>
                                             <div style={{ marginTop: '12px', fontSize: '13px', color: '#64748b' }}>
-                                                <div style={{ fontWeight: 600, marginBottom: '6px' }}>T Registration Details : Statewise (where HCL Presence is there)</div>
+                                                <div style={{ fontWeight: 600, marginBottom: '6px' }}>Test Registration Details : Statewise (where HCL Presence is there)</div>
                                                 <div style={{ fontSize: '13px' }}>
                                                     <ol>
                                                         <li>Uttar Pradesh — 09AAACH7409R1ZZ</li>
@@ -1008,13 +1038,35 @@ const TenantManagement = () => {
                                                         <li>Madhya Pradesh — 23AAACH7409R1Z9</li>
                                                         <li>Jharkhand — 20AAACH7409R1ZF</li>
                                                         <li>Maharashtra — 27AAACH7409R1Z1</li>
+                                                        <li>Delhi — 07AAACH7409R1Z6</li>
+                                                        <li>Haryana — 06AAACH7409R1Z8</li>
+                                                        <li>Punjab — 03AAACH7409R1Z2</li>
+                                                        <li>Bihar — 10AAACH7409R1Z4</li>
+                                                        <li>Odisha — 21AAACH7409R1Z5</li>
+                                                        <li>Chhattisgarh — 22AAACH7409R1Z6</li>
+                                                        <li>Jharkhand — 20AAACH7409R1Z7</li>
+                                                        <li>Assam — 18AAACH7409R1Z8</li>
+                                                        <li>Himachal Pradesh — 02AAACH7409R1Z9</li>
+                                                        <li>Jammu & Kashmir — 01AAACH7409R1Z0</li>
+                                                        <li>Uttarakhand — 05AAACH7409R1Z1</li>
+                                                        <li>Goa — 30AAACH7409R1Z2</li>
+                                                        <li>Chandigarh — 04AAACH7409R1Z3</li>
+                                                        <li>Puducherry — 34AAACH7409R1Z4</li>
                                                     </ol>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div style={{ textAlign: 'left' }}>
-                                            <a href="#" style={{ fontSize: '13px', color: '#64748b', textDecoration: 'none' }}>
+                                            <a
+                                                href="#"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setModalStep('WIZARD');
+                                                    setWizardTab('BASIC');
+                                                }}
+                                                style={{ fontSize: '13px', color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
+                                            >
                                                 Don't have GST? Enter details manually →
                                             </a>
                                         </div>

@@ -5,6 +5,7 @@ const eventController = require('./controllers/eventController');
 const exhibitorController = require('./controllers/exhibitorController');
 const visitorController = require('./controllers/visitorController');
 const invoiceController = require('./controllers/invoiceController');
+const leadController = require('./controllers/leadController');
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -153,10 +154,53 @@ app.post('/api/exhibitors', exhibitorController.createExhibitor);
 // Visitors
 app.get('/api/visitors', visitorController.getVisitors);
 app.post('/api/visitors', visitorController.createVisitor);
+app.get('/api/visitors/code/:uniqueCode', visitorController.getVisitorByCode);
 
 // Invoices
 app.get('/api/invoices', invoiceController.getInvoices);
 app.post('/api/invoices', invoiceController.createInvoice);
+
+// Leads
+app.get('/api/leads', leadController.getLeads);
+app.post('/api/leads', leadController.createLead);
+app.put('/api/leads/:id', leadController.updateLead);
+app.delete('/api/leads/:id', leadController.deleteLead);
+
+// GSTIN Verification
+const gstService = require('./services/gstService');
+app.post('/api/verify-gstin', async (req, res) => {
+    try {
+        const { gstin } = req.body;
+
+        if (!gstin) {
+            return res.status(400).json({
+                success: false,
+                error: 'GSTIN is required'
+            });
+        }
+
+        // Get client IP for rate limiting (or use 'global' for simplicity)
+        const identifier = req.ip || req.connection.remoteAddress || 'global';
+
+        const result = await gstService.verifyGSTIN(gstin, identifier);
+
+        if (result.success) {
+            return res.json(result);
+        } else {
+            // Return error with appropriate status code
+            const statusCode = result.errorCode === 'RATE_LIMIT_EXCEEDED' ? 429 : 400;
+            return res.status(statusCode).json(result);
+        }
+    } catch (error) {
+        console.error('GSTIN verification endpoint error:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            details: error.message
+        });
+    }
+});
+
 
 // Debug: list registered routes
 app.get('/__routes', (req, res) => {

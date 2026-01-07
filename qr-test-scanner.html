@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner Test</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2563eb;
+            text-align: center;
+        }
+
+        #qr-reader {
+            width: 100%;
+            border: 2px solid #2563eb;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .stop-btn {
+            background: #ef4444;
+        }
+
+        .stop-btn:hover {
+            background: #dc2626;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #2563eb;
+        }
+
+        #visitor-info {
+            margin-top: 20px;
+            padding: 20px;
+            background: #dcfce7;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+
+        .error {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+            color: #dc2626;
+        }
+
+        .success {
+            background: #dcfce7;
+            border-left-color: #10b981;
+            color: #166534;
+        }
+
+        .info-row {
+            margin: 10px 0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .info-label {
+            font-weight: 700;
+            color: #475569;
+            min-width: 120px;
+        }
+
+        .info-value {
+            color: #1e293b;
+        }
+
+        .logs {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #475569;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎯 QR Code Scanner Test Tool</h1>
+        <p style="text-align: center; color: #64748b;">Test your visitor QR codes before using in the exhibitor
+            dashboard</p>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <button id="start-btn" onclick="startScanner()">📸 Start Camera</button>
+            <button id="stop-btn" class="stop-btn" onclick="stopScanner()" style="display: none;">⏹ Stop Camera</button>
+        </div>
+
+        <div id="qr-reader"></div>
+
+        <div id="result" style="display: none;">
+            <h3>📱 Scanned Data:</h3>
+            <div id="scanned-text"></div>
+        </div>
+
+        <div id="visitor-info" style="display: none;">
+            <h3>✅ Visitor Information</h3>
+            <div id="visitor-details"></div>
+        </div>
+
+        <div class="logs">
+            <h4 style="margin-top: 0; color: #94a3b8;">📋 Console Logs</h4>
+            <div id="log-container"></div>
+        </div>
+    </div>
+
+    <script>
+        let html5QrCode = null;
+        const API_BASE = 'http://localhost:5000';
+
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('log-container');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            const timestamp = new Date().toLocaleTimeString();
+            const emoji = type === 'error' ? '❌' : type === 'success' ? '✅' : '📝';
+            logEntry.innerHTML = `<span style="color: #94a3b8;">[${timestamp}]</span> ${emoji} ${message}`;
+            logContainer.insertBefore(logEntry, logContainer.firstChild);
+        }
+
+        async function startScanner() {
+            addLog('Starting QR scanner...');
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('stop-btn').style.display = 'inline-block';
+
+            try {
+                html5QrCode = new Html5Qrcode("qr-reader");
+
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 300, height: 300 },
+                    aspectRatio: 1.0
+                };
+
+                const devices = await Html5Qrcode.getCameras();
+                addLog(`Found ${devices.length} camera(s)`);
+
+                if (devices && devices.length > 0) {
+                    devices.forEach((device, index) => {
+                        addLog(`Camera ${index + 1}: ${device.label || device.id}`);
+                    });
+
+                    await html5QrCode.start(
+                        devices[0].id,
+                        config,
+                        onScanSuccess,
+                        onScanFailure
+                    );
+                    addLog('Scanner started successfully!', 'success');
+                } else {
+                    throw new Error('No cameras found');
+                }
+            } catch (err) {
+                addLog(`Error starting scanner: ${err.message}`, 'error');
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('stop-btn').style.display = 'none';
+            }
+        }
+
+        async function stopScanner() {
+            if (html5QrCode) {
+                try {
+                    await html5QrCode.stop();
+                    addLog('Scanner stopped', 'success');
+                    document.getElementById('start-btn').disabled = false;
+                    document.getElementById('stop-btn').style.display = 'none';
+                } catch (err) {
+                    addLog(`Error stopping scanner: ${err.message}`, 'error');
+                }
+            }
+        }
+
+        async function onScanSuccess(decodedText, decodedResult) {
+            addLog(`QR Code detected: ${decodedText}`, 'success');
+
+            // Stop scanner immediately
+            await stopScanner();
+
+            // Display scanned data
+            const resultDiv = document.getElementById('result');
+            const scannedTextDiv = document.getElementById('scanned-text');
+            resultDiv.style.display = 'block';
+            scannedTextDiv.innerHTML = `<strong>Scanned Code:</strong> <code style="background: white; padding: 4px 8px; border-radius: 4px; color: #2563eb; font-size: 16px;">${decodedText}</code>`;
+
+            // Check if it's a visitor code (starts with VIS-)
+            if (decodedText.startsWith('VIS-')) {
+                addLog('Detected visitor code format, fetching visitor details...');
+                await fetchVisitorDetails(decodedText);
+            } else {
+                addLog('Not a visitor code format (does not start with VIS-)', 'error');
+                // Try to parse as JSON
+                try {
+                    const parsed = JSON.parse(decodedText);
+                    addLog('Successfully parsed as JSON: ' + JSON.stringify(parsed));
+                } catch (e) {
+                    addLog('Not valid JSON either', 'error');
+                }
+            }
+        }
+
+        function onScanFailure(error) {
+            // This is called constantly when no QR code is in view - don't log to avoid spam
+        }
+
+        async function fetchVisitorDetails(uniqueCode) {
+            const visitorInfoDiv = document.getElementById('visitor-info');
+            const visitorDetailsDiv = document.getElementById('visitor-details');
+
+            try {
+                addLog(`Calling API: ${API_BASE}/api/visitors/code/${uniqueCode}`);
+                const response = await fetch(`${API_BASE}/api/visitors/code/${uniqueCode}`);
+
+                addLog(`API Response Status: ${response.status} ${response.statusText}`);
+
+                if (response.ok) {
+                    const result = await response.json();
+                    addLog('Visitor data received successfully!', 'success');
+
+                    if (result.success && result.visitor) {
+                        visitorInfoDiv.style.display = 'block';
+                        const visitor = result.visitor;
+
+                        let html = `
+                            <div class="info-row">
+                                <div class="info-label">Name:</div>
+                                <div class="info-value">${visitor.first_name || ''} ${visitor.last_name || ''}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Email:</div>
+                                <div class="info-value">${visitor.email || 'N/A'}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Mobile:</div>
+                                <div class="info-value">${visitor.mobile || 'N/A'}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Organization:</div>
+                                <div class="info-value">${visitor.organization || 'N/A'}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Designation:</div>
+                                <div class="info-value">${visitor.designation || 'N/A'}</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Unique Code:</div>
+                                <div class="info-value"><code style="background: white; padding: 4px 8px; border-radius: 4px;">${visitor.unique_code}</code></div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">Event:</div>
+                                <div class="info-value">${visitor.event_name || 'N/A'}</div>
+                            </div>
+                        `;
+
+                        visitorDetailsDiv.innerHTML = html;
+                    }
+                } else {
+                    const errorData = await response.json();
+                    addLog(`API Error: ${errorData.error || 'Unknown error'}`, 'error');
+                    visitorInfoDiv.style.display = 'block';
+                    visitorInfoDiv.className = 'error';
+                    visitorDetailsDiv.innerHTML = `<strong>Error:</strong> ${errorData.message || errorData.error || 'Failed to fetch visitor details'}`;
+                }
+            } catch (error) {
+                addLog(`Fetch error: ${error.message}`, 'error');
+                visitorInfoDiv.style.display = 'block';
+                visitorInfoDiv.className = 'error';
+                visitorDetailsDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+            }
+        }
+
+        // Initialize
+        addLog('QR Scanner Test Tool ready');
+        addLog('Click "Start Camera" to begin scanning');
+    </script>
+</body>
+
+</html>

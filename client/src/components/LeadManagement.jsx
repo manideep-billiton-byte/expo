@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Download, Plus, Mail, Phone, MessageSquare, MoreHorizontal, Filter, Star, CheckCircle2, Building2, Users } from 'lucide-react';
+import { Search, Download, Plus, Mail, Phone, MessageSquare, MoreHorizontal, Filter, Star, CheckCircle2, Building2, Users, Clock } from 'lucide-react';
 
 const LeadManagement = () => {
     const [activeTab, setActiveTab] = useState('All Leads');

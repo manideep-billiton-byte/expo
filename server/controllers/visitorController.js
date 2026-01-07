@@ -1,7 +1,18 @@
 const pool = require('../db');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 console.log('Loaded visitorController');
+
+// Helper function to generate unique code
+const generateUniqueCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed ambiguous characters
+    let code = 'VIS-';
+    for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+};
 
 const getVisitors = async (req, res) => {
     try {
@@ -36,6 +47,7 @@ const getVisitors = async (req, res) => {
 
 const createVisitor = async (req, res) => {
     const p = req.body || {};
+    console.log('createVisitor received body:', JSON.stringify(p, null, 2));
     try {
         const email = p.email || null;
         const password = p.password || null;
@@ -49,11 +61,28 @@ const createVisitor = async (req, res) => {
             passwordHash = bcrypt.hashSync(defaultPassword, 10);
         }
 
+        // Generate unique code
+        let uniqueCode;
+        let codeExists = true;
+        let attempts = 0;
+
+        // Ensure unique code doesn't already exist
+        while (codeExists && attempts < 10) {
+            uniqueCode = generateUniqueCode();
+            const checkResult = await pool.query('SELECT id FROM visitors WHERE unique_code = $1', [uniqueCode]);
+            codeExists = checkResult.rows.length > 0;
+            attempts++;
+        }
+
+        if (codeExists) {
+            throw new Error('Failed to generate unique code after multiple attempts');
+        }
+
         const insertSql = `INSERT INTO visitors(
             first_name, last_name, email, mobile, gender, age_group, organization, designation,
-            password_hash,
+            password_hash, unique_code,
             event_id, visitor_category, valid_dates, communication
-        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`;
+        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`;
 
         const values = [
             p.firstName || p.first_name || null,
@@ -65,6 +94,7 @@ const createVisitor = async (req, res) => {
             p.organization || null,
             p.designation || null,
             passwordHash,
+            uniqueCode,
             p.eventId || p.event_id || null,
             p.visitorCategory || p.visitor_category || null,
             p.validDates || p.valid_dates || null,
@@ -72,11 +102,12 @@ const createVisitor = async (req, res) => {
         ];
 
         const result = await pool.query(insertSql, values);
-        console.log('Visitor created successfully:', result.rows[0].id);
+        console.log('Visitor created successfully:', result.rows[0].id, 'with unique code:', uniqueCode);
 
         const response = {
             success: true,
-            visitor: result.rows[0]
+            visitor: result.rows[0],
+            uniqueCode: uniqueCode
         };
         if (defaultPassword) {
             response.credentials = {
@@ -140,4 +171,48 @@ const loginVisitor = async (req, res) => {
     }
 };
 
-module.exports = { getVisitors, createVisitor, loginVisitor };
+// Get visitor by unique code (for QR scanning)
+const getVisitorByCode = async (req, res) => {
+    const { uniqueCode } = req.params;
+
+    if (!uniqueCode) {
+        return res.status(400).json({ error: 'Unique code is required' });
+    }
+
+    try {
+        const result = await pool.query(`
+            SELECT
+                v.id,
+                v.first_name,
+                v.last_name,
+                v.email,
+                v.mobile,
+                v.gender,
+                v.age_group,
+                v.organization,
+                v.designation,
+                v.visitor_category,
+                v.event_id,
+                v.unique_code,
+                v.created_at,
+                ev.event_name
+            FROM visitors v
+            LEFT JOIN events ev ON ev.id = v.event_id
+            WHERE v.unique_code = $1
+        `, [uniqueCode]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Visitor not found', message: 'Invalid QR code' });
+        }
+
+        return res.json({
+            success: true,
+            visitor: result.rows[0]
+        });
+    } catch (err) {
+        console.error('Error fetching visitor by code:', err);
+        return res.status(500).json({ error: 'Failed to fetch visitor', details: err.message });
+    }
+};
+
+module.exports = { getVisitors, createVisitor, loginVisitor, getVisitorByCode };

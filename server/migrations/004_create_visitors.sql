@@ -13,5 +13,8 @@ CREATE TABLE IF NOT EXISTS visitors (
     visitor_category TEXT,
     valid_dates TEXT,
     communication JSONB,
-    created_at TIMESTAMP DEFAULT now()
+    unique_code TEXT UNIQUE,
+    password_hash TEXT,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
 );

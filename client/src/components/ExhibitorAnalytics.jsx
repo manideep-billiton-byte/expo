@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, FileText, ChevronDown, BarChart3, TrendingUp, Users, Clock, Activity, Calendar } from 'lucide-react';
+import { Download, FileText, ChevronDown, BarChart3, TrendingUp, Users, Clock, Activity, Calendar, CheckCircle2, Mail } from 'lucide-react';
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend

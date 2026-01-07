@@ -106,19 +106,19 @@ const Index = ({ onLogout, userType = 'master' }) => {
         if (userType === 'exhibitor') {
             switch (activeScreen) {
                 case 'leads':
-                    return <LeadManagement />;
+                    return <LeadManagement onNavigate={handleNavigate} />;
                 case 'scanner':
-                    return <Scanner />;
+                    return <Scanner onNavigate={handleNavigate} />;
                 case 'events':
-                    return <ExhibitorEventManagement />;
+                    return <ExhibitorEventManagement onNavigate={handleNavigate} />;
                 case 'analytics':
-                    return <ExhibitorAnalytics />;
+                    return <ExhibitorAnalytics onNavigate={handleNavigate} />;
                 case 'billing':
-                    return <BillingManagement />;
+                    return <BillingManagement onNavigate={handleNavigate} />;
                 case 'users':
-                    return <UserManagement />;
+                    return <UserManagement onNavigate={handleNavigate} />;
                 default:
-                    return <ExhibitorDashboardContent />;
+                    return <ExhibitorDashboardContent onNavigate={handleNavigate} />;
             }
         }
 

@@ -62,7 +62,7 @@ const ExhibitorsManagement = () => {
     const loadEvents = async () => {
         setEventsLoading(true);
         try {
-            const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+            const API_BASE = import.meta.env.VITE_API_BASE || '';
             const resp = await fetch(`${API_BASE}/api/events`);
             let data;
             const txt = await resp.clone().text();
@@ -80,7 +80,7 @@ const ExhibitorsManagement = () => {
     const loadExhibitors = async () => {
         setExhibitorsLoading(true);
         try {
-            const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+            const API_BASE = import.meta.env.VITE_API_BASE || '';
             const resp = await fetch(`${API_BASE}/api/exhibitors`);
             let data;
             const txt = await resp.clone().text();
@@ -138,7 +138,7 @@ const ExhibitorsManagement = () => {
                 communication: exhibitorData.communication
             };
 
-            const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+            const API_BASE = import.meta.env.VITE_API_BASE || '';
             const resp = await fetch(`${API_BASE}/api/exhibitors`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

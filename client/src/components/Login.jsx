@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Star } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Shield, Building2, Store, User, CheckCircle } from 'lucide-react';
 
-const Login = ({ onLogin, loginType = 'master' }) => {
-    // Support for exhibitor and visitor login types
-    const isExhibitorLogin = loginType === 'exhibitor';
-    const isVisitorLogin = loginType === 'visitor';
+const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
+    const [selectedRole, setSelectedRole] = useState(initialLoginType);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -12,32 +10,64 @@ const Login = ({ onLogin, loginType = 'master' }) => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const roles = [
+        {
+            id: 'master',
+            label: 'Master Admin',
+            icon: Shield,
+            color: '#10b981',
+            bgColor: '#ecfdf5',
+            borderColor: '#d1fae5'
+        },
+        {
+            id: 'organization',
+            label: 'Organization',
+            icon: Building2,
+            color: '#8b5cf6',
+            bgColor: '#f5f3ff',
+            borderColor: '#ede9fe'
+        },
+        {
+            id: 'exhibitor',
+            label: 'Exhibitor',
+            icon: Store,
+            color: '#f59e0b',
+            bgColor: '#fef3c7',
+            borderColor: '#fde68a'
+        },
+        {
+            id: 'visitor',
+            label: 'Visitor',
+            icon: User,
+            color: '#0d9488',
+            bgColor: '#f0fdfa',
+            borderColor: '#ccfbf1'
+        }
+    ];
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
 
         try {
+            const isExhibitorLogin = selectedRole === 'exhibitor';
+            const isVisitorLogin = selectedRole === 'visitor';
+
             if (isExhibitorLogin) {
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password, type: 'exhibitor' }),
                 });
-
                 const data = await response.json();
-
                 if (response.ok && data.success) {
                     localStorage.setItem('isAuthenticated', 'true');
                     localStorage.setItem('userEmail', data.user.email);
                     localStorage.setItem('userType', data.userType || 'exhibitor');
                     localStorage.setItem('exhibitorId', data.user.id);
                     localStorage.setItem('exhibitorName', data.user.name);
-                    if (rememberMe) {
-                        localStorage.setItem('rememberMe', 'true');
-                    }
+                    if (rememberMe) localStorage.setItem('rememberMe', 'true');
                     onLogin();
                 } else {
                     setError(data.error || 'Invalid email or password');
@@ -45,61 +75,45 @@ const Login = ({ onLogin, loginType = 'master' }) => {
             } else if (isVisitorLogin) {
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password, type: 'visitor' }),
                 });
-
                 const data = await response.json();
-
                 if (response.ok && data.success) {
                     localStorage.setItem('isAuthenticated', 'true');
                     localStorage.setItem('userEmail', data.user.email);
                     localStorage.setItem('userType', data.userType || 'visitor');
                     localStorage.setItem('visitorId', data.user.id);
                     localStorage.setItem('visitorName', data.user.name);
-                    if (rememberMe) {
-                        localStorage.setItem('rememberMe', 'true');
-                    }
+                    if (rememberMe) localStorage.setItem('rememberMe', 'true');
                     onLogin();
                 } else {
                     setError(data.error || 'Invalid email or password');
                 }
-            } else if (loginType === 'master') {
-                // Master admin login
+            } else if (selectedRole === 'master') {
                 if (email === 'billiton@123' && password === '123456') {
                     localStorage.setItem('isAuthenticated', 'true');
                     localStorage.setItem('userEmail', email);
                     localStorage.setItem('userType', 'master');
-                    if (rememberMe) {
-                        localStorage.setItem('rememberMe', 'true');
-                    }
+                    if (rememberMe) localStorage.setItem('rememberMe', 'true');
                     onLogin();
                 } else {
                     setError('Invalid email or password');
                 }
             } else {
-                // Organization login
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password, type: 'organization' }),
                 });
-
                 const data = await response.json();
-
                 if (response.ok && data.success) {
                     localStorage.setItem('isAuthenticated', 'true');
                     localStorage.setItem('userEmail', data.user.email);
                     localStorage.setItem('userType', data.userType || 'organization');
                     localStorage.setItem('organizationId', data.user.id);
                     localStorage.setItem('organizationName', data.user.name);
-                    if (rememberMe) {
-                        localStorage.setItem('rememberMe', 'true');
-                    }
+                    if (rememberMe) localStorage.setItem('rememberMe', 'true');
                     onLogin();
                 } else {
                     setError(data.error || 'Invalid email or password');
@@ -114,365 +128,217 @@ const Login = ({ onLogin, loginType = 'master' }) => {
     };
 
     return (
-        <div style={{
-            display: 'flex',
-            minHeight: '100vh',
-            width: '100%',
-            background: 'linear-gradient(135deg, #e0f2fe 0%, #fce7f3 100%)',
-            position: 'relative',
-            overflow: 'hidden'
-        }}>
-            {/* Background decorative shapes */}
-            <div style={{
-                position: 'absolute',
-                top: '-50px',
-                left: '-50px',
-                width: '300px',
-                height: '300px',
-                borderRadius: '50%',
-                background: 'rgba(59, 130, 246, 0.1)',
-                filter: 'blur(60px)'
-            }} />
-            <div style={{
-                position: 'absolute',
-                bottom: '-50px',
-                right: '-50px',
-                width: '400px',
-                height: '400px',
-                borderRadius: '50%',
-                background: 'rgba(236, 72, 153, 0.1)',
-                filter: 'blur(60px)'
-            }} />
-
-            {/* Left Section - Marketing/Information */}
-            <div style={{
-                flex: '2',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                padding: '60px',
-                position: 'relative',
-                zIndex: 1
-            }}>
-                <div style={{
-                    maxWidth: '600px',
-                    width: '100%'
-                }}>
-                    <h1 style={{
-                        fontSize: '56px',
-                        fontWeight: 800,
-                        color: '#1e40af',
-                        margin: '0 0 24px 0',
-                        lineHeight: '1.2'
-                    }}>
-                        Event Management
-                    </h1>
-                    <p style={{
-                        fontSize: '20px',
-                        color: '#475569',
-                        margin: '0 0 60px 0',
-                        lineHeight: '1.6'
-                    }}>
-                        Create, manage, and celebrate unforgettable events with our powerful platform
-                    </p>
-
-                    {/* Illustration Area */}
-                    <div style={{
-                        background: 'rgba(255, 255, 255, 0.5)',
-                        borderRadius: '24px',
-                        padding: '40px',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        marginBottom: '60px',
-                        position: 'relative',
-                        minHeight: '300px'
-                    }}>
-                        {/* Card illustration */}
-                        <div style={{
-                            background: 'white',
-                            borderRadius: '12px',
-                            padding: '20px',
-                            boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                            position: 'relative'
-                        }}>
-                            <div style={{
-                                background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
-                                height: '40px',
-                                borderRadius: '8px 8px 0 0',
-                                margin: '-20px -20px 20px -20px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                paddingLeft: '12px',
-                                gap: '8px'
-                            }}>
-                                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444' }} />
-                                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#f59e0b' }} />
-                                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981' }} />
-                            </div>
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(3, 1fr)',
-                                gap: '12px',
-                                marginBottom: '20px'
-                            }}>
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} style={{
-                                        height: '60px',
-                                        background: '#f1f5f9',
-                                        borderRadius: '8px'
-                                    }} />
-                                ))}
-                            </div>
-                            {/* People icons */}
-                            <div style={{
-                                display: 'flex',
-                                gap: '8px',
-                                alignItems: 'center'
-                            }}>
-                                {[1, 2, 3, 4].map((i) => (
-                                    <div key={i} style={{
-                                        width: '32px',
-                                        height: '32px',
-                                        borderRadius: '50%',
-                                        background: i % 2 === 0 ? '#fce7f3' : '#e2e8f0',
-                                        border: '2px solid white',
-                                        marginLeft: i > 1 ? '-12px' : '0',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '12px',
-                                        color: '#64748b'
-                                    }}>👤</div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Floating icons */}
-                        <div style={{
-                            position: 'absolute',
-                            top: '20px',
-                            right: '20px',
-                            background: '#fbbf24',
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 4px 12px rgba(251, 191, 36, 0.3)'
-                        }}>
-                            🔔
-                        </div>
-                        <div style={{
-                            position: 'absolute',
-                            top: '70px',
-                            right: '20px',
-                            background: '#3b82f6',
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-                        }}>
-                            ⭐
-                        </div>
-
-                        {/* Decorative shapes */}
-                        <div style={{
-                            position: 'absolute',
-                            bottom: '40px',
-                            left: '40px',
-                            width: '60px',
-                            height: '60px',
-                            borderRadius: '12px',
-                            background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
-                            opacity: 0.6,
-                            transform: 'rotate(45deg)'
-                        }} />
-                    </div>
-
-                    {/* Statistics */}
-                    <div style={{
-                        display: 'flex',
-                        gap: '48px',
-                        justifyContent: 'flex-start'
-                    }}>
-                        <div>
-                            <div style={{
-                                fontSize: '36px',
-                                fontWeight: 800,
-                                color: '#1e40af',
-                                marginBottom: '8px'
-                            }}>50K+</div>
-                            <div style={{
-                                fontSize: '14px',
-                                color: '#64748b',
-                                fontWeight: 500
-                            }}>Events Created</div>
-                        </div>
-                        <div>
-                            <div style={{
-                                fontSize: '36px',
-                                fontWeight: 800,
-                                color: '#1e40af',
-                                marginBottom: '8px'
-                            }}>2M+</div>
-                            <div style={{
-                                fontSize: '14px',
-                                color: '#64748b',
-                                fontWeight: 500
-                            }}>Attendees</div>
-                        </div>
-                        <div>
-                            <div style={{
-                                fontSize: '36px',
-                                fontWeight: 800,
-                                color: '#1e40af',
-                                marginBottom: '8px'
-                            }}>99%</div>
-                            <div style={{
-                                fontSize: '14px',
-                                color: '#64748b',
-                                fontWeight: 500
-                            }}>Satisfaction</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Right Section - Login Form */}
+        <div style={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
+            {/* Left Panel - Authentication */}
             <div style={{
                 flex: '1',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: '40px',
-                position: 'relative',
-                zIndex: 1
+                background: 'white',
+                position: 'relative'
             }}>
-                {/* Floating dot */}
+                {/* Subtle glow effects */}
                 <div style={{
                     position: 'absolute',
-                    top: '40px',
-                    left: '40px',
-                    width: '12px',
-                    height: '12px',
+                    top: '-100px',
+                    left: '-100px',
+                    width: '300px',
+                    height: '300px',
                     borderRadius: '50%',
-                    background: '#ec4899',
-                    boxShadow: '0 0 20px rgba(236, 72, 153, 0.5)'
+                    background: 'radial-gradient(circle, rgba(13, 148, 136, 0.1) 0%, transparent 70%)',
+                    filter: 'blur(40px)',
+                    pointerEvents: 'none'
                 }} />
 
-                <div style={{
-                    background: 'white',
-                    borderRadius: '24px',
-                    padding: '48px',
-                    width: '100%',
-                    maxWidth: '420px',
-                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
-                    position: 'relative'
-                }}>
-                    {/* Powered By Badge */}
-                    <div style={{
+                <div style={{ maxWidth: '480px', width: '100%', position: 'relative', zIndex: 1 }}>
+                    {/* Back to Home Link */}
+                    <a href="/" style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '6px',
-                        background: '#fce7f3',
-                        padding: '6px 12px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: '#ec4899',
+                        gap: '8px',
+                        color: '#64748b',
+                        textDecoration: 'none',
+                        fontSize: '14px',
+                        fontWeight: 500,
                         marginBottom: '32px'
                     }}>
-                        <Star size={14} fill="#ec4899" />
-                        Powered By Billiton
+                        ← Back to Home
+                    </a>
+
+                    {/* Logo */}
+                    <div style={{ marginBottom: '32px' }}>
+                        <div style={{
+                            fontSize: '24px',
+                            fontWeight: 800,
+                            color: '#0d9488',
+                            marginBottom: '8px'
+                        }}>
+                            EventHub
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#64748b' }}>
+                            Welcome back! Please sign in to continue
+                        </div>
                     </div>
 
-                    <h2 style={{
-                        fontSize: '32px',
-                        fontWeight: 800,
-                        background: 'linear-gradient(135deg, #3b82f6 0%, #ec4899 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
-                        margin: '0 0 8px 0'
-                    }}>
-                        Welcome Back
-                    </h2>
-                    <p style={{
-                        fontSize: '14px',
-                        color: '#64748b',
-                        margin: '0 0 32px 0'
-                    }}>
-                        {isExhibitorLogin ? 'Exhibitor Login - Sign in to manage your stall' : 
-                         isVisitorLogin ? 'Visitor Login - Sign in to access events' :
-                         loginType === 'organization' ? 'Organization Login - Sign in to manage your events' : 
-                         'Sign in to manage your amazing events'}
-                    </p>
+                    {/* Role Selection Cards */}
+                    <div style={{ marginBottom: '32px' }}>
+                        <div style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: '#475569',
+                            marginBottom: '16px'
+                        }}>
+                            Select your role
+                        </div>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '12px'
+                        }}>
+                            {roles.map((role) => {
+                                const isSelected = selectedRole === role.id;
+                                const RoleIcon = role.icon;
+                                return (
+                                    <button
+                                        key={role.id}
+                                        type="button"
+                                        onClick={() => setSelectedRole(role.id)}
+                                        style={{
+                                            padding: '16px',
+                                            borderRadius: '12px',
+                                            border: `2px solid ${isSelected ? role.color : '#e2e8f0'}`,
+                                            background: isSelected ? role.bgColor : 'white',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            position: 'relative'
+                                        }}
+                                        onMouseOver={(e) => {
+                                            if (!isSelected) {
+                                                e.currentTarget.style.borderColor = '#0d9488';
+                                                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(13, 148, 136, 0.1)';
+                                            }
+                                        }}
+                                        onMouseOut={(e) => {
+                                            if (!isSelected) {
+                                                e.currentTarget.style.borderColor = '#e2e8f0';
+                                                e.currentTarget.style.boxShadow = 'none';
+                                            }
+                                        }}
+                                    >
+                                        {isSelected && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '8px',
+                                                right: '8px'
+                                            }}>
+                                                <CheckCircle size={16} color={role.color} fill={role.color} />
+                                            </div>
+                                        )}
+                                        <div style={{
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '10px',
+                                            background: isSelected ? role.color : role.bgColor,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                            <RoleIcon size={20} color={isSelected ? 'white' : role.color} />
+                                        </div>
+                                        <span style={{
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            color: isSelected ? role.color : '#475569'
+                                        }}>
+                                            {role.label}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
 
+                    {/* Login Form */}
                     <form onSubmit={handleSubmit}>
                         {/* Email Field */}
-                        <div style={{ marginBottom: '20px' }}>
-                            <div style={{
-                                position: 'relative',
-                                display: 'flex',
-                                alignItems: 'center'
+                        <div style={{ marginBottom: '16px' }}>
+                            <label style={{
+                                display: 'block',
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                color: '#475569',
+                                marginBottom: '8px'
                             }}>
-                                <Mail size={20} color="#94a3b8" style={{
+                                Email
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                                <Mail size={18} color="#94a3b8" style={{
                                     position: 'absolute',
-                                    left: '16px',
-                                    zIndex: 1
+                                    left: '14px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)'
                                 }} />
                                 <input
                                     type="email"
-                                    placeholder="Email address"
+                                    placeholder="Enter your email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
+                                    required
                                     style={{
                                         width: '100%',
-                                        padding: '14px 16px 14px 48px',
-                                        borderRadius: '12px',
+                                        padding: '12px 14px 12px 44px',
+                                        borderRadius: '10px',
                                         border: '1.5px solid #e2e8f0',
                                         outline: 'none',
                                         fontSize: '14px',
                                         transition: 'border-color 0.2s'
                                     }}
-                                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                                    onFocus={(e) => e.target.style.borderColor = '#0d9488'}
                                     onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                                 />
                             </div>
                         </div>
 
                         {/* Password Field */}
-                        <div style={{ marginBottom: '20px' }}>
-                            <div style={{
-                                position: 'relative',
-                                display: 'flex',
-                                alignItems: 'center'
+                        <div style={{ marginBottom: '16px' }}>
+                            <label style={{
+                                display: 'block',
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                color: '#475569',
+                                marginBottom: '8px'
                             }}>
-                                <Lock size={20} color="#94a3b8" style={{
+                                Password
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                                <Lock size={18} color="#94a3b8" style={{
                                     position: 'absolute',
-                                    left: '16px',
-                                    zIndex: 1
+                                    left: '14px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)'
                                 }} />
                                 <input
                                     type={showPassword ? 'text' : 'password'}
-                                    placeholder="Password"
+                                    placeholder="Enter your password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    required
                                     style={{
                                         width: '100%',
-                                        padding: '14px 48px 14px 48px',
-                                        borderRadius: '12px',
+                                        padding: '12px 44px 12px 44px',
+                                        borderRadius: '10px',
                                         border: '1.5px solid #e2e8f0',
                                         outline: 'none',
                                         fontSize: '14px',
                                         transition: 'border-color 0.2s'
                                     }}
-                                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                                    onFocus={(e) => e.target.style.borderColor = '#0d9488'}
                                     onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                                 />
                                 <button
@@ -480,16 +346,18 @@ const Login = ({ onLogin, loginType = 'master' }) => {
                                     onClick={() => setShowPassword(!showPassword)}
                                     style={{
                                         position: 'absolute',
-                                        right: '16px',
+                                        right: '14px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
                                         background: 'none',
                                         border: 'none',
                                         cursor: 'pointer',
+                                        padding: '4px',
                                         display: 'flex',
-                                        alignItems: 'center',
-                                        padding: '4px'
+                                        alignItems: 'center'
                                     }}
                                 >
-                                    {showPassword ? <EyeOff size={20} color="#94a3b8" /> : <Eye size={20} color="#94a3b8" />}
+                                    {showPassword ? <EyeOff size={18} color="#94a3b8" /> : <Eye size={18} color="#94a3b8" />}
                                 </button>
                             </div>
                         </div>
@@ -503,7 +371,7 @@ const Login = ({ onLogin, loginType = 'master' }) => {
                                 borderRadius: '8px',
                                 color: '#dc2626',
                                 fontSize: '14px',
-                                marginBottom: '20px'
+                                marginBottom: '16px'
                             }}>
                                 {error}
                             </div>
@@ -514,7 +382,7 @@ const Login = ({ onLogin, loginType = 'master' }) => {
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            marginBottom: '32px'
+                            marginBottom: '24px'
                         }}>
                             <label style={{
                                 display: 'flex',
@@ -532,14 +400,14 @@ const Login = ({ onLogin, loginType = 'master' }) => {
                                         width: '16px',
                                         height: '16px',
                                         cursor: 'pointer',
-                                        accentColor: '#3b82f6'
+                                        accentColor: '#0d9488'
                                     }}
                                 />
                                 Remember me
                             </label>
                             <a href="#" style={{
                                 fontSize: '14px',
-                                color: '#ec4899',
+                                color: '#0d9488',
                                 textDecoration: 'none',
                                 fontWeight: 500
                             }}>
@@ -547,135 +415,170 @@ const Login = ({ onLogin, loginType = 'master' }) => {
                             </a>
                         </div>
 
-                        {/* Login Button */}
+                        {/* Sign In Button */}
                         <button
                             type="submit"
                             disabled={loading}
                             style={{
                                 width: '100%',
-                                padding: '16px',
-                                background: loading ? '#94a3b8' : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                                padding: '14px',
+                                background: loading ? '#94a3b8' : '#0d9488',
                                 border: 'none',
-                                borderRadius: '12px',
+                                borderRadius: '10px',
                                 color: 'white',
                                 fontSize: '16px',
                                 fontWeight: 600,
                                 cursor: loading ? 'not-allowed' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-                                transition: 'transform 0.2s, box-shadow 0.2s'
+                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)'
                             }}
                             onMouseOver={(e) => {
                                 if (!loading) {
-                                    e.target.style.transform = 'translateY(-2px)';
-                                    e.target.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+                                    e.target.style.transform = 'translateY(-1px)';
+                                    e.target.style.boxShadow = '0 4px 12px rgba(13, 148, 136, 0.4)';
                                 }
                             }}
                             onMouseOut={(e) => {
                                 if (!loading) {
                                     e.target.style.transform = 'translateY(0)';
-                                    e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                                    e.target.style.boxShadow = '0 2px 8px rgba(13, 148, 136, 0.3)';
                                 }
                             }}
                         >
-                            {loading ? 'LOGGING IN...' : 'LOG IN'}
-                            {!loading && <ArrowRight size={20} />}
+                            {loading ? 'Signing in...' : 'Sign In'}
                         </button>
                     </form>
 
-                    {/* Additional Links */}
+                    {/* Footer Links */}
                     <div style={{
-                        marginTop: '32px',
+                        marginTop: '24px',
                         textAlign: 'center',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px'
+                        fontSize: '14px',
+                        color: '#64748b'
                     }}>
-                        <div style={{
-                            fontSize: '14px',
-                            color: '#64748b'
-                        }}>
-                            For Demo
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-                            {loginType === 'master' && (
-                                <>
-                                    <a 
-                                        href="?type=organization"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            window.location.href = '?type=organization';
-                                        }}
-                                        style={{
-                                            fontSize: '14px',
-                                            color: '#3b82f6',
-                                            textDecoration: 'none',
-                                            fontWeight: 600
-                                        }}
-                                    >
-                                        Organization Login
-                                    </a>
-                                    <a 
-                                        href="?type=exhibitor"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            window.location.href = '?type=exhibitor';
-                                        }}
-                                        style={{
-                                            fontSize: '14px',
-                                            color: '#3b82f6',
-                                            textDecoration: 'none',
-                                            fontWeight: 600
-                                        }}
-                                    >
-                                        Exhibitor Login
-                                    </a>
-                                    <a 
-                                        href="?type=visitor"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            window.location.href = '?type=visitor';
-                                        }}
-                                        style={{
-                                            fontSize: '14px',
-                                            color: '#3b82f6',
-                                            textDecoration: 'none',
-                                            fontWeight: 600
-                                        }}
-                                    >
-                                        Visitor Login
-                                    </a>
-                                </>
-                            )}
-                            {(loginType === 'organization' || loginType === 'exhibitor' || loginType === 'visitor') && (
-                                <a 
-                                    href={window.location.pathname}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        window.location.href = window.location.pathname;
-                                    }}
-                                    style={{
-                                        fontSize: '14px',
-                                        color: '#3b82f6',
-                                        textDecoration: 'none',
-                                        fontWeight: 600
-                                    }}
-                                >
-                                    Master Admin Login
-                                </a>
-                            )}
-                        </div>
+                        Don't have an account?{' '}
                         <a href="#" style={{
-                            fontSize: '14px',
-                            color: '#ec4899',
+                            color: '#0d9488',
                             textDecoration: 'none',
                             fontWeight: 600
                         }}>
-                            Contact Us
+                            Sign up
                         </a>
+                    </div>
+                </div>
+            </div>
+
+            {/* Right Panel - Hero Section */}
+            <div style={{
+                flex: '1',
+                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '60px',
+                position: 'relative',
+                overflow: 'hidden'
+            }}>
+                {/* Background glows */}
+                <div style={{
+                    position: 'absolute',
+                    top: '10%',
+                    right: '-10%',
+                    width: '500px',
+                    height: '500px',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%)',
+                    filter: 'blur(60px)'
+                }} />
+                <div style={{
+                    position: 'absolute',
+                    bottom: '-10%',
+                    left: '-10%',
+                    width: '400px',
+                    height: '400px',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)',
+                    filter: 'blur(60px)'
+                }} />
+
+                <div style={{ maxWidth: '520px', position: 'relative', zIndex: 1 }}>
+                    <h1 style={{
+                        fontSize: '48px',
+                        fontWeight: 800,
+                        lineHeight: '1.2',
+                        marginBottom: '24px',
+                        background: 'linear-gradient(135deg, #0d9488 0%, #3b82f6 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text'
+                    }}>
+                        Event Management Like Never Before
+                    </h1>
+                    <p style={{
+                        fontSize: '18px',
+                        color: '#cbd5e1',
+                        lineHeight: '1.6',
+                        marginBottom: '40px'
+                    }}>
+                        Powerful tools to create, manage, and analyze your events with ease
+                    </p>
+
+                    {/* Features List */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {[
+                            'Real-time analytics and reporting',
+                            'Seamless attendee management',
+                            'Advanced lead tracking system',
+                            'Multi-role access control'
+                        ].map((feature, idx) => (
+                            <div key={idx} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '16px'
+                            }}>
+                                <div style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    background: '#0d9488',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    <CheckCircle size={14} color="white" />
+                                </div>
+                                <span style={{
+                                    fontSize: '16px',
+                                    color: '#e2e8f0',
+                                    fontWeight: 500
+                                }}>
+                                    {feature}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Powered by */}
+                    <div style={{
+                        marginTop: '60px',
+                        paddingTop: '32px',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}>
+                        <div style={{
+                            fontSize: '12px',
+                            color: '#94a3b8',
+                            marginBottom: '8px'
+                        }}>
+                            Powered by
+                        </div>
+                        <div style={{
+                            fontSize: '20px',
+                            fontWeight: 700,
+                            color: 'white'
+                        }}>
+                            Billiton Services
+                        </div>
                     </div>
                 </div>
             </div>

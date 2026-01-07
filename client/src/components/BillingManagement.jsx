@@ -178,7 +178,7 @@ const BillingManagement = () => {
         }
     };
 
-    const API_BASE = import.meta.env.VITE_API_BASE || '';
+    const API_BASE = import.meta.env.VITE_API_BASE;
 
     const modalTabs = ['Identity', 'Details', 'Payment', 'Review'];
     const mainTabs = ['Overview', 'Plans', 'Invoices', 'Payments', 'Usage'];

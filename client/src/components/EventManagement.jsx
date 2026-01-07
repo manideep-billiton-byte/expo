@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2 } from 'lucide-react';
 
 const EventManagement = () => {
@@ -60,6 +61,7 @@ const EventManagement = () => {
     const [copied, setCopied] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState('');
     const [createdEvent, setCreatedEvent] = useState(null);
+    const [registrationLink, setRegistrationLink] = useState('');
 
     const handleOpenModal = () => {
         setModalStep(1);
@@ -76,11 +78,11 @@ const EventManagement = () => {
     };
 
     const handleCopyLink = () => {
-        navigator.clipboard.writeText("https://expo.example.com/register/event");
+        navigator.clipboard.writeText(registrationLink);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
-    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+    const API_BASE = import.meta.env.VITE_API_BASE || '';
 
     const loadOrgs = async () => {
         setOrgsLoading(true);
@@ -163,7 +165,7 @@ const EventManagement = () => {
                 communication: eventData.communication
             };
 
-            const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+            const API_BASE = import.meta.env.VITE_API_BASE || '';
             const resp = await fetch(`${API_BASE}/api/events`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -175,10 +177,15 @@ const EventManagement = () => {
             if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to create event');
 
             setCreatedEvent(data);
-            // prefer server-provided registration link or token
-            const regText = (data && (data.registration_link || data.qr_token)) || `event:${(data && data.id) || Date.now()}`;
+
+            // Generate registration link with event details
+            const baseUrl = window.location.origin;
+            const regUrl = `${baseUrl}/?action=register&eventId=${data.id}&eventName=${encodeURIComponent(eventData.eventName)}&eventDate=${encodeURIComponent(eventData.startDate)}`;
+
+            setRegistrationLink(regUrl);
+
             try {
-                const url = generateDummyQR(regText, 256);
+                const url = await generateQR(regUrl);
                 setQrDataUrl(url);
             } catch (gErr) {
                 console.warn('QR generation failed', gErr);
@@ -195,39 +202,13 @@ const EventManagement = () => {
     };
 
     // Simple deterministic dummy QR generator (renders a black/white pattern)
-    const generateDummyQR = (text = '', size = 256) => {
-        // simple hash to seed a PRNG
-        let h = 2166136261 >>> 0;
-        for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619) >>> 0;
-        const rand = () => {
-            h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
-            return (h >>> 0) / 4294967295;
-        };
-
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, size, size);
-
-        const modules = 21; // simple grid
-        const moduleSize = Math.floor(size / modules);
-        for (let y = 0; y < modules; y++) {
-            for (let x = 0; x < modules; x++) {
-                // create finder-like corners
-                let draw = false;
-                if ((x < 3 && y < 3) || (x >= modules - 3 && y < 3) || (x < 3 && y >= modules - 3)) draw = true;
-                else draw = rand() > 0.5;
-
-                if (draw) {
-                    ctx.fillStyle = '#000';
-                    ctx.fillRect(x * moduleSize, y * moduleSize, moduleSize, moduleSize);
-                }
-            }
+    const generateQR = async (text) => {
+        try {
+            return await QRCode.toDataURL(text, { width: 256, margin: 1 });
+        } catch (err) {
+            console.error('QR Gen Error:', err);
+            return null;
         }
-
-        return canvas.toDataURL('image/png');
     };
 
     const downloadQR = (filename = 'event_qr.png') => {
@@ -533,7 +514,7 @@ const EventManagement = () => {
                                         <input
                                             type="text"
                                             readOnly
-                                            value="https://expo.example.com/register/event"
+                                            value={registrationLink}
                                             style={{ flex: 1, padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: '#f8fafc' }}
                                         />
                                         <button
