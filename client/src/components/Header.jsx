@@ -77,83 +77,95 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
     const exhibitorName = localStorage.getItem('exhibitorName');
     const displayName = userType === 'exhibitor' ? (exhibitorName || 'Exhibitor') : (userType === 'organization' ? (organizationName || 'Organization') : 'Master Admin');
 
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+
     return (
         <div className="header-wrapper">
             <div className="header-main">
-                <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                    <div className="logo" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginRight: '8px' }}>
+                <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '24px' }}>
+                    <div className="logo" style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', marginRight: isMobile ? '0' : '8px' }}>
                         <div style={{
                             background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
                             color: 'white',
-                            width: '38px',
-                            height: '32px',
+                            width: isMobile ? '32px' : '38px',
+                            height: isMobile ? '28px' : '32px',
                             borderRadius: '8px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: 'bold',
-                            fontSize: '16px',
+                            fontSize: isMobile ? '14px' : '16px',
                             position: 'relative',
                             letterSpacing: '-2px'
                         }}>
                             <span style={{ position: 'relative', zIndex: 1 }}>E</span>
-                            <span style={{ position: 'absolute', right: '6px', fontSize: '14px' }}>H</span>
+                            <span style={{ position: 'absolute', right: '6px', fontSize: isMobile ? '12px' : '14px' }}>H</span>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <div style={{ display: isMobile ? 'none' : 'flex', flexDirection: 'column', gap: '2px' }}>
                             <span style={{ fontWeight: 800, fontSize: '18px', color: '#1e3a8a', lineHeight: 1 }}>EventHub</span>
                             <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 500, letterSpacing: '0.02em' }}>Manage. Exhibit. Attend.</span>
                         </div>
                     </div>
-                    <div
-                        onClick={onToggleNav}
-                        style={{
-                            background: '#f8fafc',
-                            padding: '6px',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            color: '#64748b',
-                            display: 'flex',
-                            alignItems: 'center'
-                        }}
-                    >
-                        {isNavCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
-                    </div>
+                    {!isMobile && (
+                        <div
+                            onClick={onToggleNav}
+                            style={{
+                                background: '#f8fafc',
+                                padding: '6px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                color: '#64748b',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        >
+                            {isNavCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                        </div>
+                    )}
                     {/* search moved to center for better alignment */}
                 </div>
 
-                <div className="header-center" style={{ display: 'flex', justifyContent: 'center', flex: 1 }}>
-                    <div className="search-bar" style={{ position: 'relative', width: '420px', maxWidth: '60%' }}>
-                        <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                        <input
-                            type="text"
-                            placeholder="Search tenants, events, exhibitors..."
-                            style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '14px' }}
-                        />
+                {!isMobile && (
+                    <div className="header-center" style={{ display: 'flex', justifyContent: 'center', flex: 1 }}>
+                        <div className="search-bar" style={{ position: 'relative', width: '420px', maxWidth: '60%' }}>
+                            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                            <input
+                                type="text"
+                                placeholder="Search tenants, events, exhibitors..."
+                                style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '14px' }}
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
 
-                <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                    <div style={{ position: 'relative', cursor: 'pointer' }}>
-                        <Bell size={20} color="#64748b" />
-                        <div style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: 'white', fontSize: '10px', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>3</div>
-                    </div>
-                    <SettingsIcon size={20} color="#64748b" style={{ cursor: 'pointer' }} />
-                    <div style={{ cursor: 'pointer' }} onClick={() => onNavigate && onNavigate('support')} title="Support">
-                        <LifeBuoy size={18} color="#64748b" />
-                    </div>
+                <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '24px' }}>
+                    {!isMobile && (
+                        <>
+                            <div style={{ position: 'relative', cursor: 'pointer' }}>
+                                <Bell size={20} color="#64748b" />
+                                <div style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: 'white', fontSize: '10px', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>3</div>
+                            </div>
+                            <SettingsIcon size={20} color="#64748b" style={{ cursor: 'pointer' }} />
+                            <div style={{ cursor: 'pointer' }} onClick={() => onNavigate && onNavigate('support')} title="Support">
+                                <LifeBuoy size={18} color="#64748b" />
+                            </div>
+                        </>
+                    )}
                     <div style={{ position: 'relative' }} ref={profileDropdownRef}>
                         <div
-                            style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', cursor: 'pointer' }}
                             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                         >
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>{displayName}</div>
-                                <div style={{ fontSize: '11px', color: '#94a3b8' }}>{userEmail}</div>
-                            </div>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '14px' }}>
+                            {!isMobile && (
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>{displayName}</div>
+                                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>{userEmail}</div>
+                                </div>
+                            )}
+                            <div style={{ width: isMobile ? '32px' : '36px', height: isMobile ? '32px' : '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: isMobile ? '12px' : '14px' }}>
                                 {userType === 'exhibitor' ? 'EXH' : (userType === 'organization' ? 'ORG' : 'MA')}
                             </div>
-                            <ChevronDown size={16} color="#94a3b8" style={{ transition: 'transform 0.2s', transform: showProfileDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                            {!isMobile && <ChevronDown size={16} color="#94a3b8" style={{ transition: 'transform 0.2s', transform: showProfileDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }} />}
                         </div>
 
                         {showProfileDropdown && (

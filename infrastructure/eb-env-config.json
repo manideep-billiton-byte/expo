@@ -1,0 +1,97 @@
+[
+    {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "InstanceType",
+        "Value": "t3.small"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "EnvironmentType",
+        "Value": "LoadBalanced"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "ServiceRole",
+        "Value": "aws-elasticbeanstalk-service-role"
+    },
+    {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "IamInstanceProfile",
+        "Value": "aws-elasticbeanstalk-ec2-role"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "PORT",
+        "Value": "8080"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "NODE_ENV",
+        "Value": "production"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "INVITE_LINK_BASE",
+        "Value": "https://d2ux36xl31uki3.cloudfront.net"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "DATABASE_URL",
+        "Value": "postgresql://postgres:EventPass123!@expo-project-prod-db.cvmk8awyksm7.ap-south-1.rds.amazonaws.com:5432/expo_db"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "PGSSLMODE",
+        "Value": "require"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "SMTP_HOST",
+        "Value": "smtp.sendgrid.net"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "SMTP_PORT",
+        "Value": "587"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "SMTP_SECURE",
+        "Value": "false"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "SMTP_USER",
+        "Value": "apikey"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "SMTP_PASS",
+        "Value": "your_sendgrid_api_key_here"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "SMTP_FROM",
+        "Value": "no-reply@yourdomain.com"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "TWILIO_ACCOUNT_SID",
+        "Value": "your_twilio_account_sid_here"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "TWILIO_AUTH_TOKEN",
+        "Value": "your_twilio_auth_token_here"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "TWILIO_FROM",
+        "Value": "+1234567890"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "GST_API_KEY",
+        "Value": "your_gst_api_key_here"
+    }
+]

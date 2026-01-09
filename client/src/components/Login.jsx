@@ -128,16 +128,17 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
     };
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
+        <div style={{ display: 'flex', minHeight: '100vh', width: '100%', flexDirection: window.innerWidth <= 768 ? 'column' : 'row' }}>
             {/* Left Panel - Authentication */}
             <div style={{
                 flex: '1',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '40px',
+                padding: window.innerWidth <= 768 ? '24px 20px' : '40px',
                 background: 'white',
-                position: 'relative'
+                position: 'relative',
+                minHeight: window.innerWidth <= 768 ? '100vh' : 'auto'
             }}>
                 {/* Subtle glow effects */}
                 <div style={{
@@ -149,7 +150,8 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                     borderRadius: '50%',
                     background: 'radial-gradient(circle, rgba(13, 148, 136, 0.1) 0%, transparent 70%)',
                     filter: 'blur(40px)',
-                    pointerEvents: 'none'
+                    pointerEvents: 'none',
+                    display: window.innerWidth <= 768 ? 'none' : 'block'
                 }} />
 
                 <div style={{ maxWidth: '480px', width: '100%', position: 'relative', zIndex: 1 }}>
@@ -162,15 +164,15 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                         textDecoration: 'none',
                         fontSize: '14px',
                         fontWeight: 500,
-                        marginBottom: '32px'
+                        marginBottom: window.innerWidth <= 768 ? '24px' : '32px'
                     }}>
                         ← Back to Home
                     </a>
 
                     {/* Logo */}
-                    <div style={{ marginBottom: '32px' }}>
+                    <div style={{ marginBottom: window.innerWidth <= 768 ? '24px' : '32px' }}>
                         <div style={{
-                            fontSize: '24px',
+                            fontSize: window.innerWidth <= 768 ? '22px' : '24px',
                             fontWeight: 800,
                             color: '#0d9488',
                             marginBottom: '8px'
@@ -183,7 +185,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                     </div>
 
                     {/* Role Selection Cards */}
-                    <div style={{ marginBottom: '32px' }}>
+                    <div style={{ marginBottom: window.innerWidth <= 768 ? '24px' : '32px' }}>
                         <div style={{
                             fontSize: '14px',
                             fontWeight: 600,
@@ -206,7 +208,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                         type="button"
                                         onClick={() => setSelectedRole(role.id)}
                                         style={{
-                                            padding: '16px',
+                                            padding: window.innerWidth <= 768 ? '14px' : '16px',
                                             borderRadius: '12px',
                                             border: `2px solid ${isSelected ? role.color : '#e2e8f0'}`,
                                             background: isSelected ? role.bgColor : 'white',
@@ -216,7 +218,8 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                             flexDirection: 'column',
                                             alignItems: 'center',
                                             gap: '8px',
-                                            position: 'relative'
+                                            position: 'relative',
+                                            minHeight: '44px'
                                         }}
                                         onMouseOver={(e) => {
                                             if (!isSelected) {
@@ -241,18 +244,18 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                             </div>
                                         )}
                                         <div style={{
-                                            width: '40px',
-                                            height: '40px',
+                                            width: window.innerWidth <= 768 ? '36px' : '40px',
+                                            height: window.innerWidth <= 768 ? '36px' : '40px',
                                             borderRadius: '10px',
                                             background: isSelected ? role.color : role.bgColor,
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center'
                                         }}>
-                                            <RoleIcon size={20} color={isSelected ? 'white' : role.color} />
+                                            <RoleIcon size={window.innerWidth <= 768 ? 18 : 20} color={isSelected ? 'white' : role.color} />
                                         </div>
                                         <span style={{
-                                            fontSize: '14px',
+                                            fontSize: window.innerWidth <= 768 ? '13px' : '14px',
                                             fontWeight: 600,
                                             color: isSelected ? role.color : '#475569'
                                         }}>
@@ -296,7 +299,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                         borderRadius: '10px',
                                         border: '1.5px solid #e2e8f0',
                                         outline: 'none',
-                                        fontSize: '14px',
+                                        fontSize: window.innerWidth <= 768 ? '16px' : '14px',
                                         transition: 'border-color 0.2s'
                                     }}
                                     onFocus={(e) => e.target.style.borderColor = '#0d9488'}
@@ -335,7 +338,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                         borderRadius: '10px',
                                         border: '1.5px solid #e2e8f0',
                                         outline: 'none',
-                                        fontSize: '14px',
+                                        fontSize: window.innerWidth <= 768 ? '16px' : '14px',
                                         transition: 'border-color 0.2s'
                                     }}
                                     onFocus={(e) => e.target.style.borderColor = '#0d9488'}
@@ -352,9 +355,11 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                         background: 'none',
                                         border: 'none',
                                         cursor: 'pointer',
-                                        padding: '4px',
+                                        padding: '8px',
                                         display: 'flex',
-                                        alignItems: 'center'
+                                        alignItems: 'center',
+                                        minHeight: '44px',
+                                        minWidth: '44px'
                                     }}
                                 >
                                     {showPassword ? <EyeOff size={18} color="#94a3b8" /> : <Eye size={18} color="#94a3b8" />}
@@ -382,7 +387,9 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            marginBottom: '24px'
+                            marginBottom: '24px',
+                            flexWrap: 'wrap',
+                            gap: '12px'
                         }}>
                             <label style={{
                                 display: 'flex',
@@ -390,15 +397,16 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                 gap: '8px',
                                 cursor: 'pointer',
                                 fontSize: '14px',
-                                color: '#475569'
+                                color: '#475569',
+                                minHeight: '44px'
                             }}>
                                 <input
                                     type="checkbox"
                                     checked={rememberMe}
                                     onChange={(e) => setRememberMe(e.target.checked)}
                                     style={{
-                                        width: '16px',
-                                        height: '16px',
+                                        width: '18px',
+                                        height: '18px',
                                         cursor: 'pointer',
                                         accentColor: '#0d9488'
                                     }}
@@ -409,7 +417,10 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                 fontSize: '14px',
                                 color: '#0d9488',
                                 textDecoration: 'none',
-                                fontWeight: 500
+                                fontWeight: 500,
+                                minHeight: '44px',
+                                display: 'flex',
+                                alignItems: 'center'
                             }}>
                                 Forgot password?
                             </a>
@@ -430,7 +441,8 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                 fontWeight: 600,
                                 cursor: loading ? 'not-allowed' : 'pointer',
                                 transition: 'transform 0.2s, box-shadow 0.2s',
-                                boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)'
+                                boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)',
+                                minHeight: '48px'
                             }}
                             onMouseOver={(e) => {
                                 if (!loading) {
@@ -468,120 +480,122 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                 </div>
             </div>
 
-            {/* Right Panel - Hero Section */}
-            <div style={{
-                flex: '1',
-                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '60px',
-                position: 'relative',
-                overflow: 'hidden'
-            }}>
-                {/* Background glows */}
+            {/* Right Panel - Hero Section (Hidden on Mobile) */}
+            {window.innerWidth > 768 && (
                 <div style={{
-                    position: 'absolute',
-                    top: '10%',
-                    right: '-10%',
-                    width: '500px',
-                    height: '500px',
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%)',
-                    filter: 'blur(60px)'
-                }} />
-                <div style={{
-                    position: 'absolute',
-                    bottom: '-10%',
-                    left: '-10%',
-                    width: '400px',
-                    height: '400px',
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)',
-                    filter: 'blur(60px)'
-                }} />
+                    flex: '1',
+                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '60px',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}>
+                    {/* Background glows */}
+                    <div style={{
+                        position: 'absolute',
+                        top: '10%',
+                        right: '-10%',
+                        width: '500px',
+                        height: '500px',
+                        borderRadius: '50%',
+                        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%)',
+                        filter: 'blur(60px)'
+                    }} />
+                    <div style={{
+                        position: 'absolute',
+                        bottom: '-10%',
+                        left: '-10%',
+                        width: '400px',
+                        height: '400px',
+                        borderRadius: '50%',
+                        background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)',
+                        filter: 'blur(60px)'
+                    }} />
 
-                <div style={{ maxWidth: '520px', position: 'relative', zIndex: 1 }}>
-                    <h1 style={{
-                        fontSize: '48px',
-                        fontWeight: 800,
-                        lineHeight: '1.2',
-                        marginBottom: '24px',
-                        background: 'linear-gradient(135deg, #0d9488 0%, #3b82f6 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text'
-                    }}>
-                        Event Management Like Never Before
-                    </h1>
-                    <p style={{
-                        fontSize: '18px',
-                        color: '#cbd5e1',
-                        lineHeight: '1.6',
-                        marginBottom: '40px'
-                    }}>
-                        Powerful tools to create, manage, and analyze your events with ease
-                    </p>
+                    <div style={{ maxWidth: '520px', position: 'relative', zIndex: 1 }}>
+                        <h1 style={{
+                            fontSize: '48px',
+                            fontWeight: 800,
+                            lineHeight: '1.2',
+                            marginBottom: '24px',
+                            background: 'linear-gradient(135deg, #0d9488 0%, #3b82f6 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text'
+                        }}>
+                            Event Management Like Never Before
+                        </h1>
+                        <p style={{
+                            fontSize: '18px',
+                            color: '#cbd5e1',
+                            lineHeight: '1.6',
+                            marginBottom: '40px'
+                        }}>
+                            Powerful tools to create, manage, and analyze your events with ease
+                        </p>
 
-                    {/* Features List */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {[
-                            'Real-time analytics and reporting',
-                            'Seamless attendee management',
-                            'Advanced lead tracking system',
-                            'Multi-role access control'
-                        ].map((feature, idx) => (
-                            <div key={idx} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '16px'
-                            }}>
-                                <div style={{
-                                    width: '24px',
-                                    height: '24px',
-                                    borderRadius: '50%',
-                                    background: '#0d9488',
+                        {/* Features List */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            {[
+                                'Real-time analytics and reporting',
+                                'Seamless attendee management',
+                                'Advanced lead tracking system',
+                                'Multi-role access control'
+                            ].map((feature, idx) => (
+                                <div key={idx} style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
-                                    flexShrink: 0
+                                    gap: '16px'
                                 }}>
-                                    <CheckCircle size={14} color="white" />
+                                    <div style={{
+                                        width: '24px',
+                                        height: '24px',
+                                        borderRadius: '50%',
+                                        background: '#0d9488',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0
+                                    }}>
+                                        <CheckCircle size={14} color="white" />
+                                    </div>
+                                    <span style={{
+                                        fontSize: '16px',
+                                        color: '#e2e8f0',
+                                        fontWeight: 500
+                                    }}>
+                                        {feature}
+                                    </span>
                                 </div>
-                                <span style={{
-                                    fontSize: '16px',
-                                    color: '#e2e8f0',
-                                    fontWeight: 500
-                                }}>
-                                    {feature}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Powered by */}
-                    <div style={{
-                        marginTop: '60px',
-                        paddingTop: '32px',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
-                    }}>
-                        <div style={{
-                            fontSize: '12px',
-                            color: '#94a3b8',
-                            marginBottom: '8px'
-                        }}>
-                            Powered by
+                            ))}
                         </div>
+
+                        {/* Powered by */}
                         <div style={{
-                            fontSize: '20px',
-                            fontWeight: 700,
-                            color: 'white'
+                            marginTop: '60px',
+                            paddingTop: '32px',
+                            borderTop: '1px solid rgba(255, 255, 255, 0.1)'
                         }}>
-                            Billiton Services
+                            <div style={{
+                                fontSize: '12px',
+                                color: '#94a3b8',
+                                marginBottom: '8px'
+                            }}>
+                                Powered by
+                            </div>
+                            <div style={{
+                                fontSize: '20px',
+                                fontWeight: 700,
+                                color: 'white'
+                            }}>
+                                Billiton Services
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

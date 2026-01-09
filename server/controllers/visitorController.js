@@ -1,6 +1,7 @@
 const pool = require('../db');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { sendEmail, sendSMS } = require('../services/notificationService');
 
 console.log('Loaded visitorController');
 
@@ -115,6 +116,53 @@ const createVisitor = async (req, res) => {
                 password: defaultPassword,
                 note: 'Please save these credentials. Password can be changed after first login.'
             };
+        }
+
+        // Send registration confirmation email
+        if (email) {
+            try {
+                const emailResult = await sendEmail({
+                    to: email,
+                    subject: 'Welcome! Your Visitor Registration is Confirmed',
+                    text: `Dear ${p.firstName || 'Visitor'},\n\nYour registration has been confirmed!\n\nYour Unique Code: ${uniqueCode}\n\nPlease keep this code safe - you will need it for event check-in.\n\n${defaultPassword ? `Your login credentials:\nEmail: ${email}\nPassword: ${defaultPassword}\n\n` : ''}Thank you for registering!\n\nBest regards,\nEvent Team`,
+                    html: `
+                        <h2>Welcome! Your Visitor Registration is Confirmed</h2>
+                        <p>Dear ${p.firstName || 'Visitor'},</p>
+                        <p>Your registration has been confirmed!</p>
+                        <p><strong>Your Unique Code: ${uniqueCode}</strong></p>
+                        <p>Please keep this code safe - you will need it for event check-in.</p>
+                        ${defaultPassword ? `<p><strong>Login Credentials:</strong><br>Email: ${email}<br>Password: ${defaultPassword}</p>` : ''}
+                        <p>Thank you for registering!</p>
+                        <p>Best regards,<br>Event Team</p>
+                    `
+                });
+
+                if (emailResult && emailResult.success) {
+                    console.log('Visitor confirmation email sent to:', email);
+                } else {
+                    console.error('Failed to send visitor email:', emailResult ? emailResult.error : 'Unknown error');
+                }
+            } catch (emailErr) {
+                console.error('Failed to send visitor email:', emailErr.message);
+            }
+        }
+
+        // Send SMS if mobile provided and SMS enabled
+        if (p.mobile && p.communication?.sms) {
+            try {
+                const smsResult = await sendSMS({
+                    to: p.mobile,
+                    body: `Your visitor registration is confirmed! Unique Code: ${uniqueCode}. Use this code for event check-in.`
+                });
+
+                if (smsResult && smsResult.success) {
+                    console.log('Visitor confirmation SMS sent to:', p.mobile);
+                } else {
+                    console.error('Failed to send visitor SMS:', smsResult ? smsResult.error : 'Unknown error');
+                }
+            } catch (smsErr) {
+                console.error('Failed to send visitor SMS:', smsErr.message);
+            }
         }
 
         return res.status(201).json(response);

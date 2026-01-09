@@ -9,15 +9,19 @@ const generateInviteToken = () => {
 
 // Send organization invite
 const inviteOrganization = async (req, res) => {
+    console.log('>>> inviteOrganization called with body:', JSON.stringify(req.body));
     const { email, mobile } = req.body;
 
     if (!email && !mobile) {
         return res.status(400).json({ error: 'Email or mobile is required' });
     }
 
+    console.log('>>> Getting database client...');
     const client = await pool.connect();
+    console.log('>>> Got database client, starting transaction...');
     try {
         await client.query('BEGIN');
+        console.log('>>> Transaction started');
 
         // Check for existing pending invite
         const existingInvite = await client.query(
@@ -56,26 +60,48 @@ const inviteOrganization = async (req, res) => {
         let smsSent = false;
 
         if (email) {
-            await sendEmail({
-                to: email,
-                subject: 'You\'re Invited to Create an Organization',
-                text: `You have been invited to create an organization. Click the link to get started: ${inviteLink}`,
-                html: `
-                    <h2>Organization Invitation</h2>
-                    <p>You have been invited to create an organization on our platform.</p>
-                    <p><a href="${inviteLink}">Click here to accept the invitation</a></p>
-                    <p>This link will expire in 48 hours.</p>
-                `
-            });
-            emailSent = true;
+            try {
+                const emailResult = await sendEmail({
+                    to: email,
+                    subject: 'You\'re Invited to Create an Organization',
+                    text: `You have been invited to create an organization. Click the link to get started: ${inviteLink}`,
+                    html: `
+                        <h2>Organization Invitation</h2>
+                        <p>You have been invited to create an organization on our platform.</p>
+                        <p><a href="${inviteLink}">Click here to accept the invitation</a></p>
+                        <p>This link will expire in 48 hours.</p>
+                    `
+                });
+
+                if (emailResult && emailResult.success) {
+                    emailSent = true;
+                    console.log('Organization invite email sent to:', email);
+                } else {
+                    console.error('Failed to send invite email:', emailResult ? emailResult.error : 'Unknown error');
+                }
+            } catch (emailErr) {
+                console.error('Failed to send invite email:', emailErr.message);
+                // Don't crash - continue with the process
+            }
         }
 
         if (mobile) {
-            await sendSMS({
-                to: mobile,
-                body: `You're invited to create an organization: ${inviteLink} (Expires in 48h)`
-            });
-            smsSent = true;
+            try {
+                const smsResult = await sendSMS({
+                    to: mobile,
+                    body: `You're invited to create an organization: ${inviteLink} (Expires in 48h)`
+                });
+
+                if (smsResult && smsResult.success) {
+                    smsSent = true;
+                    console.log('Organization invite SMS sent to:', mobile);
+                } else {
+                    console.error('Failed to send invite SMS:', smsResult ? smsResult.error : 'Unknown error');
+                }
+            } catch (smsErr) {
+                console.error('Failed to send invite SMS:', smsErr.message);
+                // Don't crash - continue with the process
+            }
         }
 
         await client.query('COMMIT');
@@ -90,10 +116,10 @@ const inviteOrganization = async (req, res) => {
 
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Error sending organization invite:', error);
+        console.error('Error sending organization invite:', error.message, error.stack);
         res.status(500).json({
             error: 'Failed to send organization invite',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            details: error.message
         });
     } finally {
         client.release();
@@ -437,13 +463,13 @@ module.exports = {
 
             const result = await client.query(sql, values);
             await client.query('COMMIT');
-            
+
             // Return organization with generated password for first login
             const responseData = {
                 success: true,
                 organization: result.rows[0]
             };
-            
+
             // Include the default password in response (only shown once during creation)
             if (defaultPassword) {
                 responseData.credentials = {
@@ -452,7 +478,7 @@ module.exports = {
                     note: 'Please save these credentials. Password can be changed after first login.'
                 };
             }
-            
+
             res.status(201).json(responseData);
         } catch (err) {
             await client.query('ROLLBACK');
@@ -718,7 +744,7 @@ module.exports = {
             // Convert validity to integer, default to 30 if not provided
             const validityDays = validity ? parseInt(validity, 10) : 30;
             const planStatus = status || 'Active';
-            
+
             // Ensure limits and pricing are objects
             const limitsObj = limits && typeof limits === 'object' ? limits : {};
             const pricingObj = pricing && typeof pricing === 'object' ? pricing : {};

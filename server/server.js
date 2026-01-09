@@ -11,6 +11,15 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('./db');
 
+// Global error handlers to prevent server crash
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err.message, err.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -231,8 +240,14 @@ app.get('/__table/:tableName', async (req, res) => {
     }
 });
 
-app.listen(port, async () => {
+const server = app.listen(port, async () => {
     console.log(`Server running on port ${port}`);
+
+    // Heartbeat to keep event loop active
+    setInterval(() => {
+        // Just keeping the process alive
+    }, 60000);
+
     // Run schema.sql and migrations on startup
     try {
         const schemaPath = path.join(__dirname, 'schema.sql');
@@ -263,5 +278,13 @@ app.listen(port, async () => {
         }
     } catch (err) {
         console.error('Database initialization error:', err.message || err);
+    }
+});
+
+server.on('error', (err) => {
+    console.error('Server error:', err);
+    if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${port} is already in use. Please kill the process using it.`);
+        process.exit(1);
     }
 });

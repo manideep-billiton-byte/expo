@@ -1,15 +1,24 @@
 const nodemailer = require('nodemailer');
 
-// Email configuration
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
+// Create transporter lazily to avoid startup errors
+let transporter = null;
+
+const getTransporter = () => {
+    if (!transporter && process.env.SMTP_HOST) {
+        transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+            },
+            logger: true,
+            debug: true
+        });
     }
-});
+    return transporter;
+};
 
 // Send email
 const sendEmail = async ({ to, subject, text, html }) => {
@@ -19,23 +28,30 @@ const sendEmail = async ({ to, subject, text, html }) => {
         console.log('Subject:', subject);
         console.log('Text:', text);
         if (html) console.log('HTML content available');
-        return { success: true, message: 'Email would be sent in production' };
+        return { success: true, message: 'Email would be sent in production (SMTP not configured)' };
     }
 
     try {
-        const info = await transporter.sendMail({
+        const transport = getTransporter();
+        if (!transport) {
+            console.error('SMTP transporter not available');
+            return { success: false, error: 'SMTP not configured' };
+        }
+
+        const info = await transport.sendMail({
             from: process.env.SMTP_FROM || 'no-reply@example.com',
             to,
             subject,
             text,
             html
         });
-        
+
         console.log('Email sent:', info.messageId);
         return { success: true, messageId: info.messageId };
     } catch (error) {
-        console.error('Error sending email:', error);
-        throw new Error('Failed to send email');
+        console.error('Error sending email:', error.message);
+        // Return error instead of throwing - prevents server crash
+        return { success: false, error: error.message };
     }
 };
 
@@ -45,7 +61,7 @@ const sendSMS = async ({ to, body }) => {
         // Mock sending in development
         console.log('Mock sending SMS to:', to);
         console.log('Message:', body);
-        return { success: true, message: 'SMS would be sent in production' };
+        return { success: true, message: 'SMS would be sent in production (Twilio not configured)' };
     }
 
     try {
@@ -63,8 +79,9 @@ const sendSMS = async ({ to, body }) => {
         console.log('SMS sent:', message.sid);
         return { success: true, sid: message.sid };
     } catch (error) {
-        console.error('Error sending SMS:', error);
-        throw new Error('Failed to send SMS');
+        console.error('Error sending SMS:', error.message);
+        // Return error instead of throwing - prevents server crash
+        return { success: false, error: error.message };
     }
 };
 

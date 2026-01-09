@@ -17,26 +17,27 @@ const ExhibitorDashboardContent = ({ onNavigate }) => {
     ];
 
     const exhibitorName = localStorage.getItem('exhibitorName') || 'Billiton Service PVT';
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
     return (
         <div style={{ padding: '0px', maxWidth: '1400px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '28px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', marginBottom: '28px', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '16px' : '0' }}>
                 <div>
-                    <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#1e3a8a', margin: 0, letterSpacing: '-0.02em' }}>
+                    <h1 style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 800, color: '#1e3a8a', margin: 0, letterSpacing: '-0.02em' }}>
                         Welcome Back , {exhibitorName}
                     </h1>
                     <p style={{ fontSize: '13px', color: '#64748b', marginTop: '6px' }}>
                         Welcome back! Here's an overview of your expo management.
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <div style={{ background: 'rgba(37, 99, 235, 0.08)', padding: '8px 16px', borderRadius: '12px', color: '#2563eb', fontWeight: 600, fontSize: '14px' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
+                    <div className={isMobile ? 'hide-mobile' : ''} style={{ background: 'rgba(37, 99, 235, 0.08)', padding: '8px 16px', borderRadius: '12px', color: '#2563eb', fontWeight: 600, fontSize: '14px' }}>
                         Good Morning {exhibitorName.split(' ')[0]}....!
                     </div>
-                    <button onClick={() => onNavigate('scanner')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+                    <button onClick={() => onNavigate('scanner')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: '#475569', cursor: 'pointer', flex: isMobile ? '1' : 'none' }}>
                         Export
                     </button>
-                    <button onClick={() => onNavigate('scanner')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#2563eb', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: 'white', cursor: 'pointer' }}>
+                    <button onClick={() => onNavigate('scanner')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#2563eb', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: 'white', cursor: 'pointer', flex: isMobile ? '1' : 'none' }}>
                         <QrCode size={16} />
                         Scan Badge
                     </button>
@@ -44,50 +45,50 @@ const ExhibitorDashboardContent = ({ onNavigate }) => {
             </div>
 
             {/* Live Status Card */}
-            <div style={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '16px', padding: '24px', color: 'white', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '16px', padding: isMobile ? '20px' : '24px', color: 'white', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '16px' : '0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '12px' }}>
                         <Activity size={24} />
                     </div>
                     <div>
                         <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Live at Stall A-15</div>
-                        <div style={{ fontSize: '24px', fontWeight: 700 }}>23 visitors right now</div>
+                        <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: 700 }}>23 visitors right now</div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div style={{ background: 'rgba(255,255,255,0.2)', padding: '6px 12px', borderRadius: '8px', fontSize: '12px' }}>Hall A, Stall 15</div>
                     <div style={{ background: 'rgba(255,255,255,0.2)', padding: '6px 12px', borderRadius: '8px', fontSize: '12px' }}>Peak: 2-4 PM</div>
                 </div>
             </div>
 
             {/* Stats Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+            <div className="stats-grid" style={{ marginBottom: '32px' }}>
                 {[
                     { label: 'Total Visitors Today', value: '387', change: '+18% vs yesterday', icon: Users },
                     { label: 'Leads Captured', value: '56', change: '+24% vs yesterday', icon: TrendingUp },
                     { label: 'Conversion Rate', value: '14.5%', change: '+3.2% vs yesterday', icon: Activity },
                     { label: 'Avg. Engagement', value: '8.5 min', change: '+12% vs yesterday', icon: Clock }
                 ].map((stat, idx) => (
-                    <div key={idx} className="card" style={{ padding: '24px' }}>
+                    <div key={idx} className="card" style={{ padding: isMobile ? '20px' : '24px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                            <stat.icon size={24} color="#2563eb" />
+                            <stat.icon size={isMobile ? 20 : 24} color="#2563eb" />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981', fontSize: '12px', fontWeight: 600 }}>
                                 <TrendingUp size={12} />
-                                {stat.change}
+                                <span className={isMobile ? 'hide-mobile' : ''}>{stat.change}</span>
                             </div>
                         </div>
-                        <div style={{ fontSize: '32px', fontWeight: 800, color: '#1e293b', marginBottom: '4px' }}>{stat.value}</div>
+                        <div style={{ fontSize: isMobile ? '28px' : '32px', fontWeight: 800, color: '#1e293b', marginBottom: '4px' }}>{stat.value}</div>
                         <div style={{ fontSize: '14px', color: '#64748b' }}>{stat.label}</div>
                     </div>
                 ))}
             </div>
 
             {/* Charts and Data Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '24px', marginBottom: '32px' }}>
                 {/* Visitor Traffic Chart */}
-                <div className="card" style={{ padding: '24px' }}>
+                <div className="card" style={{ padding: isMobile ? '20px' : '24px' }}>
                     <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', marginBottom: '24px' }}>Today's Visitor Traffic</h3>
-                    <div style={{ height: '300px' }}>
+                    <div style={{ height: isMobile ? '250px' : '300px' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={visitorData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -102,7 +103,7 @@ const ExhibitorDashboardContent = ({ onNavigate }) => {
                 </div>
 
                 {/* Lead Capture Goal */}
-                <div className="card" style={{ padding: '24px' }}>
+                <div className="card" style={{ padding: isMobile ? '20px' : '24px' }}>
                     <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', marginBottom: '24px' }}>Lead Capture Goal</h3>
                     <div style={{ marginBottom: '24px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -130,9 +131,9 @@ const ExhibitorDashboardContent = ({ onNavigate }) => {
             </div>
 
             {/* Quick Actions and Recent Content */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: '24px' }}>
                 {/* Quick Actions */}
-                <div className="card" style={{ padding: '24px' }}>
+                <div className="card" style={{ padding: isMobile ? '20px' : '24px' }}>
                     <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', marginBottom: '24px' }}>Quick Actions</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {[
@@ -150,7 +151,7 @@ const ExhibitorDashboardContent = ({ onNavigate }) => {
                 </div>
 
                 {/* Recent Leads */}
-                <div className="card" style={{ padding: '24px' }}>
+                <div className="card" style={{ padding: isMobile ? '20px' : '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                         <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', margin: 0 }}>Recent Leads</h3>
                         <button onClick={() => onNavigate('leads')} style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>View All →</button>
@@ -163,7 +164,7 @@ const ExhibitorDashboardContent = ({ onNavigate }) => {
                             { name: 'Amit Patel', company: 'Wipro Ltd', plan: 'AI/ML', time: '42 mins ago', status: 'offline' },
                             { name: 'Sneha Reddy', company: 'HCL Tech', plan: 'Digital', time: '1 hour ago', status: 'offline' }
                         ].map((lead, idx) => (
-                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#f8fafc', borderRadius: '12px' }}>
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#f8fafc', borderRadius: '12px', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? '12px' : '0' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{ position: 'relative' }}>
                                         <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #2563eb, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '14px' }}>
@@ -183,14 +184,16 @@ const ExhibitorDashboardContent = ({ onNavigate }) => {
                                         </div>
                                         <div style={{ fontSize: '11px', color: '#94a3b8' }}>{lead.time}</div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                        <button style={{ padding: '6px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer' }}>
-                                            <Phone size={14} color="#64748b" />
-                                        </button>
-                                        <button style={{ padding: '6px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer' }}>
-                                            <Mail size={14} color="#64748b" />
-                                        </button>
-                                    </div>
+                                    {!isMobile && (
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                            <button style={{ padding: '6px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer' }}>
+                                                <Phone size={14} color="#64748b" />
+                                            </button>
+                                            <button style={{ padding: '6px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer' }}>
+                                                <Mail size={14} color="#64748b" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

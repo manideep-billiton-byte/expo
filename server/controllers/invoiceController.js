@@ -4,7 +4,14 @@ console.log('Loaded invoiceController');
 
 const getInvoices = async (req, res) => {
     try {
-        const result = await pool.query('SELECT i.*, o.org_name as organization_name FROM invoices i LEFT JOIN organizations o ON o.id = i.organization_id ORDER BY i.created_at DESC');
+        const result = await pool.query(`
+            SELECT 
+                i.*,
+                o.name as organization_name
+            FROM invoices i
+            LEFT JOIN organizations o ON o.id = i.organization_id
+            ORDER BY i.created_at DESC
+        `);
         return res.json(result.rows);
     } catch (dbErr) {
         console.error('Database error in getInvoices:', dbErr);
