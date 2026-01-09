@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Image, TrendingUp, Users, UserCheck, Search, Download, Plus, MoreHorizontal, X, ChevronRight, ChevronDown, Check, Building2, MapPin, CheckCircle2, FileText, Send } from 'lucide-react';
+import { apiFetch } from '../utils/api';
 
 const ExhibitorsManagement = () => {
     const [activeTab, setActiveTab] = useState('All Exhibitors');
@@ -17,6 +18,8 @@ const ExhibitorsManagement = () => {
         contactPerson: '',
         email: '',
         mobile: '',
+        password: '',
+        confirmPassword: '',
         assignedEvent: '',
         stallNumber: '',
         stallCategory: '',
@@ -62,12 +65,7 @@ const ExhibitorsManagement = () => {
     const loadEvents = async () => {
         setEventsLoading(true);
         try {
-            const API_BASE = import.meta.env.VITE_API_BASE || '';
-            const resp = await fetch(`${API_BASE}/api/events`);
-            let data;
-            const txt = await resp.clone().text();
-            try { data = JSON.parse(txt); } catch (e) { data = txt; }
-            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to load events');
+            const data = await apiFetch('/api/events');
             setEvents(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to load events', err);
@@ -80,12 +78,7 @@ const ExhibitorsManagement = () => {
     const loadExhibitors = async () => {
         setExhibitorsLoading(true);
         try {
-            const API_BASE = import.meta.env.VITE_API_BASE || '';
-            const resp = await fetch(`${API_BASE}/api/exhibitors`);
-            let data;
-            const txt = await resp.clone().text();
-            try { data = JSON.parse(txt); } catch (e) { data = txt; }
-            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to load exhibitors');
+            const data = await apiFetch('/api/exhibitors');
 
             const mapped = (Array.isArray(data) ? data : []).map((row) => {
                 const createdDate = row.created_at ? new Date(row.created_at).toLocaleDateString() : '';
@@ -119,6 +112,12 @@ const ExhibitorsManagement = () => {
     }, []);
 
     const handleCreateExhibitor = async () => {
+        // Validate password match
+        if (exhibitorData.password && exhibitorData.password !== exhibitorData.confirmPassword) {
+            alert('Passwords do not match!');
+            return;
+        }
+
         setCreateExhibitorLoading(true);
         try {
             const payload = {
@@ -130,6 +129,7 @@ const ExhibitorsManagement = () => {
                 contactPerson: exhibitorData.contactPerson,
                 email: exhibitorData.email,
                 mobile: exhibitorData.mobile,
+                password: exhibitorData.password || null,
                 eventId: exhibitorData.assignedEvent || null,
                 stallNumber: exhibitorData.stallNumber,
                 stallCategory: exhibitorData.stallCategory,
@@ -138,20 +138,16 @@ const ExhibitorsManagement = () => {
                 communication: exhibitorData.communication
             };
 
-            const API_BASE = import.meta.env.VITE_API_BASE || '';
-            const resp = await fetch(`${API_BASE}/api/exhibitors`, {
+            const data = await apiFetch('/api/exhibitors', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            let data;
-            const txt = await resp.clone().text();
-            try { data = JSON.parse(txt); } catch (e) { data = txt; }
-            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to create exhibitor');
 
             setShowSuccess(true);
             if (data && data.credentials) {
                 alert(`Exhibitor created successfully!\n\nLogin Credentials:\nEmail: ${data.credentials.email}\nPassword: ${data.credentials.password}\n\n${data.credentials.note || ''}`);
+            } else {
+                alert('Exhibitor created successfully!');
             }
             await loadExhibitors();
         } catch (err) {
@@ -564,6 +560,41 @@ const ExhibitorsManagement = () => {
                                                     onChange={e => setExhibitorData({ ...exhibitorData, mobile: e.target.value })}
                                                     style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
                                                 />
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Password *</label>
+                                                    <input
+                                                        type="password"
+                                                        placeholder="Enter password"
+                                                        value={exhibitorData.password}
+                                                        onChange={e => setExhibitorData({ ...exhibitorData, password: e.target.value })}
+                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Confirm Password *</label>
+                                                    <input
+                                                        type="password"
+                                                        placeholder="Confirm password"
+                                                        value={exhibitorData.confirmPassword}
+                                                        onChange={e => setExhibitorData({ ...exhibitorData, confirmPassword: e.target.value })}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '12px 14px',
+                                                            border: exhibitorData.confirmPassword && exhibitorData.password !== exhibitorData.confirmPassword
+                                                                ? '1.5px solid #ef4444'
+                                                                : '1.5px solid #e2e8f0',
+                                                            borderRadius: '10px',
+                                                            fontSize: '14px',
+                                                            outline: 'none'
+                                                        }}
+                                                    />
+                                                    {exhibitorData.confirmPassword && exhibitorData.password !== exhibitorData.confirmPassword && (
+                                                        <span style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>Passwords do not match</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
