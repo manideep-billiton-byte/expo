@@ -1,5 +1,15 @@
-require('dotenv').config();
+// Only load dotenv in development (EB sets env vars directly)
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config();
+}
 const { Pool } = require('pg');
+
+// Debug: log connection info (redacted password)
+if (process.env.DATABASE_URL) {
+    console.log('DB: Using DATABASE_URL connection string');
+} else {
+    console.log('DB: Using individual PG* environment variables');
+}
 
 const sslConfig = process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined;
 

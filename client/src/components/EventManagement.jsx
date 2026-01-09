@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2 } from 'lucide-react';
+import { apiFetch } from '../utils/api';
 
 const EventManagement = () => {
     const [activeTab, setActiveTab] = useState('All Events');
@@ -82,12 +83,11 @@ const EventManagement = () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
-    const API_BASE = import.meta.env.VITE_API_BASE || '';
 
     const loadOrgs = async () => {
         setOrgsLoading(true);
         try {
-            const resp = await fetch(`${API_BASE}/api/organizations`);
+            const resp = await apiFetch('/api/organizations');
             let data;
             const txt = await resp.clone().text();
             try { data = JSON.parse(txt); } catch (e) { data = txt; }
@@ -104,7 +104,7 @@ const EventManagement = () => {
     const loadEvents = async () => {
         setEventsLoading(true);
         try {
-            const resp = await fetch(`${API_BASE}/api/events`);
+            const resp = await apiFetch('/api/events');
             let data;
             const txt = await resp.clone().text();
             try { data = JSON.parse(txt); } catch (e) { data = txt; }
@@ -165,8 +165,7 @@ const EventManagement = () => {
                 communication: eventData.communication
             };
 
-            const API_BASE = import.meta.env.VITE_API_BASE || '';
-            const resp = await fetch(`${API_BASE}/api/events`, {
+            const resp = await apiFetch('/api/events', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
