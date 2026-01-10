@@ -21,9 +21,35 @@ export const getApiUrl = (endpoint) => {
 
 /**
  * Wrapper for fetch with API URL handling
+ * Automatically handles JSON requests and responses
  */
-export const apiFetch = (endpoint, options = {}) => {
-    return fetch(getApiUrl(endpoint), options);
+export const apiFetch = async (endpoint, options = {}) => {
+    // Add default headers for JSON requests
+    const headers = {
+        ...options.headers,
+    };
+
+    // If there's a body and no Content-Type is set, add JSON Content-Type
+    if (options.body && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    const response = await fetch(getApiUrl(endpoint), {
+        ...options,
+        headers,
+    });
+
+    // Parse JSON response
+    const data = await response.json();
+
+    // If response is not ok, throw an error with the response data
+    if (!response.ok) {
+        const error = new Error(data.error || data.message || 'API request failed');
+        error.data = data;
+        throw error;
+    }
+
+    return data;
 };
 
 export default { getApiUrl, apiFetch };
