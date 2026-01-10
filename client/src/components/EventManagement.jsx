@@ -212,7 +212,13 @@ const EventManagement = () => {
             }
 
             setShowSuccess(true);
-            await loadEvents();
+
+            // Refresh events list in background - don't let this failure affect success flow
+            try {
+                await loadEvents();
+            } catch (loadErr) {
+                console.warn('Failed to refresh events list:', loadErr);
+            }
         } catch (err) {
             console.error('Create event failed', err);
             alert('Failed to create event: ' + (err.message || err));
