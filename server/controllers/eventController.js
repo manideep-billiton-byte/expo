@@ -47,16 +47,17 @@ const createEvent = async (req, res) => {
             payload.country || null,
             payload.startDate || payload.start_date || null,
             payload.endDate || payload.end_date || null,
-            payload.registration || {},
-            payload.leadCapture || payload.lead_capture || {},
-            payload.communication || {},
+            // JSONB columns - need JSON.stringify
+            JSON.stringify(payload.registration || {}),
+            JSON.stringify(payload.leadCapture || payload.lead_capture || {}),
+            JSON.stringify(payload.communication || {}),
             token,
             registration_link,
             payload.status || 'Draft',
             // New stall configuration fields
             payload.enableStalls || payload.enable_stalls || false,
-            payload.stallConfig || payload.stall_config || {},
-            payload.stallTypes || payload.stall_types || [],
+            JSON.stringify(payload.stallConfig || payload.stall_config || {}),
+            JSON.stringify(payload.stallTypes || payload.stall_types || []),
             payload.groundLayoutUrl || payload.ground_layout_url || null
         ];
 

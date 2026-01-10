@@ -191,9 +191,12 @@ const EventManagement = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
+            console.log('Event creation response status:', resp.status, resp.ok);
             let data;
             const bodyTxt = await resp.clone().text();
+            console.log('Event creation response body:', bodyTxt);
             try { data = JSON.parse(bodyTxt); } catch (e) { data = bodyTxt; }
+            console.log('Event creation parsed data:', data);
             if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to create event');
 
             setCreatedEvent(data);
