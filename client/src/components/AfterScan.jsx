@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, User, Mail, Phone, Building2, MapPin, Briefcase, Star, Calendar, FileText, ArrowLeft } from 'lucide-react';
 
-const AfterScan = ({ scannedData, onClose, onSave }) => {
+const AfterScan = ({ scannedData, scanType = 'QR_SCAN', onClose, onSave }) => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -82,6 +82,10 @@ const AfterScan = ({ scannedData, onClose, onSave }) => {
             const eventId = localStorage.getItem('eventId');
             const organizationId = localStorage.getItem('organizationId');
 
+            // Note: Scan data is already saved to exhibitor_scanned_visitors immediately when scan happens
+            // This form now only saves to the leads table with any additional details user fills in
+
+            // Save to leads table
             const leadData = {
                 exhibitorId: exhibitorId ? parseInt(exhibitorId) : null,
                 eventId: eventId ? parseInt(eventId) : null,
@@ -98,7 +102,7 @@ const AfterScan = ({ scannedData, onClose, onSave }) => {
                 notes: formData.notes || null,
                 rating: formData.rating || null,
                 followUpDate: formData.followUpDate || null,
-                source: 'QR Scan',
+                source: scanType === 'OCR' ? 'OCR Scan' : 'QR Scan',
                 status: 'New'
             };
 

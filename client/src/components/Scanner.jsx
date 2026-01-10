@@ -8,6 +8,7 @@ const Scanner = ({ onBack }) => {
     const [isScanning, setIsScanning] = useState(false);
     const [scannedData, setScannedData] = useState(null);
     const [showAfterScan, setShowAfterScan] = useState(false);
+    const [currentScanType, setCurrentScanType] = useState('QR_SCAN'); // 'QR_SCAN' or 'OCR'
     const [recentScans, setRecentScans] = useState([]);
     const [cameraError, setCameraError] = useState(null);
     const [showTypeCodeModal, setShowTypeCodeModal] = useState(false); // For manual code entry
@@ -239,6 +240,9 @@ const Scanner = ({ onBack }) => {
                         };
 
                         setScannedData(visitorData);
+                        setCurrentScanType('QR_SCAN');
+                        // Save immediately to database
+                        saveScannedVisitorImmediately(visitorData, 'QR_SCAN');
                         setShowAfterScan(true);
                         return;
                     } else {
@@ -267,6 +271,9 @@ const Scanner = ({ onBack }) => {
             // Check if it's a visitor QR code
             if (visitorData.name || visitorData.email) {
                 setScannedData(visitorData);
+                setCurrentScanType('QR_SCAN');
+                // Save immediately to database
+                saveScannedVisitorImmediately(visitorData, 'QR_SCAN');
                 setShowAfterScan(true);
                 return;
             }
@@ -275,13 +282,18 @@ const Scanner = ({ onBack }) => {
         }
 
         // Regular lead scan - show AfterScan form
+        const parsedScannedData = typeof decodedText === 'string' ? { rawData: decodedText } : decodedText;
         setScannedData(decodedText);
+        setCurrentScanType('QR_SCAN');
+        // Save immediately to database  
+        saveScannedVisitorImmediately(parsedScannedData, 'QR_SCAN');
         setShowAfterScan(true);
     };
 
     const handleAfterScanClose = () => {
         setShowAfterScan(false);
         setScannedData(null);
+        setCurrentScanType('QR_SCAN'); // Reset to default
         // Reload recent scans to show newly added lead
         loadRecentScans();
     };
@@ -289,6 +301,50 @@ const Scanner = ({ onBack }) => {
     const handleLeadSaved = (lead) => {
         // Add to recent scans
         setRecentScans(prev => [lead, ...prev.slice(0, 7)]);
+    };
+
+    // Save scanned visitor data immediately to database
+    const saveScannedVisitorImmediately = async (visitorData, scanType, ocrText = null) => {
+        try {
+            const exhibitorId = localStorage.getItem('exhibitorId');
+            const eventId = localStorage.getItem('eventId');
+
+            const payload = {
+                exhibitorId: exhibitorId ? parseInt(exhibitorId) : null,
+                eventId: eventId ? parseInt(eventId) : null,
+                visitorId: visitorData?.visitorId || null,
+                scanType: scanType, // 'QR_SCAN' or 'OCR'
+                visitorName: visitorData?.name || visitorData?.fullName || null,
+                visitorEmail: visitorData?.email || null,
+                visitorPhone: visitorData?.phone || visitorData?.mobile || null,
+                visitorCompany: visitorData?.company || visitorData?.organization || null,
+                visitorDesignation: visitorData?.designation || null,
+                visitorUniqueCode: visitorData?.uniqueCode || null,
+                ocrRawText: ocrText || null,
+                notes: null,
+                interestLevel: null
+            };
+
+            console.log(`📝 Saving ${scanType} scan immediately:`, payload);
+
+            const response = await fetch('/api/scanned-visitors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                console.log(`✅ ${scanType} scan saved successfully to exhibitor_scanned_visitors`);
+            } else {
+                console.error(`❌ Failed to save ${scanType} scan:`, result);
+            }
+        } catch (error) {
+            console.error('Error saving scanned visitor immediately:', error);
+        }
     };
 
     // Handle manual code entry
@@ -543,6 +599,9 @@ const Scanner = ({ onBack }) => {
             }
 
             setScannedData(parsedData);
+            setCurrentScanType('OCR');
+            // Save immediately to database with raw OCR text
+            saveScannedVisitorImmediately(parsedData, 'OCR', text);
             setShowAfterScan(true);
 
         } catch (err) {
@@ -804,14 +863,15 @@ const Scanner = ({ onBack }) => {
                                     )}
                                 </div>
                             )}
-                            {isScanning && (
-                                <video
-                                    ref={videoRef}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                    autoPlay
-                                    playsInline
-                                />
-                            )}
+                            {/* QR Reader Container - Html5Qrcode will render the camera here */}
+                            <div
+                                id="qr-reader"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    display: isScanning ? 'block' : 'none'
+                                }}
+                            ></div>
                             {isScanning && (
                                 <div style={{
                                     position: 'absolute',
@@ -1122,6 +1182,7 @@ const Scanner = ({ onBack }) => {
                         // Regular Lead Scan - Show AfterScan Form
                         <AfterScan
                             scannedData={scannedData}
+                            scanType={currentScanType}
                             onClose={handleAfterScanClose}
                             onSave={handleLeadSaved}
                         />

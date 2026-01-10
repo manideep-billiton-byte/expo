@@ -6,6 +6,7 @@ const exhibitorController = require('./controllers/exhibitorController');
 const visitorController = require('./controllers/visitorController');
 const invoiceController = require('./controllers/invoiceController');
 const leadController = require('./controllers/leadController');
+const scannedVisitorsController = require('./controllers/scannedVisitorsController');
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -174,6 +175,13 @@ app.get('/api/leads', leadController.getLeads);
 app.post('/api/leads', leadController.createLead);
 app.put('/api/leads/:id', leadController.updateLead);
 app.delete('/api/leads/:id', leadController.deleteLead);
+
+// Scanned Visitors (QR and OCR scans)
+app.post('/api/scanned-visitors', scannedVisitorsController.saveScannedVisitor);
+app.get('/api/scanned-visitors', scannedVisitorsController.getScannedVisitors);
+app.get('/api/scanned-visitors/stats', scannedVisitorsController.getScanStats);
+app.put('/api/scanned-visitors/:id', scannedVisitorsController.updateScannedVisitor);
+app.delete('/api/scanned-visitors/:id', scannedVisitorsController.deleteScannedVisitor);
 
 // GSTIN Verification
 const gstService = require('./services/gstService');

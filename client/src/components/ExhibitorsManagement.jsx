@@ -78,7 +78,8 @@ const ExhibitorsManagement = () => {
     const loadExhibitors = async () => {
         setExhibitorsLoading(true);
         try {
-            const data = await apiFetch('/api/exhibitors');
+            const resp = await apiFetch('/api/exhibitors');
+            const data = await resp.json();
 
             const mapped = (Array.isArray(data) ? data : []).map((row) => {
                 const createdDate = row.created_at ? new Date(row.created_at).toLocaleDateString() : '';
@@ -138,10 +139,11 @@ const ExhibitorsManagement = () => {
                 communication: exhibitorData.communication
             };
 
-            const data = await apiFetch('/api/exhibitors', {
+            const resp = await apiFetch('/api/exhibitors', {
                 method: 'POST',
                 body: JSON.stringify(payload)
             });
+            const data = await resp.json();
 
             setShowSuccess(true);
             if (data && data.credentials) {
