@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { Check, User, Mail, Smartphone, Building2, MapPin, ChevronRight, CheckCircle2, Download } from 'lucide-react';
+import { apiFetch } from '../utils/api';
 
 const PublicVisitorRegistration = () => {
-    const API_BASE = import.meta.env.VITE_API_BASE || '';
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [generatedQR, setGeneratedQR] = useState('');
@@ -55,7 +55,7 @@ const PublicVisitorRegistration = () => {
                 }
             };
 
-            const resp = await fetch(`${API_BASE}/api/visitors`, {
+            const resp = await apiFetch('/api/visitors', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

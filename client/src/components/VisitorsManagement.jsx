@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Eye, User, Info, Search, Download, MoreHorizontal, Plus, X, Check, ChevronRight, Mail, MessageSquare, Send, Smartphone, Calendar, MapPin, Building2, Download as DownloadIcon, Share2, Copy } from 'lucide-react';
+import { apiFetch } from '../utils/api';
 
 const VisitorsManagement = () => {
-    const API_BASE = import.meta.env.VITE_API_BASE || '';
     const [activeTab, setActiveTab] = useState('All Visitors');
     const [searchQuery, setSearchQuery] = useState('');
     const [entriesPerPage, setEntriesPerPage] = useState(10);
@@ -72,7 +72,7 @@ const VisitorsManagement = () => {
     const loadEvents = async () => {
         setEventsLoading(true);
         try {
-            const resp = await fetch(`${API_BASE}/api/events`);
+            const resp = await apiFetch('/api/events');
             let data;
             const txt = await resp.clone().text();
             try { data = JSON.parse(txt); } catch (e) { data = txt; }
@@ -89,7 +89,7 @@ const VisitorsManagement = () => {
     const loadVisitors = async () => {
         setVisitorsLoading(true);
         try {
-            const resp = await fetch(`${API_BASE}/api/visitors`);
+            const resp = await apiFetch('/api/visitors');
             let data;
             const txt = await resp.clone().text();
             try { data = JSON.parse(txt); } catch (e) { data = txt; }
@@ -145,7 +145,7 @@ const VisitorsManagement = () => {
                 communication: visitorData.communication
             };
 
-            const resp = await fetch(`${API_BASE}/api/visitors`, {
+            const resp = await apiFetch('/api/visitors', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

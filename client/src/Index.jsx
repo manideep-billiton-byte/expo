@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { apiFetch } from './utils/api';
 import Layout from './components/Layout';
 import StatsCard from './components/StatsCard';
 import EventManagement from './components/EventManagement';
@@ -58,10 +59,10 @@ const Index = ({ onLogout, userType = 'master' }) => {
             };
 
             const [orgsResp, eventsResp, exhibitorsResp, visitorsResp] = await Promise.all([
-                fetch('/api/organizations'),
-                fetch('/api/events'),
-                fetch('/api/exhibitors'),
-                fetch('/api/visitors')
+                apiFetch('/api/organizations'),
+                apiFetch('/api/events'),
+                apiFetch('/api/exhibitors'),
+                apiFetch('/api/visitors')
             ]);
 
             const [orgsData, eventsData, exhibitorsData, visitorsData] = await Promise.all([
