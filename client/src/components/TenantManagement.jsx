@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Search, Download, Plus, MoreHorizontal, X, UserPlus, Users, ArrowLeft } from 'lucide-react';
 import { verifyGSTINViaAPI, validateGSTINFormat } from '../utils/gstinValidator';
+import { apiFetch } from '../utils/api';
 
 const TenantManagement = () => {
     const [activeTab, setActiveTab] = useState('All Organizations');
@@ -15,7 +16,7 @@ const TenantManagement = () => {
         setOrganizationsLoading(true);
         setOrganizationsError('');
         try {
-            const resp = await fetch('/api/organizations');
+            const resp = await apiFetch('/api/organizations');
             let data;
             const txt = await resp.clone().text();
             try { data = JSON.parse(txt); } catch (e) { data = txt; }
@@ -73,7 +74,7 @@ const TenantManagement = () => {
         if (!couponCode) return;
         setVerifyLoading(true);
         try {
-            const res = await fetch('/api/verify-coupon', {
+            const res = await apiFetch('/api/verify-coupon', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code: couponCode })
@@ -268,7 +269,7 @@ const TenantManagement = () => {
         }
 
         try {
-            const res = await fetch('/api/send-invite', {
+            const res = await apiFetch('/api/send-invite', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -341,7 +342,7 @@ const TenantManagement = () => {
                 plan: wizardData.plan || 'Free'
             };
 
-            const response = await fetch('/api/create-organization', {
+            const response = await apiFetch('/api/create-organization', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
