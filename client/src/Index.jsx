@@ -12,6 +12,7 @@ import LeadManagement from './components/LeadManagement';
 import Scanner from './components/Scanner';
 import ExhibitorAnalytics from './components/ExhibitorAnalytics';
 import ExhibitorEventManagement from './components/ExhibitorEventManagement';
+import ScanPrint from './components/ScanPrint';
 import {
     Building2, Calendar, Image as ImageIcon, Users,
     MapPin, MousePointer2, IndianRupee, UserCheck,
@@ -135,6 +136,8 @@ const Index = ({ onLogout, userType = 'master' }) => {
                 return <VisitorsManagement />;
             case 'billing':
                 return <BillingManagement />;
+            case 'scan-print':
+                return <ScanPrint />;
             default:
                 const isOrganization = userType === 'organization';
                 const activeTenantsCount = dashboardOrgs.length;

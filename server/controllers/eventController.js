@@ -26,8 +26,9 @@ const createEvent = async (req, res) => {
                 name, event_name, description, event_type, event_mode, industry,
                 organizer_name, contact_person, organizer_email, organizer_mobile,
                 venue, city, state, country, start_date, end_date,
-                registration, lead_capture, communication, qr_token, registration_link, status
-            ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING *`;
+                registration, lead_capture, communication, qr_token, registration_link, status,
+                enable_stalls, stall_config, stall_types, ground_layout_url
+            ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING *`;
 
         const values = [
             eventName, // for legacy 'name' column (NOT NULL)
@@ -51,7 +52,12 @@ const createEvent = async (req, res) => {
             payload.communication || {},
             token,
             registration_link,
-            payload.status || 'Draft'
+            payload.status || 'Draft',
+            // New stall configuration fields
+            payload.enableStalls || payload.enable_stalls || false,
+            payload.stallConfig || payload.stall_config || {},
+            payload.stallTypes || payload.stall_types || [],
+            payload.groundLayoutUrl || payload.ground_layout_url || null
         ];
 
         const result = await pool.query(insertSql, values);

@@ -3,7 +3,7 @@ import {
     Search, Bell, Settings as SettingsIcon, ChevronDown,
     ChevronUp, Building2, Users, Calendar, Image, Eye,
     CreditCard, MessageSquare, Receipt, Cpu, LineChart,
-    ShieldCheck, UserCheck, LifeBuoy, LogOut
+    ShieldCheck, UserCheck, LifeBuoy, LogOut, Printer
 } from 'lucide-react';
 
 const NavItem = ({ icon: Icon, label, active = false, onClick }) => (
@@ -41,12 +41,10 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
         { icon: Eye, label: 'Visitors', screen: 'visitors' },
         { icon: CreditCard, label: 'Billing', screen: 'billing' },
         { icon: MessageSquare, label: 'Communication', screen: 'communication' },
-        { icon: Receipt, label: 'GST', screen: 'gst' },
         { icon: LineChart, label: 'Analytics', screen: 'analytics' },
         { icon: ShieldCheck, label: 'Compliance', screen: 'compliance' },
-        { icon: SettingsIcon, label: 'System Config', screen: 'config' },
-        { icon: UserCheck, label: 'Access Control', screen: 'rbac' },
         { icon: LifeBuoy, label: 'Support', screen: 'support' },
+        { icon: Printer, label: 'Scan & Print', screen: 'scan-print' },
     ];
 
     // Organization navigation items (limited)
@@ -57,6 +55,7 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
         { icon: Image, label: 'Exhibitors', screen: 'exhibitors' },
         { icon: Eye, label: 'Visitors', screen: 'visitors' },
         { icon: CreditCard, label: 'Billing', screen: 'billing' },
+        { icon: Printer, label: 'Scan & Print', screen: 'scan-print' },
     ];
 
     // Exhibitor navigation items

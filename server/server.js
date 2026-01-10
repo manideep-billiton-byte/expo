@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
 const organizationController = require('./controllers/organizationController');
 const eventController = require('./controllers/eventController');
 const exhibitorController = require('./controllers/exhibitorController');
@@ -7,10 +8,38 @@ const visitorController = require('./controllers/visitorController');
 const invoiceController = require('./controllers/invoiceController');
 const leadController = require('./controllers/leadController');
 const scannedVisitorsController = require('./controllers/scannedVisitorsController');
+const uploadController = require('./controllers/uploadController');
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const pool = require('./db');
+
+// Configure multer for file uploads
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadsDir),
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, 'ground-layout-' + uniqueSuffix + ext);
+    }
+});
+const uploadMulter = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+    fileFilter: (req, file, cb) => {
+        const allowed = ['.jpg', '.jpeg', '.png', '.pdf'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (allowed.includes(ext)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only JPG, PNG, PDF allowed.'));
+        }
+    }
+});
 
 // Global error handlers to prevent server crash
 process.on('uncaughtException', (err) => {
@@ -26,6 +55,9 @@ const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Mock Data (will be replaced by DB queries)
 const dashboardData = {
@@ -182,6 +214,9 @@ app.get('/api/scanned-visitors', scannedVisitorsController.getScannedVisitors);
 app.get('/api/scanned-visitors/stats', scannedVisitorsController.getScanStats);
 app.put('/api/scanned-visitors/:id', scannedVisitorsController.updateScannedVisitor);
 app.delete('/api/scanned-visitors/:id', scannedVisitorsController.deleteScannedVisitor);
+
+// File Uploads
+app.post('/api/upload/ground-layout', uploadMulter.single('file'), uploadController.uploadGroundLayout);
 
 // GSTIN Verification
 const gstService = require('./services/gstService');

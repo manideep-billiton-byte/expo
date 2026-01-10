@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2 } from 'lucide-react';
+import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2, Upload } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 
 const EventManagement = () => {
@@ -32,6 +32,21 @@ const EventManagement = () => {
         contactPerson: '',
         organizerEmail: '',
         organizerMobile: '',
+        // Stall Configuration
+        enableStalls: false,
+        stallConfig: {
+            totalStalls: 100,
+            rows: 10,
+            columns: 10,
+            stallPrefix: 'S'
+        },
+        stallTypes: [
+            { id: 1, name: 'Basic', color: '#3b82f6', startNumber: 1, endNumber: 40, price: 25000 },
+            { id: 2, name: 'Standard', color: '#10b981', startNumber: 41, endNumber: 70, price: 50000 },
+            { id: 3, name: 'Premium', color: '#8b5cf6', startNumber: 71, endNumber: 90, price: 85000 },
+            { id: 4, name: 'Corner', color: '#f97316', startNumber: 91, endNumber: 100, price: 25000 }
+        ],
+        groundLayoutUrl: null,
         registration: {
             enableVisitor: true,
             approvalRequired: false,
@@ -160,6 +175,12 @@ const EventManagement = () => {
                 contactPerson: eventData.contactPerson,
                 organizerEmail: eventData.organizerEmail,
                 organizerMobile: eventData.organizerMobile,
+                // Stall Configuration
+                enableStalls: eventData.enableStalls,
+                stallConfig: eventData.stallConfig,
+                stallTypes: eventData.stallTypes,
+                groundLayoutUrl: eventData.groundLayoutUrl,
+                // Original fields
                 registration: eventData.registration,
                 leadCapture: eventData.leadCapture,
                 communication: eventData.communication
@@ -562,8 +583,8 @@ const EventManagement = () => {
                                 </div>
 
                                 {/* Tabs Navigation */}
-                                <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', marginBottom: '40px' }}>
-                                    {['Basic Info', 'Organizer', 'Registration', 'Lead Capture', 'Communication'].map((tabName, idx) => {
+                                <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', marginBottom: '40px', overflowX: 'auto' }}>
+                                    {['Basic Info', 'Stall Config', 'Ground Layout', 'Organizer', 'Registration', 'Lead Capture', 'Communication'].map((tabName, idx) => {
                                         const stepNum = idx + 1;
                                         const isActive = modalStep === stepNum;
                                         const isCompleted = modalStep > stepNum;
@@ -742,8 +763,239 @@ const EventManagement = () => {
                                     </div>
                                 )}
 
-                                {/* Step 2: Organizer */}
+                                {/* Step 2: Stall Config */}
                                 {modalStep === 2 && (
+                                    <div style={{ textAlign: 'left' }}>
+                                        {/* Enable Exhibition Stalls Toggle */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#f8fafc', borderRadius: '12px', marginBottom: '24px' }}>
+                                            <div>
+                                                <div style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Enable Exhibition Stalls</div>
+                                                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>Allow exhibitors to book stalls for this event</div>
+                                            </div>
+                                            <button
+                                                onClick={() => setEventData({ ...eventData, enableStalls: !eventData.enableStalls })}
+                                                style={{
+                                                    width: '52px', height: '28px', borderRadius: '14px', border: 'none', cursor: 'pointer',
+                                                    background: eventData.enableStalls ? '#2563eb' : '#e2e8f0',
+                                                    position: 'relative', transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <div style={{
+                                                    width: '22px', height: '22px', borderRadius: '50%', background: 'white',
+                                                    position: 'absolute', top: '3px', left: eventData.enableStalls ? '27px' : '3px',
+                                                    transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                                                }} />
+                                            </button>
+                                        </div>
+
+                                        {eventData.enableStalls && (
+                                            <>
+                                                {/* Stall Range Configuration */}
+                                                <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                                                        <Building2 size={18} color="#2563eb" />
+                                                        <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Stall Range Configuration</span>
+                                                    </div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                                                        <div>
+                                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#64748b', marginBottom: '6px' }}>Total Stalls</label>
+                                                            <div style={{ padding: '14px', background: '#eff6ff', borderRadius: '10px', textAlign: 'center' }}>
+                                                                <div style={{ fontSize: '24px', fontWeight: 700, color: '#2563eb' }}>
+                                                                    {eventData.stallConfig.rows * eventData.stallConfig.columns}
+                                                                </div>
+                                                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>Auto-calculated</div>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#64748b', marginBottom: '6px' }}>Rows</label>
+                                                            <input
+                                                                type="number"
+                                                                value={eventData.stallConfig.rows}
+                                                                onChange={e => setEventData({
+                                                                    ...eventData,
+                                                                    stallConfig: { ...eventData.stallConfig, rows: parseInt(e.target.value) || 0 }
+                                                                })}
+                                                                style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#64748b', marginBottom: '6px' }}>Columns</label>
+                                                            <input
+                                                                type="number"
+                                                                value={eventData.stallConfig.columns}
+                                                                onChange={e => setEventData({
+                                                                    ...eventData,
+                                                                    stallConfig: { ...eventData.stallConfig, columns: parseInt(e.target.value) || 0 }
+                                                                })}
+                                                                style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#64748b', marginBottom: '6px' }}>Stall Prefix</label>
+                                                        <input
+                                                            type="text"
+                                                            value={eventData.stallConfig.stallPrefix}
+                                                            onChange={e => setEventData({
+                                                                ...eventData,
+                                                                stallConfig: { ...eventData.stallConfig, stallPrefix: e.target.value }
+                                                            })}
+                                                            style={{ width: '120px', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                        />
+                                                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                                                            Stalls will be numbered as {eventData.stallConfig.stallPrefix}-001, {eventData.stallConfig.stallPrefix}-002, etc.
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Stall Types & Pricing */}
+                                                <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                                                        <Building2 size={18} color="#2563eb" />
+                                                        <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Stall Types & Pricing</span>
+                                                    </div>
+                                                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
+                                                        Configure each stall type with quantity, number range, price, and color
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                        {eventData.stallTypes.map((type, idx) => (
+                                                            <div key={type.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#f8fafc', borderRadius: '10px' }}>
+                                                                <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: type.color }} />
+                                                                <div style={{ flex: 1 }}>
+                                                                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>{type.name}</div>
+                                                                    <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                                                        {type.endNumber - type.startNumber + 1} stalls (#{type.startNumber} - #{type.endNumber}) • ₹{type.price.toLocaleString()}
+                                                                    </div>
+                                                                </div>
+                                                                <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                                                    <Eye size={18} color="#64748b" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            const newId = Math.max(...eventData.stallTypes.map(t => t.id)) + 1;
+                                                            const lastEnd = Math.max(...eventData.stallTypes.map(t => t.endNumber));
+                                                            setEventData({
+                                                                ...eventData,
+                                                                stallTypes: [...eventData.stallTypes, {
+                                                                    id: newId, name: 'Custom', color: '#94a3b8',
+                                                                    startNumber: lastEnd + 1, endNumber: lastEnd + 10, price: 30000
+                                                                }]
+                                                            });
+                                                        }}
+                                                        style={{
+                                                            width: '100%', marginTop: '16px', padding: '12px', border: '2px dashed #cbd5e1',
+                                                            borderRadius: '10px', background: 'transparent', color: '#64748b',
+                                                            fontWeight: 600, fontSize: '14px', cursor: 'pointer', display: 'flex',
+                                                            alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                                        }}
+                                                    >
+                                                        <Plus size={16} /> Add Custom Stall Type
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Step 3: Ground Layout */}
+                                {modalStep === 3 && (
+                                    <div style={{ textAlign: 'left' }}>
+                                        <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '24px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                                <ImageIcon size={18} color="#2563eb" />
+                                                <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Event Ground Architecture</span>
+                                            </div>
+                                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '24px', lineHeight: 1.5 }}>
+                                                Upload the floor plan or ground architecture map of the event venue. This will be visible to exhibitors when selecting stalls.
+                                            </p>
+
+                                            {/* Upload Area */}
+                                            <div
+                                                style={{
+                                                    border: '2px dashed #cbd5e1', borderRadius: '12px', padding: '48px',
+                                                    textAlign: 'center', background: '#f8fafc', cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onClick={() => document.getElementById('groundLayoutInput').click()}
+                                                onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#2563eb'; }}
+                                                onDragLeave={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                                                onDrop={async (e) => {
+                                                    e.preventDefault();
+                                                    e.currentTarget.style.borderColor = '#cbd5e1';
+                                                    const file = e.dataTransfer.files[0];
+                                                    if (file) {
+                                                        const formData = new FormData();
+                                                        formData.append('file', file);
+                                                        try {
+                                                            const resp = await fetch('/api/upload/ground-layout', { method: 'POST', body: formData });
+                                                            const data = await resp.json();
+                                                            if (data.success) {
+                                                                setEventData({ ...eventData, groundLayoutUrl: data.url });
+                                                            }
+                                                        } catch (err) { console.error('Upload failed:', err); }
+                                                    }
+                                                }}
+                                            >
+                                                <input
+                                                    type="file"
+                                                    id="groundLayoutInput"
+                                                    accept=".jpg,.jpeg,.png,.pdf"
+                                                    style={{ display: 'none' }}
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            const formData = new FormData();
+                                                            formData.append('file', file);
+                                                            try {
+                                                                const resp = await fetch('/api/upload/ground-layout', { method: 'POST', body: formData });
+                                                                const data = await resp.json();
+                                                                if (data.success) {
+                                                                    setEventData({ ...eventData, groundLayoutUrl: data.url });
+                                                                }
+                                                            } catch (err) { console.error('Upload failed:', err); }
+                                                        }
+                                                    }}
+                                                />
+                                                {eventData.groundLayoutUrl ? (
+                                                    <div>
+                                                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
+                                                        <div style={{ fontWeight: 600, color: '#10b981', marginBottom: '8px' }}>File Uploaded</div>
+                                                        <div style={{ fontSize: '13px', color: '#64748b' }}>{eventData.groundLayoutUrl}</div>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setEventData({ ...eventData, groundLayoutUrl: null }); }}
+                                                            style={{ marginTop: '12px', padding: '8px 16px', border: '1px solid #e2e8f0', borderRadius: '8px', background: 'white', color: '#64748b', fontSize: '13px', cursor: 'pointer' }}
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div style={{ marginBottom: '16px' }}>
+                                                            <Upload size={48} color="#94a3b8" />
+                                                        </div>
+                                                        <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Upload Ground Layout</div>
+                                                        <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
+                                                            Drag & drop or click to upload floor plan, stall map, or venue architecture
+                                                        </div>
+                                                        <div style={{ fontSize: '12px', color: '#94a3b8' }}>Supported formats: JPG, PNG, PDF (Max 10MB)</div>
+                                                        <button
+                                                            style={{ marginTop: '16px', padding: '10px 20px', border: '1px solid #e2e8f0', borderRadius: '8px', background: 'white', color: '#475569', fontWeight: 600, fontSize: '14px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                                                            onClick={(e) => { e.stopPropagation(); document.getElementById('groundLayoutInput').click(); }}
+                                                        >
+                                                            <Download size={16} /> Select File
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Step 4: Organizer */}
+                                {modalStep === 4 && (
                                     <div style={{ textAlign: 'left' }}>
                                         <div style={{ marginBottom: '20px' }}>
                                             <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Organizer Name *</label>
@@ -793,8 +1045,8 @@ const EventManagement = () => {
                                 )}
 
 
-                                {/* Step 3: Registration */}
-                                {modalStep === 3 && (
+                                {/* Step 5: Registration */}
+                                {modalStep === 5 && (
                                     <div style={{ textAlign: 'left' }}>
                                         <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
                                             <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '20px' }}>Visitor Registration Settings</h4>
@@ -925,8 +1177,8 @@ const EventManagement = () => {
                                     </div>
                                 )}
 
-                                {/* Step 4: Lead Capture */}
-                                {modalStep === 4 && (
+                                {/* Step 6: Lead Capture */}
+                                {modalStep === 6 && (
                                     <div style={{ textAlign: 'left' }}>
                                         <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '24px' }}>
                                             <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '20px' }}>Lead Capture Settings</h4>
@@ -965,8 +1217,8 @@ const EventManagement = () => {
                                     </div>
                                 )}
 
-                                {/* Step 5: Communication */}
-                                {modalStep === 5 && (
+                                {/* Step 7: Communication */}
+                                {modalStep === 7 && (
                                     <div style={{ textAlign: 'left' }}>
                                         <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
                                             <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '20px' }}>Messaging Channels</h4>
@@ -1048,7 +1300,7 @@ const EventManagement = () => {
                                     )}
 
                                     <button
-                                        onClick={() => modalStep < 5 ? setModalStep(modalStep + 1) : handleCreateEvent()}
+                                        onClick={() => modalStep < 7 ? setModalStep(modalStep + 1) : handleCreateEvent()}
                                         disabled={createEventLoading}
                                         style={{
                                             padding: '10px 32px', borderRadius: '8px', border: 'none',
@@ -1056,8 +1308,8 @@ const EventManagement = () => {
                                             display: 'flex', alignItems: 'center', gap: '8px'
                                         }}
                                     >
-                                        {modalStep === 5 ? (createEventLoading ? 'Creating...' : 'Create Event & Generate QR') : 'Next'}
-                                        {modalStep < 5 && <ChevronRight size={18} />}
+                                        {modalStep === 7 ? (createEventLoading ? 'Creating...' : 'Create Event & Generate QR') : 'Next'}
+                                        {modalStep < 7 && <ChevronRight size={18} />}
                                     </button>
                                 </div>
                             </>
