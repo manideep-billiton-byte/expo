@@ -3,6 +3,7 @@ import { QrCode, Camera, LogOut, ChevronDown, Bell, Settings, Search, Clock, Use
 import { Html5Qrcode } from 'html5-qrcode';
 import Tesseract from 'tesseract.js';
 import AfterScan from './AfterScan';
+import { apiFetch, getApiUrl } from '../utils/api';
 
 const Scanner = ({ onBack }) => {
     const [isScanning, setIsScanning] = useState(false);
@@ -49,7 +50,7 @@ const Scanner = ({ onBack }) => {
     const loadRecentScans = async () => {
         try {
             const exhibitorId = localStorage.getItem('exhibitorId');
-            const response = await fetch(`/api/leads?exhibitorId=${exhibitorId}`);
+            const response = await apiFetch(`/api/leads?exhibitorId=${exhibitorId}`);
             if (response.ok) {
                 const leads = await response.json();
                 setRecentScans(leads.slice(0, 8)); // Get latest 8 scans
@@ -215,8 +216,7 @@ const Scanner = ({ onBack }) => {
             console.log('✅ Detected visitor code format, fetching details...');
             // Fetch visitor details from API using unique code
             try {
-                const API_BASE = import.meta.env.VITE_API_BASE || '';
-                const apiUrl = `${API_BASE}/api/visitors/code/${decodedText}`;
+                const apiUrl = getApiUrl(`/api/visitors/code/${decodedText}`);
                 console.log('🌐 API URL:', apiUrl);
 
                 const response = await fetch(apiUrl);
@@ -327,7 +327,7 @@ const Scanner = ({ onBack }) => {
 
             console.log(`📝 Saving ${scanType} scan immediately:`, payload);
 
-            const response = await fetch('/api/scanned-visitors', {
+            const response = await apiFetch('/api/scanned-visitors', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

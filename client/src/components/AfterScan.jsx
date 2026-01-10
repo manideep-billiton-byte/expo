@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, User, Mail, Phone, Building2, MapPin, Briefcase, Star, Calendar, FileText, ArrowLeft } from 'lucide-react';
+import { apiFetch } from '../utils/api';
 
 const AfterScan = ({ scannedData, scanType = 'QR_SCAN', onClose, onSave }) => {
     const [formData, setFormData] = useState({
@@ -106,7 +107,7 @@ const AfterScan = ({ scannedData, scanType = 'QR_SCAN', onClose, onSave }) => {
                 status: 'New'
             };
 
-            const response = await fetch('/api/leads', {
+            const response = await apiFetch('/api/leads', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

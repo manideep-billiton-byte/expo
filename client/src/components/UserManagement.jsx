@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Users, User, Search, Download, Plus, MoreHorizontal, X, ArrowLeft, Check, Shield, ShieldCheck, Mail, Lock, Globe, Settings, CreditCard, MessageSquare, Cpu, LineChart, Receipt, Calendar, Image, Eye, UserCheck, LifeBuoy, Building2, Send, Copy, ChevronDown } from 'lucide-react';
+import { apiFetch } from '../utils/api';
 
 const UserManagement = () => {
     const [activeTab, setActiveTab] = useState('All Users');
@@ -84,7 +85,7 @@ const UserManagement = () => {
     const loadOrgs = async () => {
         setOrgsLoading(true);
         try {
-            const resp = await fetch('/api/organizations');
+            const resp = await apiFetch('/api/organizations');
             const data = await resp.json();
             if (!resp.ok) throw new Error(data.error || 'Failed to load organizations');
             setOrgs(Array.isArray(data) ? data : []);
@@ -99,7 +100,7 @@ const UserManagement = () => {
     const loadUsers = async () => {
         setUsersLoading(true);
         try {
-            const resp = await fetch('/api/users');
+            const resp = await apiFetch('/api/users');
             const data = await resp.json();
             if (!resp.ok) throw new Error(data.error || 'Failed to load users');
 
@@ -151,7 +152,7 @@ const UserManagement = () => {
                 security: userData.security
             };
 
-            const resp = await fetch('/api/users', {
+            const resp = await apiFetch('/api/users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -160,7 +161,7 @@ const UserManagement = () => {
             if (!resp.ok) throw new Error(data.error || 'Failed to create user');
 
             if (userData.loginType !== 'manual') {
-                const inviteResp = await fetch('/api/send-invite', {
+                const inviteResp = await apiFetch('/api/send-invite', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: userData.email, mobile: userData.mobile })

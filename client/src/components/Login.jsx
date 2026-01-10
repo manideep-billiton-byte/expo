@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, Shield, Building2, Store, User, CheckCircle } from 'lucide-react';
+import { apiFetch } from '../utils/api';
 
 const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
     const [selectedRole, setSelectedRole] = useState(initialLoginType);
@@ -55,7 +56,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
             const isVisitorLogin = selectedRole === 'visitor';
 
             if (isExhibitorLogin) {
-                const response = await fetch('/api/login', {
+                const response = await apiFetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password, type: 'exhibitor' }),
@@ -73,7 +74,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                     setError(data.error || 'Invalid email or password');
                 }
             } else if (isVisitorLogin) {
-                const response = await fetch('/api/login', {
+                const response = await apiFetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password, type: 'visitor' }),
@@ -101,7 +102,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                     setError('Invalid email or password');
                 }
             } else {
-                const response = await fetch('/api/login', {
+                const response = await apiFetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password, type: 'organization' }),

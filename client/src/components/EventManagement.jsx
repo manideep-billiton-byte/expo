@@ -939,7 +939,7 @@ const EventManagement = () => {
                                                         const formData = new FormData();
                                                         formData.append('file', file);
                                                         try {
-                                                            const resp = await fetch('/api/upload/ground-layout', { method: 'POST', body: formData });
+                                                            const resp = await apiFetch('/api/upload/ground-layout', { method: 'POST', body: formData });
                                                             const data = await resp.json();
                                                             if (data.success) {
                                                                 setEventData({ ...eventData, groundLayoutUrl: data.url });
@@ -959,7 +959,7 @@ const EventManagement = () => {
                                                             const formData = new FormData();
                                                             formData.append('file', file);
                                                             try {
-                                                                const resp = await fetch('/api/upload/ground-layout', { method: 'POST', body: formData });
+                                                                const resp = await apiFetch('/api/upload/ground-layout', { method: 'POST', body: formData });
                                                                 const data = await resp.json();
                                                                 if (data.success) {
                                                                     setEventData({ ...eventData, groundLayoutUrl: data.url });
