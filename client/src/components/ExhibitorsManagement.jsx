@@ -65,7 +65,9 @@ const ExhibitorsManagement = () => {
     const loadEvents = async () => {
         setEventsLoading(true);
         try {
-            const data = await apiFetch('/api/events');
+            const resp = await apiFetch('/api/events');
+            const data = await resp.json();
+            console.log('Loaded events:', data);
             setEvents(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to load events', err);

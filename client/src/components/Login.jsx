@@ -68,6 +68,11 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                     localStorage.setItem('userType', data.userType || 'exhibitor');
                     localStorage.setItem('exhibitorId', data.user.id);
                     localStorage.setItem('exhibitorName', data.user.name);
+                    // Store event info for QR validation
+                    if (data.user.eventId) {
+                        localStorage.setItem('eventId', data.user.eventId);
+                        localStorage.setItem('eventName', data.user.eventName || '');
+                    }
                     if (rememberMe) localStorage.setItem('rememberMe', 'true');
                     onLogin();
                 } else {

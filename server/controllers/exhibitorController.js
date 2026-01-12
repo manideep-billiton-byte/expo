@@ -110,9 +110,10 @@ const loginExhibitor = async (req, res) => {
 
     try {
         const result = await pool.query(
-            `SELECT id, company_name, email, password_hash, access_status
-             FROM exhibitors
-             WHERE email = $1 AND (access_status IS NULL OR access_status = 'Active')`,
+            `SELECT e.id, e.company_name, e.email, e.password_hash, e.access_status, e.event_id, ev.event_name
+             FROM exhibitors e
+             LEFT JOIN events ev ON ev.id = e.event_id
+             WHERE e.email = $1 AND (e.access_status IS NULL OR e.access_status = 'Active')`,
             [email]
         );
 
@@ -130,13 +131,17 @@ const loginExhibitor = async (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
+        console.log(`✅ Exhibitor logged in: ${exhibitor.company_name} (event: ${exhibitor.event_name || 'none'})`);
+
         return res.json({
             success: true,
             userType: 'exhibitor',
             user: {
                 id: exhibitor.id,
                 name: exhibitor.company_name,
-                email: exhibitor.email
+                email: exhibitor.email,
+                eventId: exhibitor.event_id,
+                eventName: exhibitor.event_name
             }
         });
     } catch (err) {
