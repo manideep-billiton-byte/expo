@@ -216,11 +216,28 @@ const Scanner = ({ onBack }) => {
             console.log('✅ Detected visitor code format, fetching details...');
             // Fetch visitor details from API using unique code
             try {
-                const apiUrl = getApiUrl(`/api/visitors/code/${decodedText}`);
+                // Get current event ID for validation
+                const eventId = localStorage.getItem('eventId');
+                // Include eventId in API call for event validation
+                const apiUrl = getApiUrl(`/api/visitors/code/${decodedText}${eventId ? `?eventId=${eventId}` : ''}`);
                 console.log('🌐 API URL:', apiUrl);
 
                 const response = await fetch(apiUrl);
                 console.log('🌐 API Response Status:', response.status, response.statusText);
+
+                // Handle event mismatch (403 Forbidden)
+                if (response.status === 403) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('❌ Event mismatch:', errorData);
+
+                    // Show clear error message about event mismatch
+                    const errorMessage = errorData.code === 'EVENT_MISMATCH'
+                        ? `⚠️ Invalid QR Code for This Event\n\n${errorData.message}\n\nPlease scan only QR codes issued for this specific event.`
+                        : `⚠️ Access Denied\n\n${errorData.message || 'This QR code cannot be used at this event.'}`;
+
+                    alert(errorMessage);
+                    return;
+                }
 
                 if (response.ok) {
                     const result = await response.json();
@@ -236,7 +253,8 @@ const Scanner = ({ onBack }) => {
                             company: result.visitor.organization,
                             designation: result.visitor.designation,
                             eventName: result.visitor.event_name,
-                            uniqueCode: result.visitor.unique_code
+                            uniqueCode: result.visitor.unique_code,
+                            visitorId: result.visitor.id
                         };
 
                         setScannedData(visitorData);

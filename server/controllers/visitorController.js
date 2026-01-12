@@ -220,8 +220,10 @@ const loginVisitor = async (req, res) => {
 };
 
 // Get visitor by unique code (for QR scanning)
+// Now validates event ID to ensure QR codes only work for the correct event
 const getVisitorByCode = async (req, res) => {
     const { uniqueCode } = req.params;
+    const { eventId } = req.query; // Get eventId from query for validation
 
     if (!uniqueCode) {
         return res.status(400).json({ error: 'Unique code is required' });
@@ -243,19 +245,50 @@ const getVisitorByCode = async (req, res) => {
                 v.event_id,
                 v.unique_code,
                 v.created_at,
-                ev.event_name
+                ev.event_name,
+                ev.organization_id
             FROM visitors v
             LEFT JOIN events ev ON ev.id = v.event_id
             WHERE v.unique_code = $1
         `, [uniqueCode]);
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Visitor not found', message: 'Invalid QR code' });
+            return res.status(404).json({
+                error: 'Visitor not found',
+                message: 'Invalid QR code. No visitor found with this code.'
+            });
         }
+
+        const visitor = result.rows[0];
+
+        // EVENT VALIDATION: Ensure QR code matches the current event
+        if (eventId && visitor.event_id) {
+            const scannedEventId = parseInt(eventId, 10);
+            const visitorEventId = parseInt(visitor.event_id, 10);
+
+            if (scannedEventId !== visitorEventId) {
+                console.log(`❌ Event mismatch: QR for event ${visitorEventId} (${visitor.event_name}) scanned at event ${scannedEventId}`);
+                return res.status(403).json({
+                    error: 'Event mismatch',
+                    message: `Invalid QR code for this event. This visitor is registered for "${visitor.event_name}".`,
+                    visitorEventId: visitorEventId,
+                    visitorEventName: visitor.event_name,
+                    scannedEventId: scannedEventId,
+                    code: 'EVENT_MISMATCH'
+                });
+            }
+        }
+
+        // If no eventId provided but visitor has event_id, log warning (for backward compatibility)
+        if (!eventId && visitor.event_id) {
+            console.warn(`⚠️ QR scan without event validation for visitor ${uniqueCode} (event: ${visitor.event_name})`);
+        }
+
+        console.log(`✅ Valid QR scan: ${uniqueCode} for event ${visitor.event_name || 'unknown'}`);
 
         return res.json({
             success: true,
-            visitor: result.rows[0]
+            visitor: visitor
         });
     } catch (err) {
         console.error('Error fetching visitor by code:', err);
