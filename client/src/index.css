@@ -72,7 +72,9 @@ body {
 
 @media (max-width: 768px) {
     .header-wrapper {
-        height: var(--header-height-mobile);
+        height: auto;
+        min-height: var(--header-height-mobile);
+        overflow: visible;
     }
 }
 
@@ -911,11 +913,12 @@ a.btn {
         min-height: 44px !important;
     }
 
-    /* More padding on inputs */
+    /* More padding on inputs - only vertical padding to preserve icon space */
     input,
     select,
     textarea {
-        padding: 14px !important;
+        padding-top: 14px !important;
+        padding-bottom: 14px !important;
     }
 
     /* ===== WIZARD MODAL TABS ===== */

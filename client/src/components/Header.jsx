@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
     Search, Bell, Settings as SettingsIcon, ChevronDown,
-    ChevronUp, Building2, Users, Calendar, Image, Eye,
+    ChevronUp, ChevronLeft, ChevronRight, Building2, Users, Calendar, Image, Eye,
     CreditCard, MessageSquare, Receipt, Cpu, LineChart,
     ShieldCheck, UserCheck, LifeBuoy, LogOut, Printer
 } from 'lucide-react';
@@ -16,6 +16,30 @@ const NavItem = ({ icon: Icon, label, active = false, onClick }) => (
 const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onToggleNav, onLogout, userType = 'master' }) => {
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const profileDropdownRef = useRef(null);
+    const navRef = useRef(null);
+    const [showLeftArrow, setShowLeftArrow] = useState(false);
+    const [showRightArrow, setShowRightArrow] = useState(true);
+
+    // Check if more content is scrollable
+    const checkScrollArrows = () => {
+        if (navRef.current) {
+            const { scrollLeft, scrollWidth, clientWidth } = navRef.current;
+            setShowLeftArrow(scrollLeft > 0);
+            setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 5);
+        }
+    };
+
+    // Scroll handler for arrow buttons
+    const scrollNav = (direction) => {
+        if (navRef.current) {
+            const scrollAmount = 150;
+            navRef.current.scrollBy({
+                left: direction === 'right' ? scrollAmount : -scrollAmount,
+                behavior: 'smooth'
+            });
+            setTimeout(checkScrollArrows, 300);
+        }
+    };
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -30,6 +54,13 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
+
+    // Check scroll arrows on mount and resize
+    useEffect(() => {
+        checkScrollArrows();
+        window.addEventListener('resize', checkScrollArrows);
+        return () => window.removeEventListener('resize', checkScrollArrows);
+    }, [isNavCollapsed]);
 
     // Master admin navigation items
     const masterItems = [
@@ -214,16 +245,71 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
             </div>
 
             {!isNavCollapsed && (
-                <div className="top-nav-bar fade-in">
-                    {items.map((item, idx) => (
-                        <NavItem
-                            key={idx}
-                            icon={item.icon}
-                            label={item.label}
-                            active={activeScreen === item.screen}
-                            onClick={() => onNavigate && onNavigate(item.screen)}
-                        />
-                    ))}
+                <div style={{ position: 'relative' }}>
+                    {/* Left scroll arrow - mobile only */}
+                    {isMobile && showLeftArrow && (
+                        <button
+                            onClick={() => scrollNav('left')}
+                            aria-label="Scroll left"
+                            style={{
+                                position: 'absolute',
+                                left: 0,
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                zIndex: 10,
+                                background: 'linear-gradient(to right, white 60%, transparent)',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '8px 12px 8px 4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                height: '100%'
+                            }}
+                        >
+                            <ChevronLeft size={20} color="#2563eb" />
+                        </button>
+                    )}
+
+                    {/* Navigation items */}
+                    <div
+                        ref={navRef}
+                        className="top-nav-bar fade-in"
+                        onScroll={checkScrollArrows}
+                    >
+                        {items.map((item, idx) => (
+                            <NavItem
+                                key={idx}
+                                icon={item.icon}
+                                label={item.label}
+                                active={activeScreen === item.screen}
+                                onClick={() => onNavigate && onNavigate(item.screen)}
+                            />
+                        ))}
+                    </div>
+
+                    {/* Right scroll arrow - mobile only */}
+                    {isMobile && showRightArrow && (
+                        <button
+                            onClick={() => scrollNav('right')}
+                            aria-label="Scroll right"
+                            style={{
+                                position: 'absolute',
+                                right: 0,
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                zIndex: 10,
+                                background: 'linear-gradient(to left, white 60%, transparent)',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '8px 4px 8px 12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                height: '100%'
+                            }}
+                        >
+                            <ChevronRight size={20} color="#2563eb" />
+                        </button>
+                    )}
                 </div>
             )}
         </div>
