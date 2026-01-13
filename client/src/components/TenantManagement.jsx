@@ -776,6 +776,8 @@ const TenantManagement = () => {
                                                     setCreateOrgData({ ...createOrgData, email: e.target.value });
                                                     setCreateOrgErrors(prev => ({ ...prev, email: undefined }));
                                                 }}
+                                                autoComplete="off"
+                                                data-lpignore="true"
                                                 style={{ width: '100%', padding: '10px 14px', border: createOrgErrors.email ? '1px solid #ef4444' : '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                                             />
                                             {createOrgErrors.email && (
@@ -795,6 +797,8 @@ const TenantManagement = () => {
                                                     setCreateOrgData({ ...createOrgData, mobile: e.target.value });
                                                     setCreateOrgErrors(prev => ({ ...prev, mobile: undefined }));
                                                 }}
+                                                autoComplete="off"
+                                                data-lpignore="true"
                                                 style={{ width: '100%', padding: '10px 14px', border: createOrgErrors.mobile ? '1px solid #ef4444' : '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                                             />
                                             {createOrgErrors.mobile && (
@@ -877,6 +881,8 @@ const TenantManagement = () => {
                                                         setCreateOrgData({ ...createOrgData, password: e.target.value });
                                                         setCreateOrgErrors(prev => ({ ...prev, password: undefined }));
                                                     }}
+                                                    autoComplete="new-password"
+                                                    data-lpignore="true"
                                                     style={{ width: '100%', padding: '10px 14px', border: createOrgErrors.password ? '1px solid #ef4444' : '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                                                 />
                                                 {createOrgErrors.password && (
@@ -895,6 +901,8 @@ const TenantManagement = () => {
                                                         setCreateOrgData({ ...createOrgData, confirmPassword: e.target.value });
                                                         setCreateOrgErrors(prev => ({ ...prev, confirmPassword: undefined }));
                                                     }}
+                                                    autoComplete="new-password"
+                                                    data-lpignore="true"
                                                     style={{ width: '100%', padding: '10px 14px', border: createOrgErrors.confirmPassword ? '1px solid #ef4444' : '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                                                 />
                                                 {createOrgErrors.confirmPassword && (

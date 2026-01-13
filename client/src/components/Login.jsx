@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, Shield, Building2, Store, User, CheckCircle } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 
@@ -10,6 +10,14 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
     const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    // Listen for window resize to update mobile state
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const roles = [
         {
@@ -134,17 +142,17 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
     };
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', width: '100%', flexDirection: window.innerWidth <= 768 ? 'column' : 'row' }}>
+        <div style={{ display: 'flex', minHeight: '100vh', width: '100%', flexDirection: isMobile ? 'column' : 'row' }}>
             {/* Left Panel - Authentication */}
             <div style={{
                 flex: '1',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: window.innerWidth <= 768 ? '24px 20px' : '40px',
+                padding: isMobile ? '24px 20px' : '40px',
                 background: 'white',
                 position: 'relative',
-                minHeight: window.innerWidth <= 768 ? '100vh' : 'auto'
+                minHeight: isMobile ? '100vh' : 'auto'
             }}>
                 {/* Subtle glow effects */}
                 <div style={{
@@ -157,7 +165,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                     background: 'radial-gradient(circle, rgba(13, 148, 136, 0.1) 0%, transparent 70%)',
                     filter: 'blur(40px)',
                     pointerEvents: 'none',
-                    display: window.innerWidth <= 768 ? 'none' : 'block'
+                    display: isMobile ? 'none' : 'block'
                 }} />
 
                 <div style={{ maxWidth: '480px', width: '100%', position: 'relative', zIndex: 1 }}>
@@ -170,15 +178,15 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                         textDecoration: 'none',
                         fontSize: '14px',
                         fontWeight: 500,
-                        marginBottom: window.innerWidth <= 768 ? '24px' : '32px'
+                        marginBottom: isMobile ? '24px' : '32px'
                     }}>
                         ← Back to Home
                     </a>
 
                     {/* Logo */}
-                    <div style={{ marginBottom: window.innerWidth <= 768 ? '24px' : '32px' }}>
+                    <div style={{ marginBottom: isMobile ? '24px' : '32px' }}>
                         <div style={{
-                            fontSize: window.innerWidth <= 768 ? '22px' : '24px',
+                            fontSize: isMobile ? '22px' : '24px',
                             fontWeight: 800,
                             color: '#0d9488',
                             marginBottom: '8px'
@@ -191,7 +199,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                     </div>
 
                     {/* Role Selection Cards */}
-                    <div style={{ marginBottom: window.innerWidth <= 768 ? '24px' : '32px' }}>
+                    <div style={{ marginBottom: isMobile ? '24px' : '32px' }}>
                         <div style={{
                             fontSize: '14px',
                             fontWeight: 600,
@@ -214,7 +222,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                         type="button"
                                         onClick={() => setSelectedRole(role.id)}
                                         style={{
-                                            padding: window.innerWidth <= 768 ? '14px' : '16px',
+                                            padding: isMobile ? '14px' : '16px',
                                             borderRadius: '12px',
                                             border: `2px solid ${isSelected ? role.color : '#e2e8f0'}`,
                                             background: isSelected ? role.bgColor : 'white',
@@ -250,18 +258,18 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                             </div>
                                         )}
                                         <div style={{
-                                            width: window.innerWidth <= 768 ? '36px' : '40px',
-                                            height: window.innerWidth <= 768 ? '36px' : '40px',
+                                            width: isMobile ? '36px' : '40px',
+                                            height: isMobile ? '36px' : '40px',
                                             borderRadius: '10px',
                                             background: isSelected ? role.color : role.bgColor,
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center'
                                         }}>
-                                            <RoleIcon size={window.innerWidth <= 768 ? 18 : 20} color={isSelected ? 'white' : role.color} />
+                                            <RoleIcon size={isMobile ? 18 : 20} color={isSelected ? 'white' : role.color} />
                                         </div>
                                         <span style={{
-                                            fontSize: window.innerWidth <= 768 ? '13px' : '14px',
+                                            fontSize: isMobile ? '13px' : '14px',
                                             fontWeight: 600,
                                             color: isSelected ? role.color : '#475569'
                                         }}>
@@ -305,7 +313,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                         borderRadius: '10px',
                                         border: '1.5px solid #e2e8f0',
                                         outline: 'none',
-                                        fontSize: window.innerWidth <= 768 ? '16px' : '14px',
+                                        fontSize: isMobile ? '16px' : '14px',
                                         transition: 'border-color 0.2s'
                                     }}
                                     onFocus={(e) => e.target.style.borderColor = '#0d9488'}
@@ -344,7 +352,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                         borderRadius: '10px',
                                         border: '1.5px solid #e2e8f0',
                                         outline: 'none',
-                                        fontSize: window.innerWidth <= 768 ? '16px' : '14px',
+                                        fontSize: isMobile ? '16px' : '14px',
                                         transition: 'border-color 0.2s'
                                     }}
                                     onFocus={(e) => e.target.style.borderColor = '#0d9488'}
@@ -487,7 +495,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
             </div>
 
             {/* Right Panel - Hero Section (Hidden on Mobile) */}
-            {window.innerWidth > 768 && (
+            {!isMobile && (
                 <div style={{
                     flex: '1',
                     background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
