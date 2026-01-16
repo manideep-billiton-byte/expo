@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CreditCard, Download, Search, MoreHorizontal, TrendingUp, AlertCircle, CheckCircle2, Clock, Filter, Plus, X, ChevronRight, Mail, MapPin, Building2, Calendar, Receipt, DollarSign, ShieldCheck, Share2, FileText, Users, IndianRupee, Copy } from 'lucide-react';
+import { CreditCard, Download, Search, MoreHorizontal, TrendingUp, AlertCircle, CheckCircle2, Clock, Filter, Plus, X, ChevronRight, Mail, MapPin, Building2, Calendar, Receipt, DollarSign, ShieldCheck, Share2, FileText, Users, IndianRupee, Copy, Eye, Printer, Send, Settings } from 'lucide-react';
 
 const BillingManagement = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -42,6 +42,12 @@ const BillingManagement = () => {
     const [createPlanLoading, setCreatePlanLoading] = useState(false);
     const [createdPlans, setCreatedPlans] = useState([]);
     const [plans, setPlans] = useState([]); // Store created plans with coupons
+    const [coupons, setCoupons] = useState([]);
+    const [couponsLoading, setCouponsLoading] = useState(false);
+    const [planFilter, setPlanFilter] = useState('All');
+    const [invoiceFilter, setInvoiceFilter] = useState('All Status');
+    const [invoiceSearch, setInvoiceSearch] = useState('');
+    const [couponSearch, setCouponSearch] = useState('');
 
     const defaultPlanData = {
         planName: '',
@@ -181,7 +187,7 @@ const BillingManagement = () => {
     const API_BASE = import.meta.env.VITE_API_BASE;
 
     const modalTabs = ['Identity', 'Details', 'Payment', 'Review'];
-    const mainTabs = ['Overview', 'Plans', 'Invoices', 'Payments', 'Usage'];
+    const mainTabs = ['Overview', 'Plans', 'Coupons', 'Invoices'];
 
     const handleCloseModal = () => {
         setShowModal(false);
@@ -261,10 +267,28 @@ const BillingManagement = () => {
         }
     };
 
+    const loadCoupons = async () => {
+        setCouponsLoading(true);
+        try {
+            const resp = await fetch(`${API_BASE}/api/coupons`);
+            let data;
+            const txt = await resp.clone().text();
+            try { data = JSON.parse(txt); } catch (e) { data = txt; }
+            if (!resp.ok) throw new Error((data && data.error) || String(data) || 'Failed to load coupons');
+            setCoupons(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load coupons', err);
+            setCoupons([]);
+        } finally {
+            setCouponsLoading(false);
+        }
+    };
+
     useEffect(() => {
         loadOrgs();
         loadInvoices();
         loadPlans();
+        loadCoupons();
     }, []);
 
     const handleOpenModal = () => {
@@ -411,176 +435,279 @@ const BillingManagement = () => {
                 ))}
             </div>
 
-            {/* Stats Cards - New Design */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }} className="fade-in">
-                {/* Monthly Revenue */}
-                <div style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    border: '1px solid #f1f5f9'
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                            <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>MONTHLY REVENUE</div>
-                            <div style={{ fontSize: '28px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>₹12.4L</div>
-                            <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 500 }}>+18% vs last month</div>
-                        </div>
-                        <div style={{ background: '#e0f2fe', padding: '10px', borderRadius: '10px' }}>
-                            <IndianRupee size={20} color="#0ea5e9" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Active Subscriptions */}
-                <div style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    border: '1px solid #f1f5f9'
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                            <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>ACTIVE SUBSCRIPTIONS</div>
-                            <div style={{ fontSize: '28px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>248</div>
-                            <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 500 }}>+12 this month</div>
-                        </div>
-                        <div style={{ background: '#f0fdf4', padding: '10px', borderRadius: '10px' }}>
-                            <FileText size={20} color="#22c55e" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Pending Invoices */}
-                <div style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    border: '1px solid #f1f5f9'
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                            <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>PENDING INVOICES</div>
-                            <div style={{ fontSize: '28px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>23</div>
-                            <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 500 }}>₹2.8L outstanding</div>
-                        </div>
-                        <div style={{ background: '#fef3c7', padding: '10px', borderRadius: '10px' }}>
-                            <Clock size={20} color="#f59e0b" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Avg. Revenue/Tenant */}
-                <div style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    border: '1px solid #f1f5f9'
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                            <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>AVG. REVENUE/TENANT</div>
-                            <div style={{ fontSize: '28px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>₹5,000</div>
-                            <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 500 }}>+8% growth</div>
-                        </div>
-                        <div style={{ background: '#f3e8ff', padding: '10px', borderRadius: '10px' }}>
-                            <TrendingUp size={20} color="#a855f7" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Two Column Layout - Recent Invoices & Subscription Plans */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }} className="fade-in">
-                {/* Recent Invoices Card */}
-                <div style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    border: '1px solid #f1f5f9',
-                    overflow: 'hidden'
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '16px 20px',
-                        borderBottom: '1px solid #f1f5f9'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Receipt size={18} color="#6b7280" />
-                            <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Recent Invoices</span>
-                        </div>
-                        <button style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#6b7280',
-                            fontSize: '13px',
-                            fontWeight: 500,
-                            cursor: 'pointer'
+            {/* Overview Tab Content */}
+            {activeMainTab === 'Overview' && (
+                <>
+                    {/* Stats Cards - New Design */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }} className="fade-in">
+                        {/* Monthly Revenue */}
+                        <div style={{
+                            background: 'white',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            border: '1px solid #f1f5f9'
                         }}>
-                            View All
-                        </button>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                    <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>MONTHLY REVENUE</div>
+                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>₹12.4L</div>
+                                    <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 500 }}>+18% vs last month</div>
+                                </div>
+                                <div style={{ background: '#e0f2fe', padding: '10px', borderRadius: '10px' }}>
+                                    <IndianRupee size={20} color="#0ea5e9" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Active Subscriptions */}
+                        <div style={{
+                            background: 'white',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            border: '1px solid #f1f5f9'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                    <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>ACTIVE SUBSCRIPTIONS</div>
+                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>248</div>
+                                    <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 500 }}>+12 this month</div>
+                                </div>
+                                <div style={{ background: '#f0fdf4', padding: '10px', borderRadius: '10px' }}>
+                                    <FileText size={20} color="#22c55e" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Pending Invoices */}
+                        <div style={{
+                            background: 'white',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            border: '1px solid #f1f5f9'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                    <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>PENDING INVOICES</div>
+                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>23</div>
+                                    <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 500 }}>₹2.8L outstanding</div>
+                                </div>
+                                <div style={{ background: '#fef3c7', padding: '10px', borderRadius: '10px' }}>
+                                    <Clock size={20} color="#f59e0b" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Avg. Revenue/Tenant */}
+                        <div style={{
+                            background: 'white',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            border: '1px solid #f1f5f9'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                    <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>AVG. REVENUE/TENANT</div>
+                                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>₹5,000</div>
+                                    <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 500 }}>+8% growth</div>
+                                </div>
+                                <div style={{ background: '#f3e8ff', padding: '10px', borderRadius: '10px' }}>
+                                    <TrendingUp size={20} color="#a855f7" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Invoice Table */}
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ background: '#fafafa' }}>
-                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>INVOICE #</th>
-                                <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>TENANT</th>
-                                <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>AMOUNT</th>
-                                <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>STATUS</th>
-                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>DUE DATE</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {recentInvoices.map((inv, idx) => (
-                                <tr key={idx} style={{ borderTop: '1px solid #f5f5f5' }}>
-                                    <td style={{ padding: '12px 20px', fontSize: '13px', color: '#374151', fontWeight: 500 }}>{inv.id}</td>
-                                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{inv.org}</td>
-                                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', fontWeight: 500 }}>{inv.amount}</td>
-                                    <td style={{ padding: '12px 16px' }}>
-                                        <span style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                            fontSize: '12px',
-                                            fontWeight: 500,
-                                            color: getStatusStyle(inv.status).color
-                                        }}>
-                                            <span style={{
-                                                width: '6px',
-                                                height: '6px',
-                                                borderRadius: '50%',
-                                                background: getStatusStyle(inv.status).dotColor
-                                            }}></span>
-                                            {inv.status}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '12px 20px', fontSize: '13px', color: '#6b7280' }}>{inv.due}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                    {/* Two Column Layout - Recent Invoices & Subscription Plans */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }} className="fade-in">
+                        {/* Recent Invoices Card */}
+                        <div style={{
+                            background: 'white',
+                            borderRadius: '12px',
+                            border: '1px solid #f1f5f9',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '16px 20px',
+                                borderBottom: '1px solid #f1f5f9'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Receipt size={18} color="#6b7280" />
+                                    <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Recent Invoices</span>
+                                </div>
+                                <button onClick={() => setActiveMainTab('Invoices')} style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#6b7280',
+                                    fontSize: '13px',
+                                    fontWeight: 500,
+                                    cursor: 'pointer'
+                                }}>
+                                    View All
+                                </button>
+                            </div>
 
-                {/* Subscription Plans Card */}
-                <div style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    border: '1px solid #f1f5f9',
-                    overflow: 'hidden'
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '16px 20px',
-                        borderBottom: '1px solid #f1f5f9'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <CreditCard size={18} color="#6b7280" />
-                            <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Subscription Plans</span>
+                            {/* Invoice Table */}
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: '#fafafa' }}>
+                                        <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>INVOICE #</th>
+                                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>TENANT</th>
+                                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>AMOUNT</th>
+                                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>STATUS</th>
+                                        <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>DUE DATE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentInvoices.map((inv, idx) => (
+                                        <tr key={idx} style={{ borderTop: '1px solid #f5f5f5' }}>
+                                            <td style={{ padding: '12px 20px', fontSize: '13px', color: '#374151', fontWeight: 500 }}>{inv.id}</td>
+                                            <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{inv.org}</td>
+                                            <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', fontWeight: 500 }}>{inv.amount}</td>
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <span style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 500,
+                                                    color: getStatusStyle(inv.status).color
+                                                }}>
+                                                    <span style={{
+                                                        width: '6px',
+                                                        height: '6px',
+                                                        borderRadius: '50%',
+                                                        background: getStatusStyle(inv.status).dotColor
+                                                    }}></span>
+                                                    {inv.status}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '12px 20px', fontSize: '13px', color: '#6b7280' }}>{inv.due}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Subscription Plans Card */}
+                        <div style={{
+                            background: 'white',
+                            borderRadius: '12px',
+                            border: '1px solid #f1f5f9',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '16px 20px',
+                                borderBottom: '1px solid #f1f5f9'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <CreditCard size={18} color="#6b7280" />
+                                    <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Subscription Plans</span>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowPlanModal(true);
+                                        setPlanTab('Basic Info');
+                                        setPlanData(defaultPlanData);
+                                        setCreatedPlans([]);
+                                        setCouponResult(null);
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        background: '#0f766e',
+                                        border: 'none',
+                                        color: 'white',
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        padding: '8px 14px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <Plus size={14} />
+                                    Add Plan
+                                </button>
+                            </div>
+
+                            {/* Plans Table */}
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: '#fafafa' }}>
+                                        <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>PLAN</th>
+                                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>PRICE</th>
+                                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>TENANTS</th>
+                                        <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>STATUS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {subscriptionPlans.map((plan, idx) => (
+                                        <tr key={idx} style={{ borderTop: '1px solid #f5f5f5' }}>
+                                            <td style={{ padding: '12px 20px', fontSize: '13px', color: '#374151', fontWeight: 500 }}>{plan.plan}</td>
+                                            <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{plan.price}</td>
+                                            <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{plan.tenants}</td>
+                                            <td style={{ padding: '12px 20px' }}>
+                                                <span style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 500,
+                                                    color: getStatusStyle(plan.status).color
+                                                }}>
+                                                    <span style={{
+                                                        width: '6px',
+                                                        height: '6px',
+                                                        borderRadius: '50%',
+                                                        background: getStatusStyle(plan.status).dotColor
+                                                    }}></span>
+                                                    {plan.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Plans Tab Content */}
+            {activeMainTab === 'Plans' && (
+                <div className="fade-in">
+                    {/* Filter Buttons and Add Plan */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            {['All', 'Standard', 'Custom'].map((filter) => (
+                                <button
+                                    key={filter}
+                                    onClick={() => setPlanFilter(filter)}
+                                    style={{
+                                        padding: '8px 16px',
+                                        borderRadius: '8px',
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        border: planFilter === filter ? 'none' : '1px solid #e2e8f0',
+                                        background: planFilter === filter ? '#1e293b' : 'white',
+                                        color: planFilter === filter ? 'white' : '#6b7280',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
+                                >
+                                    {filter === 'Standard' && <Settings size={14} />}
+                                    {filter === 'Custom' && <CreditCard size={14} />}
+                                    {filter}
+                                </button>
+                            ))}
                         </div>
                         <button
                             onClick={() => {
@@ -599,56 +726,500 @@ const BillingManagement = () => {
                                 color: 'white',
                                 fontSize: '13px',
                                 fontWeight: 500,
-                                padding: '8px 14px',
-                                borderRadius: '6px',
+                                padding: '10px 18px',
+                                borderRadius: '8px',
                                 cursor: 'pointer'
                             }}
                         >
-                            <Plus size={14} />
+                            <Plus size={16} />
                             Add Plan
                         </button>
                     </div>
 
-                    {/* Plans Table */}
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ background: '#fafafa' }}>
-                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>PLAN</th>
-                                <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>PRICE</th>
-                                <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>TENANTS</th>
-                                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>STATUS</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {subscriptionPlans.map((plan, idx) => (
-                                <tr key={idx} style={{ borderTop: '1px solid #f5f5f5' }}>
-                                    <td style={{ padding: '12px 20px', fontSize: '13px', color: '#374151', fontWeight: 500 }}>{plan.plan}</td>
-                                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{plan.price}</td>
-                                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{plan.tenants}</td>
-                                    <td style={{ padding: '12px 20px' }}>
-                                        <span style={{
-                                            display: 'inline-flex',
+                    {/* Plan Cards Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                        {(planFilter === 'All' ? subscriptionPlans : subscriptionPlans.filter(p =>
+                            planFilter === 'Standard' ? !p.type || p.type === 'Standard' : p.type === 'Custom'
+                        )).map((plan, idx) => (
+                            <div key={idx} style={{
+                                background: 'white',
+                                borderRadius: '16px',
+                                padding: '24px',
+                                border: '1px solid #e5e7eb',
+                                position: 'relative'
+                            }}>
+                                {/* Header with icon and status */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '10px',
+                                            background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                                            display: 'flex',
                                             alignItems: 'center',
-                                            gap: '6px',
-                                            fontSize: '12px',
-                                            fontWeight: 500,
-                                            color: getStatusStyle(plan.status).color
+                                            justifyContent: 'center'
                                         }}>
+                                            <CreditCard size={20} color="white" />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', margin: 0 }}>{plan.plan}</h3>
                                             <span style={{
-                                                width: '6px',
-                                                height: '6px',
-                                                borderRadius: '50%',
-                                                background: getStatusStyle(plan.status).dotColor
-                                            }}></span>
-                                            {plan.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                                fontSize: '11px',
+                                                color: '#0891b2',
+                                                background: '#e0f7fa',
+                                                padding: '2px 8px',
+                                                borderRadius: '4px',
+                                                fontWeight: 500
+                                            }}>
+                                                {plan.type || 'standard'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span style={{
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        color: '#0d9488',
+                                        background: '#d1fae5',
+                                        padding: '4px 10px',
+                                        borderRadius: '12px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}>
+                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
+                                        Active
+                                    </span>
+                                </div>
+
+                                {/* Pricing */}
+                                <div style={{ marginBottom: '20px' }}>
+                                    <span style={{ fontSize: '28px', fontWeight: 700, color: '#0d9488' }}>{plan.price}</span>
+                                </div>
+
+                                {/* Limits */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                        <span style={{ color: '#6b7280' }}>Events</span>
+                                        <span style={{ color: '#1e293b', fontWeight: 500 }}>{plan.limits?.maxEvents || (plan.plan === 'Enterprise' ? 'unlimited' : (plan.plan === 'Professional' ? '20' : '5'))}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                        <span style={{ color: '#6b7280' }}>Leads</span>
+                                        <span style={{ color: '#1e293b', fontWeight: 500 }}>{plan.limits?.maxLeads || (plan.plan === 'Enterprise' ? 'unlimited' : (plan.plan === 'Professional' ? '5000' : '500'))}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                        <span style={{ color: '#6b7280' }}>Users</span>
+                                        <span style={{ color: '#1e293b', fontWeight: 500 }}>{plan.limits?.maxUsers || (plan.plan === 'Enterprise' ? 'unlimited' : (plan.plan === 'Professional' ? '20' : '5'))}</span>
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button style={{
+                                        flex: 1,
+                                        padding: '10px 16px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e5e7eb',
+                                        background: 'white',
+                                        color: '#374151',
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px'
+                                    }}>
+                                        <Eye size={14} />
+                                        View
+                                    </button>
+                                    <button style={{
+                                        flex: 1,
+                                        padding: '10px 16px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e5e7eb',
+                                        background: 'white',
+                                        color: '#374151',
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px'
+                                    }}>
+                                        <Settings size={14} />
+                                        Edit
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {/* Coupons Tab Content */}
+            {activeMainTab === 'Coupons' && (
+                <div className="fade-in">
+                    {/* Search and Add Custom Plan */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                        <div style={{ position: 'relative', width: '280px' }}>
+                            <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                            <input
+                                type="text"
+                                placeholder="Search coupons..."
+                                value={couponSearch}
+                                onChange={(e) => setCouponSearch(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 12px 10px 40px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e2e8f0',
+                                    fontSize: '14px',
+                                    outline: 'none'
+                                }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <span style={{ fontSize: '13px', color: '#6b7280' }}>
+                                <CreditCard size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+                                Custom coupons auto-generated in Plans
+                            </span>
+                            <button
+                                onClick={() => {
+                                    setShowPlanModal(true);
+                                    setPlanTab('Basic Info');
+                                    setPlanData({ ...defaultPlanData, planType: 'Custom' });
+                                    setCreatedPlans([]);
+                                    setCouponResult(null);
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#0d9488',
+                                    fontSize: '13px',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline'
+                                }}
+                            >
+                                Add Custom Plan
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Coupons Table */}
+                    <div style={{
+                        background: 'white',
+                        borderRadius: '12px',
+                        border: '1px solid #f1f5f9',
+                        overflow: 'hidden'
+                    }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ background: '#fafafa' }}>
+                                    <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>CODE</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>PLAN</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>DISCOUNT</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>USAGE</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>VALID TILL</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>STATUS</th>
+                                    <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {couponsLoading ? (
+                                    <tr>
+                                        <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Loading coupons...</td>
+                                    </tr>
+                                ) : coupons.filter(c =>
+                                    !couponSearch ||
+                                    c.code?.toLowerCase().includes(couponSearch.toLowerCase()) ||
+                                    c.plan_name?.toLowerCase().includes(couponSearch.toLowerCase())
+                                ).length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                                            No coupons found. Create a Custom Plan to generate coupons.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    coupons.filter(c =>
+                                        !couponSearch ||
+                                        c.code?.toLowerCase().includes(couponSearch.toLowerCase()) ||
+                                        c.plan_name?.toLowerCase().includes(couponSearch.toLowerCase())
+                                    ).map((coupon, idx) => (
+                                        <tr key={idx} style={{ borderTop: '1px solid #f5f5f5' }}>
+                                            <td style={{ padding: '16px 20px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488' }}>{coupon.code}</span>
+                                                    <button
+                                                        onClick={() => copyToClipboard(coupon.code)}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            padding: '4px',
+                                                            cursor: 'pointer',
+                                                            color: '#94a3b8'
+                                                        }}
+                                                    >
+                                                        <Copy size={14} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '16px', fontSize: '13px', color: '#374151' }}>{coupon.plan_name || 'All Plans'}</td>
+                                            <td style={{ padding: '16px' }}>
+                                                <span style={{
+                                                    background: '#dcfce7',
+                                                    color: '#16a34a',
+                                                    padding: '4px 10px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600
+                                                }}>
+                                                    {coupon.pricing?.discount ? `${coupon.pricing.discount}%` : '20%'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '16px', fontSize: '13px', color: '#374151' }}>{coupon.used_count || 0}/100</td>
+                                            <td style={{ padding: '16px', fontSize: '13px', color: '#374151' }}>
+                                                {coupon.created_at ? new Date(new Date(coupon.created_at).getTime() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                                            </td>
+                                            <td style={{ padding: '16px' }}>
+                                                <span style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600,
+                                                    color: coupon.status === 'ACTIVE' ? '#0d9488' : '#6b7280',
+                                                    background: coupon.status === 'ACTIVE' ? '#d1fae5' : '#f1f5f9',
+                                                    padding: '4px 10px',
+                                                    borderRadius: '12px'
+                                                }}>
+                                                    <span style={{
+                                                        width: '6px',
+                                                        height: '6px',
+                                                        borderRadius: '50%',
+                                                        background: coupon.status === 'ACTIVE' ? '#10b981' : '#94a3b8'
+                                                    }}></span>
+                                                    {coupon.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '16px 20px' }}>
+                                                <button style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    padding: '4px',
+                                                    cursor: 'pointer',
+                                                    color: '#6b7280'
+                                                }}>
+                                                    <MoreHorizontal size={18} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Invoices Tab Content */}
+            {activeMainTab === 'Invoices' && (
+                <div className="fade-in">
+                    {/* Search, Filter, and Create Invoice */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <div style={{ position: 'relative', width: '240px' }}>
+                                <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                                <input
+                                    type="text"
+                                    placeholder="Search invoices..."
+                                    value={invoiceSearch}
+                                    onChange={(e) => setInvoiceSearch(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px 10px 40px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e2e8f0',
+                                        fontSize: '14px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <select
+                                value={invoiceFilter}
+                                onChange={(e) => setInvoiceFilter(e.target.value)}
+                                style={{
+                                    padding: '10px 16px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e2e8f0',
+                                    fontSize: '14px',
+                                    color: '#374151',
+                                    background: 'white',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <option value="All Status">All Status</option>
+                                <option value="Paid">Paid</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Overdue">Overdue</option>
+                            </select>
+                        </div>
+                        <button
+                            onClick={handleOpenModal}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: '#0f766e',
+                                border: 'none',
+                                color: 'white',
+                                fontSize: '13px',
+                                fontWeight: 500,
+                                padding: '10px 18px',
+                                borderRadius: '8px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <Plus size={16} />
+                            Create Invoice
+                        </button>
+                    </div>
+
+                    {/* Invoices Table */}
+                    <div style={{
+                        background: 'white',
+                        borderRadius: '12px',
+                        border: '1px solid #f1f5f9',
+                        overflow: 'hidden'
+                    }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ background: '#fafafa' }}>
+                                    <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>INVOICE #</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>ORGANIZATION</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>AMOUNT</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>ISSUE DATE</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>DUE DATE</th>
+                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>STATUS</th>
+                                    <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {invoicesLoading ? (
+                                    <tr>
+                                        <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Loading invoices...</td>
+                                    </tr>
+                                ) : invoices.filter(inv => {
+                                    const matchesSearch = !invoiceSearch ||
+                                        inv.id?.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+                                        inv.org?.toLowerCase().includes(invoiceSearch.toLowerCase());
+                                    const matchesFilter = invoiceFilter === 'All Status' || inv.status === invoiceFilter;
+                                    return matchesSearch && matchesFilter;
+                                }).length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                                            No invoices found.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    invoices.filter(inv => {
+                                        const matchesSearch = !invoiceSearch ||
+                                            inv.id?.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+                                            inv.org?.toLowerCase().includes(invoiceSearch.toLowerCase());
+                                        const matchesFilter = invoiceFilter === 'All Status' || inv.status === invoiceFilter;
+                                        return matchesSearch && matchesFilter;
+                                    }).map((invoice, idx) => (
+                                        <tr key={idx} style={{ borderTop: '1px solid #f5f5f5' }}>
+                                            <td style={{ padding: '16px 20px' }}>
+                                                <span style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488' }}>{invoice.id}</span>
+                                            </td>
+                                            <td style={{ padding: '16px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <div style={{
+                                                        width: '32px',
+                                                        height: '32px',
+                                                        borderRadius: '8px',
+                                                        background: '#f1f5f9',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
+                                                    }}>
+                                                        <Building2 size={16} color="#64748b" />
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: '13px', fontWeight: 500, color: '#1e293b' }}>{invoice.org}</div>
+                                                        <div style={{ fontSize: '11px', color: '#94a3b8' }}>{invoice.plan || 'Standard'}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '16px', fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>{invoice.amount}</td>
+                                            <td style={{ padding: '16px', fontSize: '13px', color: '#6b7280' }}>{invoice.date}</td>
+                                            <td style={{ padding: '16px', fontSize: '13px', color: '#6b7280' }}>{invoice.due}</td>
+                                            <td style={{ padding: '16px' }}>
+                                                <span style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600,
+                                                    color: getStatusStyle(invoice.status).color,
+                                                    background: invoice.status === 'Paid' ? '#d1fae5' : (invoice.status === 'Pending' ? '#fef3c7' : '#fee2e2'),
+                                                    padding: '4px 10px',
+                                                    borderRadius: '12px'
+                                                }}>
+                                                    <span style={{
+                                                        width: '6px',
+                                                        height: '6px',
+                                                        borderRadius: '50%',
+                                                        background: getStatusStyle(invoice.status).dotColor
+                                                    }}></span>
+                                                    {invoice.status}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '16px 20px' }}>
+                                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                                    <button style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        padding: '6px',
+                                                        cursor: 'pointer',
+                                                        color: '#6b7280',
+                                                        borderRadius: '6px'
+                                                    }}>
+                                                        <Eye size={16} />
+                                                    </button>
+                                                    <button style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        padding: '6px',
+                                                        cursor: 'pointer',
+                                                        color: '#6b7280',
+                                                        borderRadius: '6px'
+                                                    }}>
+                                                        <Printer size={16} />
+                                                    </button>
+                                                    <button style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        padding: '6px',
+                                                        cursor: 'pointer',
+                                                        color: '#6b7280',
+                                                        borderRadius: '6px'
+                                                    }}>
+                                                        <Send size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Overlay */}
             {showModal && (

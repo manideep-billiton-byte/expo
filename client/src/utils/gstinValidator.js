@@ -3,6 +3,9 @@
  * Provides frontend validation for GSTIN (Goods and Services Tax Identification Number)
  */
 
+// Dummy GST number for demo mode (accepted without strict format validation)
+const DUMMY_GST_NUMBER = '36AAACH7409R116';
+
 /**
  * Validate GSTIN format
  * @param {string} gstin - GSTIN to validate
@@ -16,7 +19,7 @@ export function validateGSTINFormat(gstin) {
         };
     }
 
-    const trimmedGSTIN = gstin.trim();
+    const trimmedGSTIN = gstin.trim().toUpperCase();
 
     // GSTIN must be exactly 15 characters
     if (trimmedGSTIN.length !== 15) {
@@ -26,10 +29,18 @@ export function validateGSTINFormat(gstin) {
         };
     }
 
+    // Allow the demo GST number without strict format validation
+    if (trimmedGSTIN === DUMMY_GST_NUMBER) {
+        return {
+            isValid: true,
+            error: null
+        };
+    }
+
     // GSTIN format: 2 digits (state code) + 10 alphanumeric (PAN) + 1 alphabet (entity type) + 1 alphabet (default 'Z') + 1 checksum digit
     const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
-    if (!gstinRegex.test(trimmedGSTIN.toUpperCase())) {
+    if (!gstinRegex.test(trimmedGSTIN)) {
         return {
             isValid: false,
             error: 'Invalid GSTIN format. Please enter a valid 15-digit GSTIN.'

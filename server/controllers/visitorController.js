@@ -180,12 +180,13 @@ const loginVisitor = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
+        return res.status(400).json({ error: 'Email and password/phone number are required' });
     }
 
     try {
+        // Query visitor by email and include mobile for phone auth
         const result = await pool.query(
-            'SELECT id, first_name, last_name, email, password_hash FROM visitors WHERE email = $1',
+            'SELECT id, first_name, last_name, email, mobile, password_hash, event_id, unique_code FROM visitors WHERE email = $1',
             [email]
         );
 
@@ -195,13 +196,28 @@ const loginVisitor = async (req, res) => {
 
         const visitor = result.rows[0];
 
-        if (!visitor.password_hash) {
-            return res.status(401).json({ error: 'No password set for this visitor. Please contact administrator.' });
+        // Check authentication: password OR phone number
+        let isValid = false;
+
+        // First try password hash validation
+        if (visitor.password_hash) {
+            isValid = bcrypt.compareSync(password, visitor.password_hash);
         }
 
-        const isValid = bcrypt.compareSync(password, visitor.password_hash);
+        // If password didn't match, try phone number authentication
+        if (!isValid && visitor.mobile) {
+            // Normalize phone numbers for comparison (remove non-digits)
+            const normalizedInput = password.replace(/\D/g, '');
+            const normalizedMobile = visitor.mobile.replace(/\D/g, '');
+
+            // Match if phone numbers are equal (full or last 10 digits)
+            isValid = normalizedInput === normalizedMobile ||
+                (normalizedInput.length >= 10 && normalizedMobile.endsWith(normalizedInput.slice(-10))) ||
+                (normalizedMobile.length >= 10 && normalizedInput.endsWith(normalizedMobile.slice(-10)));
+        }
+
         if (!isValid) {
-            return res.status(401).json({ error: 'Invalid email or password' });
+            return res.status(401).json({ error: 'Invalid email or password/phone number' });
         }
 
         return res.json({
@@ -210,7 +226,10 @@ const loginVisitor = async (req, res) => {
             user: {
                 id: visitor.id,
                 name: `${visitor.first_name} ${visitor.last_name}`.trim(),
-                email: visitor.email
+                email: visitor.email,
+                mobile: visitor.mobile,
+                eventId: visitor.event_id,
+                uniqueCode: visitor.unique_code
             }
         });
     } catch (err) {

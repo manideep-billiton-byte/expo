@@ -99,10 +99,14 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                     localStorage.setItem('userType', data.userType || 'visitor');
                     localStorage.setItem('visitorId', data.user.id);
                     localStorage.setItem('visitorName', data.user.name);
+                    // Store additional visitor data
+                    if (data.user.mobile) localStorage.setItem('visitorMobile', data.user.mobile);
+                    if (data.user.eventId) localStorage.setItem('eventId', data.user.eventId);
+                    if (data.user.uniqueCode) localStorage.setItem('uniqueCode', data.user.uniqueCode);
                     if (rememberMe) localStorage.setItem('rememberMe', 'true');
                     onLogin();
                 } else {
-                    setError(data.error || 'Invalid email or password');
+                    setError(data.error || 'Invalid email or password/phone number');
                 }
             } else if (selectedRole === 'master') {
                 if (email === 'billiton@123' && password === '123456') {
@@ -331,7 +335,7 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                                 color: '#475569',
                                 marginBottom: '8px'
                             }}>
-                                Password
+                                {selectedRole === 'visitor' ? 'Password/Phone Number' : 'Password'}
                             </label>
                             <div style={{ position: 'relative' }}>
                                 <Lock size={18} color="#94a3b8" style={{

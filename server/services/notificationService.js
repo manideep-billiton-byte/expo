@@ -1,85 +1,137 @@
-const nodemailer = require('nodemailer');
+const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
 
-// Create transporter lazily to avoid startup errors
-let transporter = null;
+// Create AWS SES client lazily
+let sesClient = null;
 
-const getTransporter = () => {
-    if (!transporter && process.env.SMTP_HOST) {
-        transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: parseInt(process.env.SMTP_PORT || '587'),
-            secure: process.env.SMTP_SECURE === 'true',
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS
-            },
-            logger: true,
-            debug: true
+const getSESClient = () => {
+    if (!sesClient && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+        sesClient = new SESClient({
+            region: process.env.AWS_REGION || 'ap-south-1',
+            credentials: {
+                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+            }
         });
     }
-    return transporter;
+    return sesClient;
 };
 
-// Send email
+// Create AWS SNS client lazily
+let snsClient = null;
+
+const getSNSClient = () => {
+    if (!snsClient && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+        snsClient = new SNSClient({
+            region: process.env.AWS_REGION || 'ap-south-1',
+            credentials: {
+                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+            }
+        });
+    }
+    return snsClient;
+};
+
+// Send email using AWS SES
 const sendEmail = async ({ to, subject, text, html }) => {
-    if (!process.env.SMTP_HOST) {
-        // Mock sending in development
+    const client = getSESClient();
+
+    if (!client) {
+        // Mock sending in development / when AWS not configured
         console.log('Mock sending email to:', to);
         console.log('Subject:', subject);
         console.log('Text:', text);
         if (html) console.log('HTML content available');
-        return { success: true, message: 'Email would be sent in production (SMTP not configured)' };
+        return { success: true, message: 'Email would be sent in production (AWS SES not configured)' };
     }
 
     try {
-        const transport = getTransporter();
-        if (!transport) {
-            console.error('SMTP transporter not available');
-            return { success: false, error: 'SMTP not configured' };
+        const fromEmail = process.env.SES_FROM_EMAIL || 'no-reply@example.com';
+
+        const params = {
+            Source: fromEmail,
+            Destination: {
+                ToAddresses: [to]
+            },
+            Message: {
+                Subject: {
+                    Data: subject,
+                    Charset: 'UTF-8'
+                },
+                Body: {}
+            }
+        };
+
+        // Add text body if provided
+        if (text) {
+            params.Message.Body.Text = {
+                Data: text,
+                Charset: 'UTF-8'
+            };
         }
 
-        const info = await transport.sendMail({
-            from: process.env.SMTP_FROM || 'no-reply@example.com',
-            to,
-            subject,
-            text,
-            html
-        });
+        // Add HTML body if provided
+        if (html) {
+            params.Message.Body.Html = {
+                Data: html,
+                Charset: 'UTF-8'
+            };
+        }
 
-        console.log('Email sent:', info.messageId);
-        return { success: true, messageId: info.messageId };
+        const command = new SendEmailCommand(params);
+        const response = await client.send(command);
+
+        console.log('Email sent via AWS SES:', response.MessageId);
+        return { success: true, messageId: response.MessageId };
     } catch (error) {
-        console.error('Error sending email:', error.message);
+        console.error('Error sending email via AWS SES:', error.message);
         // Return error instead of throwing - prevents server crash
         return { success: false, error: error.message };
     }
 };
 
-// Send SMS
+// Send SMS using AWS SNS
 const sendSMS = async ({ to, body }) => {
-    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-        // Mock sending in development
+    const client = getSNSClient();
+
+    if (!client) {
+        // Mock sending in development / when AWS not configured
         console.log('Mock sending SMS to:', to);
         console.log('Message:', body);
-        return { success: true, message: 'SMS would be sent in production (Twilio not configured)' };
+        return { success: true, message: 'SMS would be sent in production (AWS SNS not configured)' };
     }
 
     try {
-        const twilio = require('twilio')(
-            process.env.TWILIO_ACCOUNT_SID,
-            process.env.TWILIO_AUTH_TOKEN
-        );
+        // Format phone number for SNS (must include country code with +)
+        let phoneNumber = to;
+        if (!phoneNumber.startsWith('+')) {
+            // Assume India (+91) if no country code provided
+            phoneNumber = '+91' + phoneNumber.replace(/^0+/, '');
+        }
 
-        const message = await twilio.messages.create({
-            body,
-            from: process.env.TWILIO_FROM,
-            to
-        });
+        const params = {
+            Message: body,
+            PhoneNumber: phoneNumber,
+            MessageAttributes: {
+                'AWS.SNS.SMS.SenderID': {
+                    DataType: 'String',
+                    StringValue: process.env.SNS_SENDER_ID || 'EXPO'
+                },
+                'AWS.SNS.SMS.SMSType': {
+                    DataType: 'String',
+                    StringValue: 'Transactional'
+                }
+            }
+        };
 
-        console.log('SMS sent:', message.sid);
-        return { success: true, sid: message.sid };
+        const command = new PublishCommand(params);
+        const response = await client.send(command);
+
+        console.log('SMS sent via AWS SNS:', response.MessageId);
+        return { success: true, messageId: response.MessageId };
     } catch (error) {
-        console.error('Error sending SMS:', error.message);
+        console.error('Error sending SMS via AWS SNS:', error.message);
         // Return error instead of throwing - prevents server crash
         return { success: false, error: error.message };
     }

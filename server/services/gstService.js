@@ -1,5 +1,23 @@
 const https = require('https');
 
+// Dummy GST number for validation when API key is not available
+const DUMMY_GST_NUMBER = '36AAACH7409R116';
+
+// Mock data for the dummy GST number
+const DUMMY_GST_DATA = {
+    gstin: DUMMY_GST_NUMBER,
+    legalName: 'Demo Company Pvt Ltd',
+    tradeName: 'Demo Company',
+    status: 'Active',
+    state: 'Telangana',
+    district: 'Hyderabad',
+    registrationDate: '2020-01-01',
+    panNumber: 'AAACH7409R',
+    stateCode: '36',
+    businessType: 'Private Limited Company',
+    address: 'Demo Address, Hyderabad, Telangana - 500001'
+};
+
 // In-memory cache for GSTIN verification results
 const gstCache = new Map();
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -205,12 +223,32 @@ async function verifyGSTIN(gstin, identifier = 'global') {
         // Normalize GSTIN
         const normalizedGSTIN = gstin.toUpperCase().trim();
 
+        // Check if this is the dummy GST number first (before format validation)
+        // This allows the demo GST number to work even if it doesn't match standard format
+        if (normalizedGSTIN === DUMMY_GST_NUMBER) {
+            console.log(`Using dummy GST validation for: ${normalizedGSTIN}`);
+            return {
+                success: true,
+                data: DUMMY_GST_DATA
+            };
+        }
+
         // Validate format
         if (!isValidGSTINFormat(normalizedGSTIN)) {
             return {
                 success: false,
                 error: 'Invalid GSTIN format. Please enter a valid 15-digit GSTIN.',
                 errorCode: 'INVALID_FORMAT'
+            };
+        }
+
+        // If no API key is configured, only accept the dummy GST number
+        if (!process.env.GST_API_KEY) {
+            console.log('GST_API_KEY not configured. Only dummy GST number is accepted.');
+            return {
+                success: false,
+                error: `GST verification is currently in demo mode. Please use the demo GST number: ${DUMMY_GST_NUMBER}`,
+                errorCode: 'DEMO_MODE'
             };
         }
 
@@ -305,5 +343,6 @@ module.exports = {
     verifyGSTIN,
     isValidGSTINFormat,
     extractStateCode,
-    extractPAN
+    extractPAN,
+    DUMMY_GST_NUMBER
 };

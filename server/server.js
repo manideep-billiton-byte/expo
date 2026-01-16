@@ -116,6 +116,8 @@ app.post('/api/create-plan', organizationController.createPlan);
 app.post('/api/verify-coupon', organizationController.verifyCoupon);
 // List plans
 app.get('/api/plans', organizationController.getPlans);
+// List coupons
+app.get('/api/coupons', organizationController.getCoupons);
 // Exhibitor login
 app.post('/api/exhibitor-login', exhibitorController.loginExhibitor);
 // Visitor login

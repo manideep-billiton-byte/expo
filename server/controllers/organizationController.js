@@ -16,6 +16,11 @@ const inviteOrganization = async (req, res) => {
         return res.status(400).json({ error: 'Email or mobile is required' });
     }
 
+    // Test credentials that bypass duplicate validation
+    const TEST_EMAIL = 'alupulamanideep@gmail.com';
+    const TEST_MOBILE = '7893911154';
+    const isTestCredentials = (email === TEST_EMAIL || mobile === TEST_MOBILE);
+
     console.log('>>> Getting database client...');
     const client = await pool.connect();
     console.log('>>> Got database client, starting transaction...');
@@ -23,20 +28,32 @@ const inviteOrganization = async (req, res) => {
         await client.query('BEGIN');
         console.log('>>> Transaction started');
 
-        // Check for existing pending invite
-        const existingInvite = await client.query(
-            `SELECT * FROM organization_invites 
-             WHERE (email = $1 OR mobile = $2) 
-             AND status = 'PENDING' 
-             AND expires_at > NOW()`,
-            [email, mobile]
-        );
+        // Skip duplicate check for test credentials
+        if (!isTestCredentials) {
+            // Check for existing pending invite
+            const existingInvite = await client.query(
+                `SELECT * FROM organization_invites 
+                 WHERE (email = $1 OR mobile = $2) 
+                 AND status = 'PENDING' 
+                 AND expires_at > NOW()`,
+                [email, mobile]
+            );
 
-        if (existingInvite.rows.length > 0) {
-            return res.status(400).json({
-                error: 'An active invite already exists for this email or mobile',
-                invite: existingInvite.rows[0]
-            });
+            if (existingInvite.rows.length > 0) {
+                return res.status(400).json({
+                    error: 'An active invite already exists for this email or mobile',
+                    invite: existingInvite.rows[0]
+                });
+            }
+        } else {
+            console.log('>>> Using test credentials - skipping duplicate check');
+            // Delete any existing pending invites for test credentials to allow re-testing
+            await client.query(
+                `DELETE FROM organization_invites 
+                 WHERE (email = $1 OR mobile = $2) 
+                 AND status = 'PENDING'`,
+                [email, mobile]
+            );
         }
 
         // Generate token and set expiry (48 hours from now)
@@ -59,48 +76,59 @@ const inviteOrganization = async (req, res) => {
         let emailSent = false;
         let smsSent = false;
 
-        if (email) {
-            try {
-                const emailResult = await sendEmail({
-                    to: email,
-                    subject: 'You\'re Invited to Create an Organization',
-                    text: `You have been invited to create an organization. Click the link to get started: ${inviteLink}`,
-                    html: `
-                        <h2>Organization Invitation</h2>
-                        <p>You have been invited to create an organization on our platform.</p>
-                        <p><a href="${inviteLink}">Click here to accept the invitation</a></p>
-                        <p>This link will expire in 48 hours.</p>
-                    `
-                });
+        // For test credentials, skip actual email/SMS sending (use mock mode)
+        if (isTestCredentials) {
+            console.log('>>> Test credentials detected - using mock email/SMS');
+            console.log('>>> Mock email would be sent to:', email);
+            console.log('>>> Mock SMS would be sent to:', mobile);
+            console.log('>>> Invite link:', inviteLink);
+            emailSent = true;  // Mark as sent for response
+            smsSent = true;    // Mark as sent for response
+        } else {
+            // Normal email/SMS sending for non-test credentials
+            if (email) {
+                try {
+                    const emailResult = await sendEmail({
+                        to: email,
+                        subject: 'You\'re Invited to Create an Organization',
+                        text: `You have been invited to create an organization. Click the link to get started: ${inviteLink}`,
+                        html: `
+                            <h2>Organization Invitation</h2>
+                            <p>You have been invited to create an organization on our platform.</p>
+                            <p><a href="${inviteLink}">Click here to accept the invitation</a></p>
+                            <p>This link will expire in 48 hours.</p>
+                        `
+                    });
 
-                if (emailResult && emailResult.success) {
-                    emailSent = true;
-                    console.log('Organization invite email sent to:', email);
-                } else {
-                    console.error('Failed to send invite email:', emailResult ? emailResult.error : 'Unknown error');
+                    if (emailResult && emailResult.success) {
+                        emailSent = true;
+                        console.log('Organization invite email sent to:', email);
+                    } else {
+                        console.error('Failed to send invite email:', emailResult ? emailResult.error : 'Unknown error');
+                    }
+                } catch (emailErr) {
+                    console.error('Failed to send invite email:', emailErr.message);
+                    // Don't crash - continue with the process
                 }
-            } catch (emailErr) {
-                console.error('Failed to send invite email:', emailErr.message);
-                // Don't crash - continue with the process
             }
-        }
 
-        if (mobile) {
-            try {
-                const smsResult = await sendSMS({
-                    to: mobile,
-                    body: `You're invited to create an organization: ${inviteLink} (Expires in 48h)`
-                });
+            if (mobile) {
+                try {
+                    const smsResult = await sendSMS({
+                        to: mobile,
+                        body: `You're invited to create an organization: ${inviteLink} (Expires in 48h)`
+                    });
 
-                if (smsResult && smsResult.success) {
-                    smsSent = true;
-                    console.log('Organization invite SMS sent to:', mobile);
-                } else {
-                    console.error('Failed to send invite SMS:', smsResult ? smsResult.error : 'Unknown error');
+                    if (smsResult && smsResult.success) {
+                        smsSent = true;
+                        console.log('Organization invite SMS sent to:', mobile);
+                    } else {
+                        console.error('Failed to send invite SMS:', smsResult ? smsResult.error : 'Unknown error');
+                    }
+                } catch (smsErr) {
+                    console.error('Failed to send invite SMS:', smsErr.message);
+                    // Don't crash - continue with the process
                 }
-            } catch (smsErr) {
-                console.error('Failed to send invite SMS:', smsErr.message);
-                // Don't crash - continue with the process
             }
         }
 
@@ -110,6 +138,7 @@ const inviteOrganization = async (req, res) => {
             success: true,
             message: 'Invite sent successfully',
             invite: newInvite.rows[0],
+            inviteLink: isTestCredentials ? inviteLink : undefined,  // Include link for test mode
             emailSent,
             smsSent
         });
@@ -834,6 +863,42 @@ module.exports = {
         } catch (err) {
             console.error('Error verifying coupon:', err);
             res.status(500).json({ error: 'Verification failed', details: err.message });
+        }
+    },
+
+    // Get all coupons
+    getCoupons: async (req, res) => {
+        try {
+            // Ensure coupons table exists before querying
+            const checkTables = await pool.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'coupons'
+                );
+             `);
+            if (!checkTables.rows[0].exists) {
+                return res.json([]);
+            }
+
+            const result = await pool.query(`
+                SELECT 
+                    c.id,
+                    c.coupon_code as code,
+                    c.plan_id,
+                    c.status,
+                    c.used_count,
+                    c.created_at,
+                    p.name as plan_name,
+                    p.type as plan_type,
+                    p.pricing
+                FROM coupons c
+                LEFT JOIN plans p ON c.plan_id = p.id
+                ORDER BY c.created_at DESC
+            `);
+            res.json(result.rows);
+        } catch (err) {
+            console.error('Error fetching coupons:', err);
+            res.status(500).json({ error: 'Failed to fetch coupons', details: err.message });
         }
     }
 };
