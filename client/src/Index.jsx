@@ -48,6 +48,7 @@ const Index = ({ onLogout, userType = 'master' }) => {
     const [dashboardEvents, setDashboardEvents] = useState([]);
     const [dashboardExhibitors, setDashboardExhibitors] = useState([]);
     const [dashboardVisitors, setDashboardVisitors] = useState([]);
+    const [selectedOrg, setSelectedOrg] = useState('all'); // Organization filter
 
     const loadDashboardData = async () => {
         setDashboardLoading(true);
@@ -317,10 +318,17 @@ const Index = ({ onLogout, userType = 'master' }) => {
                                         <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Real-time activity by organization</p>
                                     </div>
                                 </div>
-                                <select style={{ border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', color: '#475569', fontWeight: 500, background: 'white' }}>
-                                    <option>Select Organization</option>
-                                    <option>TechCorp India</option>
-                                    <option>Govt. of Maharashtra</option>
+                                <select
+                                    value={selectedOrg}
+                                    onChange={(e) => setSelectedOrg(e.target.value)}
+                                    style={{ border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', color: '#475569', fontWeight: 500, background: 'white', cursor: 'pointer' }}
+                                >
+                                    <option value="all">All Organizations</option>
+                                    {dashboardOrgs.map((org, idx) => (
+                                        <option key={idx} value={org.id || idx}>
+                                            {org.organization_name || org.email || `Organization ${idx + 1}`}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
@@ -602,19 +610,39 @@ const Index = ({ onLogout, userType = 'master' }) => {
                                     <span style={{ fontWeight: 700, fontSize: '14px' }}>Quick Actions</span>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                    <div style={{ background: '#f8fafc', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid #f1f5f9' }}>
+                                    <div
+                                        onClick={() => handleNavigate('events')}
+                                        style={{ background: '#f8fafc', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid #f1f5f9', transition: 'all 0.2s' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    >
                                         <Plus size={14} color="#64748b" />
                                         <div style={{ fontSize: '9px', fontWeight: 600, color: '#64748b', marginTop: '4px' }}>Create Event</div>
                                     </div>
-                                    <div style={{ background: '#f8fafc', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid #f1f5f9' }}>
+                                    <div
+                                        onClick={() => handleNavigate('tenants')}
+                                        style={{ background: '#f8fafc', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid #f1f5f9', transition: 'all 0.2s' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    >
                                         <Building2 size={14} color="#64748b" />
                                         <div style={{ fontSize: '9px', fontWeight: 600, color: '#64748b', marginTop: '4px' }}>Add Tenant</div>
                                     </div>
-                                    <div style={{ background: '#f8fafc', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid #f1f5f9' }}>
+                                    <div
+                                        onClick={() => handleNavigate('users')}
+                                        style={{ background: '#f8fafc', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid #f1f5f9', transition: 'all 0.2s' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    >
                                         <UserPlus size={14} color="#64748b" />
                                         <div style={{ fontSize: '9px', fontWeight: 600, color: '#64748b', marginTop: '4px' }}>Invite User</div>
                                     </div>
-                                    <div style={{ background: '#f8fafc', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid #f1f5f9' }}>
+                                    <div
+                                        onClick={() => handleNavigate('exhibitors')}
+                                        style={{ background: '#f8fafc', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid #f1f5f9', transition: 'all 0.2s' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    >
                                         <ImageIcon size={14} color="#64748b" />
                                         <div style={{ fontSize: '9px', fontWeight: 600, color: '#64748b', marginTop: '4px' }}>New Exhibitor</div>
                                     </div>

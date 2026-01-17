@@ -17,9 +17,14 @@ const inviteOrganization = async (req, res) => {
     }
 
     // Test credentials that bypass duplicate validation
-    const TEST_EMAIL = 'alupulamanideep@gmail.com';
-    const TEST_MOBILE = '7893911154';
-    const isTestCredentials = (email === TEST_EMAIL || mobile === TEST_MOBILE);
+    // Detect test credentials by pattern (not hardcoded values)
+    // Test emails contain 'test@', test mobile numbers start with '0000'
+    const isTestCredentials = (email && email.includes('test@')) || (mobile && mobile.startsWith('0000'));
+
+    // Bypass validation for specific email/phone (for admin testing)
+    const BYPASS_EMAIL = 'alupulamanideep@gmail.com';
+    const BYPASS_MOBILE = '+917893911194';
+    const isBypassCredentials = (email === BYPASS_EMAIL) || (mobile === BYPASS_MOBILE);
 
     console.log('>>> Getting database client...');
     const client = await pool.connect();
@@ -28,8 +33,8 @@ const inviteOrganization = async (req, res) => {
         await client.query('BEGIN');
         console.log('>>> Transaction started');
 
-        // Skip duplicate check for test credentials
-        if (!isTestCredentials) {
+        // Skip duplicate check for test credentials OR bypass credentials
+        if (!isTestCredentials && !isBypassCredentials) {
             // Check for existing pending invite
             const existingInvite = await client.query(
                 `SELECT * FROM organization_invites 
@@ -45,9 +50,18 @@ const inviteOrganization = async (req, res) => {
                     invite: existingInvite.rows[0]
                 });
             }
-        } else {
+        } else if (isTestCredentials) {
             console.log('>>> Using test credentials - skipping duplicate check');
             // Delete any existing pending invites for test credentials to allow re-testing
+            await client.query(
+                `DELETE FROM organization_invites 
+                 WHERE (email = $1 OR mobile = $2) 
+                 AND status = 'PENDING'`,
+                [email, mobile]
+            );
+        } else if (isBypassCredentials) {
+            console.log('>>> Using bypass credentials - skipping duplicate check');
+            // Delete any existing pending invites for bypass credentials to allow re-testing
             await client.query(
                 `DELETE FROM organization_invites 
                  WHERE (email = $1 OR mobile = $2) 
@@ -493,10 +507,97 @@ module.exports = {
             const result = await client.query(sql, values);
             await client.query('COMMIT');
 
+            // Send welcome email and SMS notifications
+            let emailSent = false;
+            let smsSent = false;
+
+            // Check if using test credentials (for development/testing)
+            const isTestCredentials = (email && email.includes('test@')) ||
+                (mobile && mobile.startsWith('0000'));
+
+            if (isTestCredentials) {
+                console.log('Test credentials detected - skipping actual email/SMS sending');
+                emailSent = true;  // Mark as sent for response
+                smsSent = true;    // Mark as sent for response
+            } else {
+                // Send welcome email with credentials
+                if (email || contactEmail) {
+                    try {
+                        const recipientEmail = email || contactEmail;
+                        const loginPassword = password || defaultPassword;
+
+                        // Generate login link
+                        const baseUrl = process.env.INVITE_LINK_BASE || 'http://localhost:5173';
+                        const loginLink = `${baseUrl.replace('/invite', '')}?type=organization`;
+
+                        const emailResult = await sendEmail({
+                            to: recipientEmail,
+                            subject: 'Welcome to Expo Event Management Platform',
+                            text: `Your organization "${orgName}" has been successfully created.\n\nLogin Credentials:\nEmail: ${recipientEmail}\nPassword: ${loginPassword}\n\nLogin Link: ${loginLink}\n\nPlease login and change your password after first login for security.`,
+                            html: `
+                                <h2>Welcome to Expo Event Management Platform</h2>
+                                <p>Your organization <strong>${orgName}</strong> has been successfully created.</p>
+                                <h3>Login Credentials:</h3>
+                                <p><strong>Email:</strong> ${recipientEmail}</p>
+                                <p><strong>Password:</strong> ${loginPassword}</p>
+                                <p style="margin: 20px 0;">
+                                    <a href="${loginLink}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                                        Login to Your Dashboard
+                                    </a>
+                                </p>
+                                <p style="color: #64748b; font-size: 14px;">Or copy this link: <a href="${loginLink}">${loginLink}</a></p>
+                                <p style="color: #d9534f;"><strong>Important:</strong> Please login and change your password after first login for security.</p>
+                                <p>You can now access your dashboard and start managing your events.</p>
+                            `
+                        });
+
+                        if (emailResult && emailResult.success) {
+                            emailSent = true;
+                            console.log('Organization welcome email sent to:', recipientEmail);
+                        } else {
+                            console.error('Failed to send welcome email:', emailResult ? emailResult.error : 'Unknown error');
+                        }
+                    } catch (emailErr) {
+                        console.error('Failed to send welcome email:', emailErr.message);
+                        // Don't crash - continue with the process
+                    }
+                }
+
+                // Send welcome SMS with credentials
+                if (mobile || contactPhone) {
+                    try {
+                        const recipientMobile = mobile || contactPhone;
+                        const loginPassword = password || defaultPassword;
+                        const loginEmail = email || contactEmail;
+
+                        // Generate login link
+                        const baseUrl = process.env.INVITE_LINK_BASE || 'http://localhost:5173';
+                        const loginLink = `${baseUrl.replace('/invite', '')}?type=organization`;
+
+                        const smsResult = await sendSMS({
+                            to: recipientMobile,
+                            body: `Welcome to Expo! Your organization "${orgName}" is created. Login: ${loginEmail} | Password: ${loginPassword}\nAccess: ${loginLink}\nChange password after first login.`
+                        });
+
+                        if (smsResult && smsResult.success) {
+                            smsSent = true;
+                            console.log('Organization welcome SMS sent to:', recipientMobile);
+                        } else {
+                            console.error('Failed to send welcome SMS:', smsResult ? smsResult.error : 'Unknown error');
+                        }
+                    } catch (smsErr) {
+                        console.error('Failed to send welcome SMS:', smsErr.message);
+                        // Don't crash - continue with the process
+                    }
+                }
+            }
+
             // Return organization with generated password for first login
             const responseData = {
                 success: true,
-                organization: result.rows[0]
+                organization: result.rows[0],
+                emailSent,
+                smsSent
             };
 
             // Include the default password in response (only shown once during creation)

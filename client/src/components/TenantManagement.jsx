@@ -48,6 +48,14 @@ const TenantManagement = () => {
     const [gstVerifying, setGstVerifying] = useState(false);
     const [gstError, setGstError] = useState('');
 
+    // Toast notification state
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+    };
+
     // Wizard State
     const [wizardTab, setWizardTab] = useState('BASIC'); // BASIC, CONTACT, GST, FEATURES, SUBSCRIPTION
     const [wizardData, setWizardData] = useState({
@@ -279,7 +287,22 @@ const TenantManagement = () => {
             });
             const data = await res.json();
             if (res.ok) {
-                alert('Invitation sent successfully');
+                // Show specific success message based on what was sent
+                const emailSent = data.emailSent;
+                const smsSent = data.smsSent;
+
+                let successMessage = '';
+                if (emailSent && smsSent) {
+                    successMessage = 'SMS and Email sent successfully';
+                } else if (emailSent) {
+                    successMessage = 'Email sent successfully';
+                } else if (smsSent) {
+                    successMessage = 'SMS sent successfully';
+                } else {
+                    successMessage = 'Invitation created successfully';
+                }
+
+                showToast(successMessage, 'success');
                 handleCloseModal();
             } else {
                 throw new Error(data.error || 'Failed to send invite');
@@ -1684,7 +1707,7 @@ const TenantManagement = () => {
                                             <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '8px' }}>Enter Mobile</label>
                                             <input
                                                 type="tel"
-                                                placeholder="7893911194"
+                                                placeholder="+91"
                                                 value={inviteData.mobile}
                                                 onChange={(e) => setInviteData({ ...inviteData, mobile: e.target.value })}
                                                 style={{
@@ -1724,6 +1747,75 @@ const TenantManagement = () => {
                     </div>
                 )
             }
+
+            {/* Toast Notification */}
+            {toast.show && (
+                <div style={{
+                    position: 'fixed',
+                    top: '20px',
+                    right: '20px',
+                    zIndex: 9999,
+                    animation: 'slideInRight 0.3s ease-out'
+                }}>
+                    <div style={{
+                        background: toast.type === 'success' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#ef4444',
+                        color: 'white',
+                        padding: '16px 24px',
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        minWidth: '300px',
+                        maxWidth: '500px'
+                    }}>
+                        <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '16px'
+                        }}>
+                            ✓
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '15px', fontWeight: 600 }}>{toast.message}</div>
+                        </div>
+                        <button
+                            onClick={() => setToast({ show: false, message: '', type: 'success' })}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'white',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                opacity: 0.8,
+                                fontSize: '18px',
+                                lineHeight: 1
+                            }}
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Add keyframe animation */}
+            <style>{`
+                @keyframes slideInRight {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+            `}</style>
         </div >
     );
 };
