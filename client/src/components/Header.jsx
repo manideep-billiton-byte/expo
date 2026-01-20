@@ -72,6 +72,7 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
         { icon: Eye, label: 'Visitors', screen: 'visitors' },
         { icon: CreditCard, label: 'Billing', screen: 'billing' },
         { icon: MessageSquare, label: 'Communication', screen: 'communication' },
+        { icon: Receipt, label: 'User Logs', screen: 'logs' },
         { icon: LineChart, label: 'Analytics', screen: 'analytics' },
         { icon: ShieldCheck, label: 'Compliance', screen: 'compliance' },
         { icon: LifeBuoy, label: 'Support', screen: 'support' },

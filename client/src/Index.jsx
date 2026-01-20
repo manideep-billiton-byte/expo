@@ -14,6 +14,11 @@ import Scanner from './components/Scanner';
 import ExhibitorAnalytics from './components/ExhibitorAnalytics';
 import ExhibitorEventManagement from './components/ExhibitorEventManagement';
 import ScanPrint from './components/ScanPrint';
+import CommunicationControl from './components/CommunicationControl';
+import UserLogsAudit from './components/UserLogsAudit';
+import AnalyticsAPI from './components/AnalyticsAPI';
+import CompliancePrivacy from './components/CompliancePrivacy';
+import SupportManagement from './components/SupportManagement';
 import {
     Building2, Calendar, Image as ImageIcon, Users,
     MapPin, MousePointer2, IndianRupee, UserCheck,
@@ -140,6 +145,16 @@ const Index = ({ onLogout, userType = 'master' }) => {
                 return <BillingManagement />;
             case 'scan-print':
                 return <ScanPrint />;
+            case 'communication':
+                return <CommunicationControl />;
+            case 'logs':
+                return <UserLogsAudit />;
+            case 'analytics':
+                return <AnalyticsAPI />;
+            case 'compliance':
+                return <CompliancePrivacy />;
+            case 'support':
+                return <SupportManagement />;
             default:
                 const isOrganization = userType === 'organization';
                 const activeTenantsCount = dashboardOrgs.length;
