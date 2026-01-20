@@ -201,6 +201,21 @@ const EventManagement = () => {
 
             setCreatedEvent(data);
 
+            // Check email status and show alert
+            if (data.emailStatus) {
+                if (data.emailStatus.sent) {
+                    // Show success alert for email sent
+                    setTimeout(() => {
+                        alert(`✅ Event created successfully!\n\n📧 Registration link has been sent to: ${data.emailStatus.email}`);
+                    }, 500);
+                } else if (data.emailStatus.email) {
+                    // Show warning if email failed
+                    setTimeout(() => {
+                        alert(`⚠️ Event created successfully!\n\nHowever, the email could not be sent to: ${data.emailStatus.email}\n\nPlease share the registration link manually.`);
+                    }, 500);
+                }
+            }
+
             // Generate registration link with event details
             const baseUrl = window.location.origin;
             const regUrl = `${baseUrl}/?action=register&eventId=${data.id}&eventName=${encodeURIComponent(eventData.eventName)}&eventDate=${encodeURIComponent(eventData.startDate)}`;

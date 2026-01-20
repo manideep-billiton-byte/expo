@@ -1,5 +1,6 @@
 const pool = require('../db');
 const { v4: uuidv4 } = require('uuid');
+const { sendEmail } = require('../services/notificationService');
 
 const getEvents = async (req, res) => {
     try {
@@ -64,7 +65,149 @@ const createEvent = async (req, res) => {
         const result = await pool.query(insertSql, values);
         const created = result.rows[0];
         console.log('Event created successfully:', created.id);
-        return res.status(201).json(created);
+
+        // Send email notification to organizer
+        let emailStatus = { sent: false, email: null };
+        if (payload.organizerEmail || payload.organizer_email) {
+            const organizerEmail = payload.organizerEmail || payload.organizer_email;
+            const startDate = payload.startDate || payload.start_date || 'TBD';
+            const endDate = payload.endDate || payload.end_date || 'TBD';
+            const venue = payload.venue || 'TBD';
+            const city = payload.city || '';
+            const state = payload.state || '';
+
+            // Create professional HTML email template
+            const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; padding: 40px 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+        .header p { margin: 10px 0 0 0; font-size: 14px; opacity: 0.9; }
+        .content { padding: 40px 30px; }
+        .event-details { background: #f8fafc; border-left: 4px solid #2563eb; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .event-details h2 { margin: 0 0 15px 0; color: #1e293b; font-size: 20px; }
+        .detail-row { margin: 10px 0; display: flex; }
+        .detail-label { font-weight: 600; color: #475569; min-width: 100px; }
+        .detail-value { color: #64748b; }
+        .cta-button { display: inline-block; background: #2563eb; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; margin: 20px 0; text-align: center; }
+        .cta-button:hover { background: #1e40af; }
+        .link-box { background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0; word-break: break-all; }
+        .link-box a { color: #2563eb; text-decoration: none; font-size: 14px; }
+        .footer { background: #f8fafc; padding: 20px 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Event Created Successfully!</h1>
+            <p>Your event registration is now live</p>
+        </div>
+        <div class="content">
+            <p>Hello,</p>
+            <p>Your event <strong>${eventName}</strong> has been successfully created and is ready to accept registrations.</p>
+            
+            <div class="event-details">
+                <h2>Event Details</h2>
+                <div class="detail-row">
+                    <span class="detail-label">Event Name:</span>
+                    <span class="detail-value">${eventName}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Start Date:</span>
+                    <span class="detail-value">${startDate}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">End Date:</span>
+                    <span class="detail-value">${endDate}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Venue:</span>
+                    <span class="detail-value">${venue}${city ? ', ' + city : ''}${state ? ', ' + state : ''}</span>
+                </div>
+            </div>
+
+            <p><strong>Share this registration link with your attendees:</strong></p>
+            
+            <div style="text-align: center;">
+                <a href="${registration_link}" class="cta-button">Open Registration Page</a>
+            </div>
+
+            <div class="link-box">
+                <strong>Registration Link:</strong><br>
+                <a href="${registration_link}">${registration_link}</a>
+            </div>
+
+            <p>You can share this link via:</p>
+            <ul>
+                <li>Email campaigns</li>
+                <li>Social media</li>
+                <li>WhatsApp messages</li>
+                <li>Your website</li>
+            </ul>
+
+            <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+        </div>
+        <div class="footer">
+            <p>Powered by Billiton Event Management Platform</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
+            `;
+
+            const textContent = `
+Event Created Successfully!
+
+Your event "${eventName}" has been successfully created and is ready to accept registrations.
+
+Event Details:
+- Event Name: ${eventName}
+- Start Date: ${startDate}
+- End Date: ${endDate}
+- Venue: ${venue}${city ? ', ' + city : ''}${state ? ', ' + state : ''}
+
+Registration Link:
+${registration_link}
+
+Share this link with your attendees via email, social media, WhatsApp, or your website.
+
+Powered by Billiton Event Management Platform
+            `;
+
+            // Send email and wait for result
+            try {
+                const emailResult = await sendEmail({
+                    to: organizerEmail,
+                    subject: `Event Created: ${eventName} - Registration Link`,
+                    text: textContent,
+                    html: htmlContent
+                });
+
+                if (emailResult.success) {
+                    console.log(`Event creation email sent successfully to ${organizerEmail}`);
+                    emailStatus = { sent: true, email: organizerEmail };
+                } else {
+                    console.error(`Failed to send event creation email to ${organizerEmail}:`, emailResult.error);
+                    emailStatus = { sent: false, email: organizerEmail, error: emailResult.error };
+                }
+            } catch (emailErr) {
+                console.error(`Error sending event creation email to ${organizerEmail}:`, emailErr);
+                emailStatus = { sent: false, email: organizerEmail, error: emailErr.message };
+            }
+        }
+
+        // Include email status in response
+        return res.status(201).json({
+            ...created,
+            emailStatus
+        });
     } catch (err) {
         console.error('createEvent error:', err);
         res.status(500).json({
