@@ -178,11 +178,15 @@ const createEvent = async (req, res) => {
                         <li>Your event website or landing page</li>
                     </ul>
                 </div>
-                <div style="margin-top: 15px; padding: 12px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 6px;">
-                    <p style="margin: 0; font-size: 13px; color: #065f46;">
-                        <strong>📱 QR Code Attached!</strong> Check your email attachments for a scannable QR code that you can print or share digitally.
-                    </p>
+            </div>
+
+            <div class="qr-section">
+                <h3>📱 Scan to Register</h3>
+                <p>Share this QR code with your attendees for quick registration</p>
+                <div class="qr-code-img">
+                    <img src="cid:qrcode" alt="Event Registration QR Code" style="max-width: 300px; height: auto; display: block;">
                 </div>
+                <p style="margin-top: 15px; font-size: 12px;">Attendees can scan this code with their phone camera to access the registration page instantly.</p>
             </div>
 
             <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
@@ -211,6 +215,8 @@ Registration Link:
 ${registration_link}
 
 Share this link with your attendees via email, social media, WhatsApp, or your website.
+
+A QR code for quick registration is included in this email. Share it with your attendees!
 
 Powered by Billiton Event Management Platform
             `;
