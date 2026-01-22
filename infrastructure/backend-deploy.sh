@@ -78,8 +78,8 @@ fi
 if [ -f "../.env.production" ]; then
     echo "📝 Setting environment variables..."
     
-    # Read .env.production and convert to EB format
-    VARS=""
+    # Read .env.production and build array of KEY=VALUE pairs
+    declare -a ENV_PAIRS
     while IFS='=' read -r key value; do
         # Skip comments and empty lines
         [[ $key =~ ^#.*$ ]] && continue
@@ -89,16 +89,13 @@ if [ -f "../.env.production" ]; then
         value=$(echo "$value" | sed 's/^"//;s/"$//;s/^'\''//;s/'\''$//')
         
         if [ -n "$value" ]; then
-            if [ -z "$VARS" ]; then
-                VARS="${key}=${value}"
-            else
-                VARS="${VARS},${key}=${value}"
-            fi
+            ENV_PAIRS+=("${key}=${value}")
         fi
     done < "../.env.production"
     
-    if [ -n "$VARS" ]; then
-        eb setenv $VARS
+    if [ ${#ENV_PAIRS[@]} -gt 0 ]; then
+        # eb setenv expects space-separated KEY=VALUE pairs
+        eb setenv "${ENV_PAIRS[@]}"
         echo "✅ Environment variables updated"
     fi
 else

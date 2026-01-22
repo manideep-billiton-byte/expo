@@ -28,12 +28,48 @@ const PublicVisitorRegistration = () => {
 
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
-        setEventDetails({
-            id: urlParams.get('eventId') || '',
-            name: urlParams.get('eventName') || 'Event',
-            date: urlParams.get('eventDate') || ''
-        });
+        const token = urlParams.get('token');
+
+        if (token) {
+            // Fetch event details using the token
+            fetchEventByToken(token);
+        } else {
+            // Fallback to URL params (for backward compatibility)
+            setEventDetails({
+                id: urlParams.get('eventId') || '',
+                name: urlParams.get('eventName') || 'Event',
+                date: urlParams.get('eventDate') || ''
+            });
+        }
     }, []);
+
+    const fetchEventByToken = async (token) => {
+        try {
+            const response = await apiFetch(`/api/events/by-token/${token}`);
+            if (response.ok) {
+                const event = await response.json();
+                setEventDetails({
+                    id: event.id,
+                    name: event.event_name || event.name,
+                    date: event.start_date ? new Date(event.start_date).toLocaleDateString() : ''
+                });
+            } else {
+                console.error('Event not found');
+                setEventDetails({
+                    id: '',
+                    name: 'Event',
+                    date: ''
+                });
+            }
+        } catch (error) {
+            console.error('Failed to fetch event details:', error);
+            setEventDetails({
+                id: '',
+                name: 'Event',
+                date: ''
+            });
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;

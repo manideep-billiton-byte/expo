@@ -195,6 +195,7 @@ app.post('/api/verify-coupon', organizationController.verifyCoupon);
 // Events
 app.get('/api/events', eventController.getEvents);
 app.post('/api/events', eventController.createEvent);
+app.get('/api/events/by-token/:token', eventController.getEventByToken);
 
 // Exhibitors
 app.get('/api/exhibitors', exhibitorController.getExhibitors);

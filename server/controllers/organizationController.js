@@ -22,9 +22,9 @@ const inviteOrganization = async (req, res) => {
     const isTestCredentials = (email && email.includes('test@')) || (mobile && mobile.startsWith('0000'));
 
     // Bypass validation for specific email/phone (for admin testing)
-    const BYPASS_EMAIL = 'alupulamanideep@gmail.com';
+    const BYPASS_EMAILS = ['alupulamanideep@gmail.com', 'projects@btsind.com'];
     const BYPASS_MOBILE = '+917893911194';
-    const isBypassCredentials = (email === BYPASS_EMAIL) || (mobile === BYPASS_MOBILE);
+    const isBypassCredentials = (email && BYPASS_EMAILS.includes(email)) || (mobile === BYPASS_MOBILE);
 
     console.log('>>> Getting database client...');
     const client = await pool.connect();

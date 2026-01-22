@@ -1,6 +1,7 @@
 const pool = require('../db');
 const { v4: uuidv4 } = require('uuid');
 const { sendEmail } = require('../services/notificationService');
+const QRCode = require('qrcode');
 
 const getEvents = async (req, res) => {
     try {
@@ -17,8 +18,8 @@ const createEvent = async (req, res) => {
     try {
         // generate QR token and registration link
         const token = uuidv4();
-        const base = process.env.REGISTRATION_BASE || 'https://expo.example.com';
-        const registration_link = `${base.replace(/\/$/, '')}/register/event/${token}`;
+        const base = process.env.INVITE_LINK_BASE || 'https://d2ux36xl31uki3.cloudfront.net';
+        const registration_link = `${base.replace(/\/$/, '')}?action=register&token=${token}`;
 
         // Note: 'name' column exists for legacy reasons with NOT NULL constraint
         const eventName = payload.eventName || payload.event_name || 'Untitled Event';
@@ -76,6 +77,27 @@ const createEvent = async (req, res) => {
             const city = payload.city || '';
             const state = payload.state || '';
 
+            // Generate QR code for registration link
+            const { generateCleanQRCode } = require('../utils/qrCodeGenerator');
+            const path = require('path');
+            const fs = require('fs');
+
+            const qrCodeDir = path.join(__dirname, '../uploads/qr-codes');
+            if (!fs.existsSync(qrCodeDir)) {
+                fs.mkdirSync(qrCodeDir, { recursive: true });
+            }
+
+            const qrCodePath = path.join(qrCodeDir, `event-${created.id}-qr.png`);
+            let qrCodeGenerated = false;
+
+            try {
+                await generateCleanQRCode(registration_link, qrCodePath);
+                qrCodeGenerated = true;
+                console.log(`QR code generated for event ${created.id}`);
+            } catch (qrError) {
+                console.error('Failed to generate QR code:', qrError);
+            }
+
             // Create professional HTML email template
             const htmlContent = `
 <!DOCTYPE html>
@@ -95,8 +117,12 @@ const createEvent = async (req, res) => {
         .detail-row { margin: 10px 0; display: flex; }
         .detail-label { font-weight: 600; color: #475569; min-width: 100px; }
         .detail-value { color: #64748b; }
-        .cta-button { display: inline-block; background: #2563eb; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; margin: 20px 0; text-align: center; }
-        .cta-button:hover { background: #1e40af; }
+        .cta-button { display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 10px; font-weight: 700; margin: 20px 0; text-align: center; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); font-size: 16px; }
+        .cta-button:hover { background: linear-gradient(135deg, #059669 0%, #047857 100%); box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4); }
+        .qr-section { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #10b981; padding: 30px; border-radius: 12px; margin: 30px 0; text-align: center; }
+        .qr-section h3 { color: #065f46; margin: 0 0 10px 0; font-size: 20px; }
+        .qr-section p { color: #047857; margin: 10px 0 20px 0; font-size: 14px; }
+        .qr-code-img { background: white; padding: 20px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .link-box { background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0; word-break: break-all; }
         .link-box a { color: #2563eb; text-decoration: none; font-size: 14px; }
         .footer { background: #f8fafc; padding: 20px 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
@@ -135,21 +161,29 @@ const createEvent = async (req, res) => {
             <p><strong>Share this registration link with your attendees:</strong></p>
             
             <div style="text-align: center;">
-                <a href="${registration_link}" class="cta-button">Open Registration Page</a>
+                <a href="${registration_link}" class="cta-button">🎯 Open Registration Page</a>
             </div>
 
             <div class="link-box">
-                <strong>Registration Link:</strong><br>
-                <a href="${registration_link}">${registration_link}</a>
+                <strong>📋 Registration Link:</strong><br>
+                <a href="${registration_link}" style="word-break: break-all;">${registration_link}</a>
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+                    <p style="margin: 5px 0; font-size: 13px; color: #64748b;">
+                        <strong>💡 Tip:</strong> Copy this link and share it via:
+                    </p>
+                    <ul style="margin: 10px 0; padding-left: 20px; font-size: 13px; color: #64748b;">
+                        <li>Email campaigns to your attendee list</li>
+                        <li>Social media posts (Facebook, LinkedIn, Twitter)</li>
+                        <li>WhatsApp groups or direct messages</li>
+                        <li>Your event website or landing page</li>
+                    </ul>
+                </div>
+                <div style="margin-top: 15px; padding: 12px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 6px;">
+                    <p style="margin: 0; font-size: 13px; color: #065f46;">
+                        <strong>📱 QR Code Attached!</strong> Check your email attachments for a scannable QR code that you can print or share digitally.
+                    </p>
+                </div>
             </div>
-
-            <p>You can share this link via:</p>
-            <ul>
-                <li>Email campaigns</li>
-                <li>Social media</li>
-                <li>WhatsApp messages</li>
-                <li>Your website</li>
-            </ul>
 
             <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
         </div>
@@ -183,11 +217,24 @@ Powered by Billiton Event Management Platform
 
             // Send email and wait for result
             try {
-                const emailResult = await sendEmail({
+                const { sendEmailWithAttachments } = require('../services/notificationService');
+
+                // Prepare attachments array
+                const attachments = [];
+                if (qrCodeGenerated) {
+                    attachments.push({
+                        filename: 'event-registration-qr-code.png',
+                        path: qrCodePath,
+                        cid: 'qrcode' // Content ID for embedding in HTML
+                    });
+                }
+
+                const emailResult = await sendEmailWithAttachments({
                     to: organizerEmail,
                     subject: `Event Created: ${eventName} - Registration Link`,
                     text: textContent,
-                    html: htmlContent
+                    html: htmlContent,
+                    attachments: attachments
                 });
 
                 if (emailResult.success) {
@@ -218,4 +265,23 @@ Powered by Billiton Event Management Platform
     }
 };
 
-module.exports = { getEvents, createEvent };
+const getEventByToken = async (req, res) => {
+    const { token } = req.params;
+    try {
+        const result = await pool.query(
+            'SELECT id, event_name, name, start_date, end_date, venue, city, state FROM events WHERE qr_token = $1',
+            [token]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        return res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error fetching event by token:', error);
+        return res.status(500).json({ error: 'Failed to fetch event' });
+    }
+};
+
+module.exports = { getEvents, createEvent, getEventByToken };
