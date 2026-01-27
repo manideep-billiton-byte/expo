@@ -243,7 +243,15 @@ const sendEmailWithAttachments = async ({ to, subject, text, html, attachments =
         return { success: true, messageId: response.MessageId };
     } catch (error) {
         console.error('Error sending email with attachments via AWS SES:', error.message);
-        return { success: false, error: error.message };
+
+        // Detect common SES errors and provide helpful messages
+        let errorMessage = error.message;
+        if (error.message.includes('not verified') || error.message.includes('Email address is not verified')) {
+            errorMessage = `Email address ${to} is not verified. AWS SES is in sandbox mode and can only send to verified emails. Verified emails: deepak@btsind.com, projects@btsind.com, info@btsind.com, manideep.a@btsind.com, sharath.k@btsind.com`;
+            console.error('⚠️  SES SANDBOX MODE: Recipient email not verified:', to);
+        }
+
+        return { success: false, error: errorMessage };
     }
 };
 

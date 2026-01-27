@@ -59,7 +59,8 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
     credentials: false
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -196,10 +197,14 @@ app.post('/api/verify-coupon', organizationController.verifyCoupon);
 app.get('/api/events', eventController.getEvents);
 app.post('/api/events', eventController.createEvent);
 app.get('/api/events/by-token/:token', eventController.getEventByToken);
+app.put('/api/events/:id/ground-layout', eventController.updateEventGroundLayout);
 
 // Exhibitors
 app.get('/api/exhibitors', exhibitorController.getExhibitors);
 app.post('/api/exhibitors', exhibitorController.createExhibitor);
+app.get('/api/exhibitors/upcoming-events/:organizationId', exhibitorController.getUpcomingEventsByOrganization);
+app.post('/api/exhibitors/register-event', exhibitorController.registerExhibitorForEvent);
+
 
 // Visitors
 app.get('/api/visitors', visitorController.getVisitors);

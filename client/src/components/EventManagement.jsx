@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2, Upload } from 'lucide-react';
+import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2, Upload, Edit2, Trash2, Save } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 
 const EventManagement = () => {
@@ -17,6 +17,7 @@ const EventManagement = () => {
     const [createEventLoading, setCreateEventLoading] = useState(false);
 
     const [eventData, setEventData] = useState({
+        organizationId: '',
         eventName: '',
         description: '',
         eventType: '',
@@ -78,6 +79,16 @@ const EventManagement = () => {
     const [qrDataUrl, setQrDataUrl] = useState('');
     const [createdEvent, setCreatedEvent] = useState(null);
     const [registrationLink, setRegistrationLink] = useState('');
+
+    // Stall Type Editing State
+    const [editingStallType, setEditingStallType] = useState(null); // null or stall type id being edited
+    const [stallTypeForm, setStallTypeForm] = useState({
+        name: '',
+        stallCount: 10,
+        startNumber: 1,
+        color: '#3B82F6',
+        price: 50000
+    });
 
     const handleOpenModal = () => {
         setModalStep(1);
@@ -160,6 +171,7 @@ const EventManagement = () => {
         setCreateEventLoading(true);
         try {
             const payload = {
+                organizationId: eventData.organizationId,
                 eventName: eventData.eventName,
                 description: eventData.description,
                 eventType: eventData.eventType,
@@ -651,6 +663,24 @@ const EventManagement = () => {
                                 {/* Step 1: Basic Information */}
                                 {modalStep === 1 && (
                                     <div style={{ textAlign: 'left' }}>
+                                        {/* Organization Selector */}
+                                        <div style={{ marginBottom: '20px' }}>
+                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Organization *</label>
+                                            <select
+                                                value={eventData.organizationId}
+                                                onChange={e => setEventData({ ...eventData, organizationId: e.target.value })}
+                                                style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                            >
+                                                <option value="">Select organization</option>
+                                                {orgs.map(org => (
+                                                    <option key={org.id} value={org.id}>
+                                                        {org.org_name || org.name || org.organization_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {orgsLoading && <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Loading organizations...</p>}
+                                        </div>
+
                                         <div style={{ marginBottom: '20px' }}>
                                             <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Event Name *</label>
                                             <input
@@ -790,136 +820,567 @@ const EventManagement = () => {
                                 {/* Step 2: Stall Config */}
                                 {modalStep === 2 && (
                                     <div style={{ textAlign: 'left' }}>
-                                        {/* Enable Exhibition Stalls Toggle */}
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#f8fafc', borderRadius: '12px', marginBottom: '24px' }}>
-                                            <div>
-                                                <div style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Enable Exhibition Stalls</div>
-                                                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>Allow exhibitors to book stalls for this event</div>
-                                            </div>
-                                            <button
-                                                onClick={() => setEventData({ ...eventData, enableStalls: !eventData.enableStalls })}
-                                                style={{
-                                                    width: '52px', height: '28px', borderRadius: '14px', border: 'none', cursor: 'pointer',
-                                                    background: eventData.enableStalls ? '#2563eb' : '#e2e8f0',
-                                                    position: 'relative', transition: 'all 0.2s'
-                                                }}
-                                            >
+                                        {/* Stall Types List */}
+                                        <div style={{
+                                            border: '1.5px solid #e2e8f0',
+                                            borderRadius: '12px',
+                                            overflow: 'hidden',
+                                            maxHeight: '450px',
+                                            overflowY: 'auto',
+                                            marginBottom: '20px'
+                                        }}>
+                                            {eventData.stallTypes.length === 0 && editingStallType !== 'new' ? (
                                                 <div style={{
-                                                    width: '22px', height: '22px', borderRadius: '50%', background: 'white',
-                                                    position: 'absolute', top: '3px', left: eventData.enableStalls ? '27px' : '3px',
-                                                    transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                                                }} />
-                                            </button>
-                                        </div>
-
-                                        {eventData.enableStalls && (
-                                            <>
-                                                {/* Stall Range Configuration */}
-                                                <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-                                                        <Building2 size={18} color="#2563eb" />
-                                                        <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Stall Range Configuration</span>
-                                                    </div>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-                                                        <div>
-                                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#64748b', marginBottom: '6px' }}>Total Stalls</label>
-                                                            <div style={{ padding: '14px', background: '#eff6ff', borderRadius: '10px', textAlign: 'center' }}>
-                                                                <div style={{ fontSize: '24px', fontWeight: 700, color: '#2563eb' }}>
-                                                                    {eventData.stallConfig.rows * eventData.stallConfig.columns}
-                                                                </div>
-                                                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>Auto-calculated</div>
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#64748b', marginBottom: '6px' }}>Rows</label>
-                                                            <input
-                                                                type="number"
-                                                                value={eventData.stallConfig.rows}
-                                                                onChange={e => setEventData({
-                                                                    ...eventData,
-                                                                    stallConfig: { ...eventData.stallConfig, rows: parseInt(e.target.value) || 0 }
-                                                                })}
-                                                                style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#64748b', marginBottom: '6px' }}>Columns</label>
-                                                            <input
-                                                                type="number"
-                                                                value={eventData.stallConfig.columns}
-                                                                onChange={e => setEventData({
-                                                                    ...eventData,
-                                                                    stallConfig: { ...eventData.stallConfig, columns: parseInt(e.target.value) || 0 }
-                                                                })}
-                                                                style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#64748b', marginBottom: '6px' }}>Stall Prefix</label>
-                                                        <input
-                                                            type="text"
-                                                            value={eventData.stallConfig.stallPrefix}
-                                                            onChange={e => setEventData({
-                                                                ...eventData,
-                                                                stallConfig: { ...eventData.stallConfig, stallPrefix: e.target.value }
-                                                            })}
-                                                            style={{ width: '120px', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
-                                                        />
-                                                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
-                                                            Stalls will be numbered as {eventData.stallConfig.stallPrefix}-001, {eventData.stallConfig.stallPrefix}-002, etc.
-                                                        </div>
-                                                    </div>
+                                                    padding: '40px',
+                                                    textAlign: 'center',
+                                                    color: '#94a3b8',
+                                                    fontSize: '14px'
+                                                }}>
+                                                    No stall types configured yet. Click "Add Custom Stall Type" to get started.
                                                 </div>
+                                            ) : (
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    {eventData.stallTypes.map((type, idx) => (
+                                                        <React.Fragment key={type.id}>
+                                                            <div
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '16px',
+                                                                    padding: '16px 20px',
+                                                                    borderBottom: (idx < eventData.stallTypes.length - 1 || editingStallType === type.id) ? '1px solid #f1f5f9' : 'none',
+                                                                    background: 'white',
+                                                                    transition: 'background 0.2s'
+                                                                }}
+                                                            >
+                                                                {/* Color Indicator */}
+                                                                <div style={{
+                                                                    width: '40px',
+                                                                    height: '40px',
+                                                                    borderRadius: '10px',
+                                                                    background: type.color,
+                                                                    flexShrink: 0
+                                                                }} />
 
-                                                {/* Stall Types & Pricing */}
-                                                <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                                                        <Building2 size={18} color="#2563eb" />
-                                                        <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>Stall Types & Pricing</span>
-                                                    </div>
-                                                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
-                                                        Configure each stall type with quantity, number range, price, and color
-                                                    </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                                        {eventData.stallTypes.map((type, idx) => (
-                                                            <div key={type.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: '#f8fafc', borderRadius: '10px' }}>
-                                                                <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: type.color }} />
+                                                                {/* Stall Info */}
                                                                 <div style={{ flex: 1 }}>
-                                                                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>{type.name}</div>
-                                                                    <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                                                    <div style={{
+                                                                        fontWeight: 600,
+                                                                        color: '#1e293b',
+                                                                        fontSize: '15px',
+                                                                        marginBottom: '2px'
+                                                                    }}>
+                                                                        {type.name}
+                                                                    </div>
+                                                                    <div style={{
+                                                                        fontSize: '13px',
+                                                                        color: '#64748b'
+                                                                    }}>
                                                                         {type.endNumber - type.startNumber + 1} stalls (#{type.startNumber} - #{type.endNumber}) • ₹{type.price.toLocaleString()}
                                                                     </div>
                                                                 </div>
-                                                                <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                                                                    <Eye size={18} color="#64748b" />
-                                                                </button>
+
+                                                                {/* Action Buttons */}
+                                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if (editingStallType === type.id) {
+                                                                                setEditingStallType(null);
+                                                                                setStallTypeForm({ name: '', stallCount: 10, startNumber: 1, color: '#3B82F6', price: 50000 });
+                                                                            } else {
+                                                                                setEditingStallType(type.id);
+                                                                                setStallTypeForm({
+                                                                                    name: type.name,
+                                                                                    stallCount: type.endNumber - type.startNumber + 1,
+                                                                                    startNumber: type.startNumber,
+                                                                                    color: type.color,
+                                                                                    price: type.price
+                                                                                });
+                                                                            }
+                                                                        }}
+                                                                        style={{
+                                                                            background: 'none',
+                                                                            border: 'none',
+                                                                            cursor: 'pointer',
+                                                                            padding: '8px',
+                                                                            borderRadius: '8px',
+                                                                            transition: 'background 0.2s'
+                                                                        }}
+                                                                        onMouseOver={e => e.currentTarget.style.background = '#f1f5f9'}
+                                                                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                                                                    >
+                                                                        <Edit2 size={18} color="#64748b" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if (confirm(`Delete "${type.name}" stall type?`)) {
+                                                                                setEventData({
+                                                                                    ...eventData,
+                                                                                    stallTypes: eventData.stallTypes.filter(t => t.id !== type.id)
+                                                                                });
+                                                                            }
+                                                                        }}
+                                                                        style={{
+                                                                            background: 'none',
+                                                                            border: 'none',
+                                                                            cursor: 'pointer',
+                                                                            padding: '8px',
+                                                                            borderRadius: '8px',
+                                                                            transition: 'background 0.2s'
+                                                                        }}
+                                                                        onMouseOver={e => e.currentTarget.style.background = '#fef2f2'}
+                                                                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                                                                    >
+                                                                        <Trash2 size={18} color="#ef4444" />
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                        ))}
+
+                                                            {/* Inline Edit Form - appears below the stall type being edited */}
+                                                            {editingStallType === type.id && (
+                                                                <div style={{
+                                                                    border: '2px dashed #cbd5e1',
+                                                                    borderRadius: '12px',
+                                                                    padding: '24px',
+                                                                    margin: '16px 20px',
+                                                                    background: '#fafbfc'
+                                                                }}>
+                                                                    {/* First Row: Stall Type Name and Price */}
+                                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                                                        <div>
+                                                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Stall Type Name *</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                placeholder="e.g., VIP, Ultra Premium"
+                                                                                value={stallTypeForm.name}
+                                                                                onChange={e => setStallTypeForm({ ...stallTypeForm, name: e.target.value })}
+                                                                                style={{
+                                                                                    width: '100%',
+                                                                                    padding: '12px 14px',
+                                                                                    border: '1.5px solid #e2e8f0',
+                                                                                    borderRadius: '10px',
+                                                                                    fontSize: '14px',
+                                                                                    outline: 'none',
+                                                                                    background: 'white'
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Price (₹) *</label>
+                                                                            <input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                step="1000"
+                                                                                value={stallTypeForm.price}
+                                                                                onChange={e => setStallTypeForm({ ...stallTypeForm, price: parseInt(e.target.value) || 0 })}
+                                                                                style={{
+                                                                                    width: '100%',
+                                                                                    padding: '12px 14px',
+                                                                                    border: '1.5px solid #e2e8f0',
+                                                                                    borderRadius: '10px',
+                                                                                    fontSize: '14px',
+                                                                                    outline: 'none',
+                                                                                    background: 'white'
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Second Row: Number of Stalls, Start Number, Stall Color */}
+                                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '20px', marginBottom: '24px' }}>
+                                                                        <div>
+                                                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Number of Stalls</label>
+                                                                            <input
+                                                                                type="number"
+                                                                                min="1"
+                                                                                value={stallTypeForm.stallCount}
+                                                                                onChange={e => setStallTypeForm({ ...stallTypeForm, stallCount: parseInt(e.target.value) || 1 })}
+                                                                                style={{
+                                                                                    width: '100%',
+                                                                                    padding: '12px 14px',
+                                                                                    border: '1.5px solid #e2e8f0',
+                                                                                    borderRadius: '10px',
+                                                                                    fontSize: '14px',
+                                                                                    outline: 'none',
+                                                                                    background: 'white'
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Start Number</label>
+                                                                            <input
+                                                                                type="number"
+                                                                                min="1"
+                                                                                value={stallTypeForm.startNumber}
+                                                                                onChange={e => setStallTypeForm({ ...stallTypeForm, startNumber: parseInt(e.target.value) || 1 })}
+                                                                                style={{
+                                                                                    width: '100%',
+                                                                                    padding: '12px 14px',
+                                                                                    border: '1.5px solid #e2e8f0',
+                                                                                    borderRadius: '10px',
+                                                                                    fontSize: '14px',
+                                                                                    outline: 'none',
+                                                                                    background: 'white'
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Stall Color</label>
+                                                                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                                                                <input
+                                                                                    type="color"
+                                                                                    value={stallTypeForm.color}
+                                                                                    onChange={e => setStallTypeForm({ ...stallTypeForm, color: e.target.value })}
+                                                                                    style={{
+                                                                                        width: '48px',
+                                                                                        height: '46px',
+                                                                                        padding: '2px',
+                                                                                        border: '1.5px solid #e2e8f0',
+                                                                                        borderRadius: '10px',
+                                                                                        cursor: 'pointer',
+                                                                                        background: 'white'
+                                                                                    }}
+                                                                                />
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={stallTypeForm.color.toUpperCase()}
+                                                                                    onChange={e => {
+                                                                                        let val = e.target.value;
+                                                                                        if (!val.startsWith('#')) val = '#' + val;
+                                                                                        if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                                                                                            setStallTypeForm({ ...stallTypeForm, color: val });
+                                                                                        }
+                                                                                    }}
+                                                                                    style={{
+                                                                                        flex: 1,
+                                                                                        padding: '12px 14px',
+                                                                                        border: '1.5px solid #e2e8f0',
+                                                                                        borderRadius: '10px',
+                                                                                        fontSize: '14px',
+                                                                                        outline: 'none',
+                                                                                        fontFamily: 'monospace',
+                                                                                        background: 'white',
+                                                                                        textTransform: 'uppercase'
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Action Buttons */}
+                                                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setEditingStallType(null);
+                                                                                setStallTypeForm({ name: '', stallCount: 10, startNumber: 1, color: '#3B82F6', price: 50000 });
+                                                                            }}
+                                                                            style={{
+                                                                                padding: '12px 24px',
+                                                                                background: 'white',
+                                                                                border: '1.5px solid #e2e8f0',
+                                                                                borderRadius: '10px',
+                                                                                fontSize: '14px',
+                                                                                fontWeight: 600,
+                                                                                color: '#374151',
+                                                                                cursor: 'pointer',
+                                                                                transition: 'all 0.2s'
+                                                                            }}
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                if (!stallTypeForm.name.trim()) {
+                                                                                    alert('Please enter a stall name');
+                                                                                    return;
+                                                                                }
+
+                                                                                // Update existing stall type
+                                                                                setEventData({
+                                                                                    ...eventData,
+                                                                                    stallTypes: eventData.stallTypes.map(t =>
+                                                                                        t.id === editingStallType
+                                                                                            ? {
+                                                                                                ...t,
+                                                                                                name: stallTypeForm.name,
+                                                                                                color: stallTypeForm.color,
+                                                                                                startNumber: stallTypeForm.startNumber,
+                                                                                                endNumber: stallTypeForm.startNumber + stallTypeForm.stallCount - 1,
+                                                                                                price: stallTypeForm.price
+                                                                                            }
+                                                                                            : t
+                                                                                    )
+                                                                                });
+
+                                                                                setEditingStallType(null);
+                                                                                setStallTypeForm({ name: '', stallCount: 10, startNumber: 1, color: '#3B82F6', price: 50000 });
+                                                                            }}
+                                                                            style={{
+                                                                                padding: '12px 24px',
+                                                                                background: 'white',
+                                                                                border: '1.5px solid #e2e8f0',
+                                                                                borderRadius: '10px',
+                                                                                fontSize: '14px',
+                                                                                fontWeight: 600,
+                                                                                color: '#374151',
+                                                                                cursor: 'pointer',
+                                                                                transition: 'all 0.2s'
+                                                                            }}
+                                                                        >
+                                                                            Done
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </React.Fragment>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Add Custom Stall Type Button - Outside the list with dashed border */}
+                                        {editingStallType !== 'new' && (
+                                            <button
+                                                onClick={() => {
+                                                    const lastEnd = eventData.stallTypes.length > 0
+                                                        ? Math.max(...eventData.stallTypes.map(t => t.endNumber))
+                                                        : 0;
+                                                    setEditingStallType('new');
+                                                    setStallTypeForm({
+                                                        name: '',
+                                                        stallCount: 10,
+                                                        startNumber: lastEnd + 1,
+                                                        color: '#6366F1',
+                                                        price: 25000
+                                                    });
+                                                }}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '18px',
+                                                    border: '2px dashed #cbd5e1',
+                                                    borderRadius: '12px',
+                                                    background: '#fafbfc',
+                                                    color: '#64748b',
+                                                    fontWeight: 600,
+                                                    fontSize: '14px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '8px',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseOver={e => {
+                                                    e.currentTarget.style.background = '#f1f5f9';
+                                                    e.currentTarget.style.color = '#2563eb';
+                                                    e.currentTarget.style.borderColor = '#2563eb';
+                                                }}
+                                                onMouseOut={e => {
+                                                    e.currentTarget.style.background = '#fafbfc';
+                                                    e.currentTarget.style.color = '#64748b';
+                                                    e.currentTarget.style.borderColor = '#cbd5e1';
+                                                }}
+                                            >
+                                                <Plus size={18} /> Add Custom Stall Type
+                                            </button>
+                                        )}
+
+                                        {/* Add Custom Stall Type Form */}
+                                        {editingStallType === 'new' && (
+                                            <div style={{
+                                                border: '2px dashed #cbd5e1',
+                                                borderRadius: '12px',
+                                                padding: '24px',
+                                                background: '#fafbfc'
+                                            }}>
+                                                {/* First Row: Stall Type Name and Price */}
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Stall Type Name *</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="e.g., VIP, Ultra Premium"
+                                                            value={stallTypeForm.name}
+                                                            onChange={e => setStallTypeForm({ ...stallTypeForm, name: e.target.value })}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '12px 14px',
+                                                                border: '1.5px solid #e2e8f0',
+                                                                borderRadius: '10px',
+                                                                fontSize: '14px',
+                                                                outline: 'none',
+                                                                background: 'white'
+                                                            }}
+                                                        />
                                                     </div>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Price (₹) *</label>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="1000"
+                                                            value={stallTypeForm.price}
+                                                            onChange={e => setStallTypeForm({ ...stallTypeForm, price: parseInt(e.target.value) || 0 })}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '12px 14px',
+                                                                border: '1.5px solid #e2e8f0',
+                                                                borderRadius: '10px',
+                                                                fontSize: '14px',
+                                                                outline: 'none',
+                                                                background: 'white'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Second Row: Number of Stalls, Start Number, Stall Color */}
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '20px', marginBottom: '24px' }}>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Number of Stalls</label>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            value={stallTypeForm.stallCount}
+                                                            onChange={e => setStallTypeForm({ ...stallTypeForm, stallCount: parseInt(e.target.value) || 1 })}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '12px 14px',
+                                                                border: '1.5px solid #e2e8f0',
+                                                                borderRadius: '10px',
+                                                                fontSize: '14px',
+                                                                outline: 'none',
+                                                                background: 'white'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Start Number</label>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            value={stallTypeForm.startNumber}
+                                                            onChange={e => setStallTypeForm({ ...stallTypeForm, startNumber: parseInt(e.target.value) || 1 })}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '12px 14px',
+                                                                border: '1.5px solid #e2e8f0',
+                                                                borderRadius: '10px',
+                                                                fontSize: '14px',
+                                                                outline: 'none',
+                                                                background: 'white'
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Stall Color</label>
+                                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                                            <input
+                                                                type="color"
+                                                                value={stallTypeForm.color}
+                                                                onChange={e => setStallTypeForm({ ...stallTypeForm, color: e.target.value })}
+                                                                style={{
+                                                                    width: '48px',
+                                                                    height: '46px',
+                                                                    padding: '2px',
+                                                                    border: '1.5px solid #e2e8f0',
+                                                                    borderRadius: '10px',
+                                                                    cursor: 'pointer',
+                                                                    background: 'white'
+                                                                }}
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                value={stallTypeForm.color.toUpperCase()}
+                                                                onChange={e => {
+                                                                    let val = e.target.value;
+                                                                    if (!val.startsWith('#')) val = '#' + val;
+                                                                    if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                                                                        setStallTypeForm({ ...stallTypeForm, color: val });
+                                                                    }
+                                                                }}
+                                                                style={{
+                                                                    flex: 1,
+                                                                    padding: '12px 14px',
+                                                                    border: '1.5px solid #e2e8f0',
+                                                                    borderRadius: '10px',
+                                                                    fontSize: '14px',
+                                                                    outline: 'none',
+                                                                    fontFamily: 'monospace',
+                                                                    background: 'white',
+                                                                    textTransform: 'uppercase'
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Buttons */}
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                                                     <button
                                                         onClick={() => {
-                                                            const newId = Math.max(...eventData.stallTypes.map(t => t.id)) + 1;
-                                                            const lastEnd = Math.max(...eventData.stallTypes.map(t => t.endNumber));
+                                                            setEditingStallType(null);
+                                                            setStallTypeForm({ name: '', stallCount: 10, startNumber: 1, color: '#3B82F6', price: 50000 });
+                                                        }}
+                                                        style={{
+                                                            padding: '12px 24px',
+                                                            background: 'white',
+                                                            border: '1.5px solid #e2e8f0',
+                                                            borderRadius: '10px',
+                                                            fontSize: '14px',
+                                                            fontWeight: 600,
+                                                            color: '#374151',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (!stallTypeForm.name.trim()) {
+                                                                alert('Please enter a stall name');
+                                                                return;
+                                                            }
+
+                                                            // Add new stall type
+                                                            const newId = eventData.stallTypes.length > 0
+                                                                ? Math.max(...eventData.stallTypes.map(t => t.id)) + 1
+                                                                : 1;
                                                             setEventData({
                                                                 ...eventData,
                                                                 stallTypes: [...eventData.stallTypes, {
-                                                                    id: newId, name: 'Custom', color: '#94a3b8',
-                                                                    startNumber: lastEnd + 1, endNumber: lastEnd + 10, price: 30000
+                                                                    id: newId,
+                                                                    name: stallTypeForm.name,
+                                                                    color: stallTypeForm.color,
+                                                                    startNumber: stallTypeForm.startNumber,
+                                                                    endNumber: stallTypeForm.startNumber + stallTypeForm.stallCount - 1,
+                                                                    price: stallTypeForm.price
                                                                 }]
                                                             });
+
+                                                            setEditingStallType(null);
+                                                            setStallTypeForm({ name: '', stallCount: 10, startNumber: 1, color: '#3B82F6', price: 50000 });
                                                         }}
                                                         style={{
-                                                            width: '100%', marginTop: '16px', padding: '12px', border: '2px dashed #cbd5e1',
-                                                            borderRadius: '10px', background: 'transparent', color: '#64748b',
-                                                            fontWeight: 600, fontSize: '14px', cursor: 'pointer', display: 'flex',
-                                                            alignItems: 'center', justifyContent: 'center', gap: '8px'
+                                                            padding: '12px 24px',
+                                                            background: '#4F46E5',
+                                                            border: 'none',
+                                                            borderRadius: '10px',
+                                                            fontSize: '14px',
+                                                            fontWeight: 600,
+                                                            color: 'white',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '8px'
                                                         }}
                                                     >
-                                                        <Plus size={16} /> Add Custom Stall Type
+                                                        <Save size={16} /> Add Stall Type
                                                     </button>
                                                 </div>
-                                            </>
+                                            </div>
                                         )}
                                     </div>
                                 )}

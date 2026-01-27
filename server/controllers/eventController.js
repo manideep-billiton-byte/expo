@@ -1,7 +1,7 @@
 const pool = require('../db');
 const { v4: uuidv4 } = require('uuid');
-const { sendEmail } = require('../services/notificationService');
-const QRCode = require('qrcode');
+const { sendEmailWithAttachments } = require('../services/notificationService');
+const { generateAndStoreQR, getQRFullUrl } = require('../services/qrStorageService');
 
 const getEvents = async (req, res) => {
     try {
@@ -16,23 +16,35 @@ const getEvents = async (req, res) => {
 const createEvent = async (req, res) => {
     const payload = req.body || {};
     try {
+        // Validate required fields
+        const organizationId = payload.organizationId || payload.organization_id;
+
+        if (!organizationId) {
+            return res.status(400).json({
+                error: 'Organization ID is required',
+                message: 'Events must be associated with an organization. Please provide organizationId in the request.'
+            });
+        }
+
         // generate QR token and registration link
         const token = uuidv4();
-        const base = process.env.INVITE_LINK_BASE || 'https://d2ux36xl31uki3.cloudfront.net';
-        const registration_link = `${base.replace(/\/$/, '')}?action=register&token=${token}`;
+        const base = process.env.INVITE_LINK_BASE || 'https://d36p7i1koir3da.cloudfront.net';
+        const registration_link = `${base.replace(/\/$/, '')}?action=register&eventId=${payload.eventName || 'event'}&eventName=${encodeURIComponent(payload.eventName || 'Event')}&eventDate=${payload.startDate || ''}&token=${token}`;
 
         // Note: 'name' column exists for legacy reasons with NOT NULL constraint
         const eventName = payload.eventName || payload.event_name || 'Untitled Event';
 
+        // First insert the event without qr_image_path (we need the ID first)
         const insertSql = `INSERT INTO events(
-                name, event_name, description, event_type, event_mode, industry,
+                organization_id, name, event_name, description, event_type, event_mode, industry,
                 organizer_name, contact_person, organizer_email, organizer_mobile,
                 venue, city, state, country, start_date, end_date,
                 registration, lead_capture, communication, qr_token, registration_link, status,
                 enable_stalls, stall_config, stall_types, ground_layout_url
-            ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING *`;
+            ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING *`;
 
         const values = [
+            organizationId, // Use validated organizationId
             eventName, // for legacy 'name' column (NOT NULL)
             eventName, // for 'event_name' column
             payload.description || null,
@@ -64,8 +76,27 @@ const createEvent = async (req, res) => {
         ];
 
         const result = await pool.query(insertSql, values);
-        const created = result.rows[0];
+        let created = result.rows[0];
         console.log('Event created successfully:', created.id);
+
+        // Generate and store QR code
+        let qrImagePath = null;
+        let qrImageUrl = null;
+        try {
+            const qrResult = await generateAndStoreQR(registration_link, created.id);
+            qrImagePath = qrResult.path;
+            qrImageUrl = qrResult.fullUrl;
+
+            // Update the event with the QR image path
+            await pool.query(
+                'UPDATE events SET qr_image_path = $1 WHERE id = $2',
+                [qrImagePath, created.id]
+            );
+            created.qr_image_path = qrImagePath;
+            console.log(`QR code stored for event ${created.id}: ${qrImagePath}`);
+        } catch (qrError) {
+            console.error('Failed to generate/store QR code:', qrError);
+        }
 
         // Send email notification to organizer
         let emailStatus = { sent: false, email: null };
@@ -77,28 +108,7 @@ const createEvent = async (req, res) => {
             const city = payload.city || '';
             const state = payload.state || '';
 
-            // Generate QR code for registration link
-            const { generateCleanQRCode } = require('../utils/qrCodeGenerator');
-            const path = require('path');
-            const fs = require('fs');
-
-            const qrCodeDir = path.join(__dirname, '../uploads/qr-codes');
-            if (!fs.existsSync(qrCodeDir)) {
-                fs.mkdirSync(qrCodeDir, { recursive: true });
-            }
-
-            const qrCodePath = path.join(qrCodeDir, `event-${created.id}-qr.png`);
-            let qrCodeGenerated = false;
-
-            try {
-                await generateCleanQRCode(registration_link, qrCodePath);
-                qrCodeGenerated = true;
-                console.log(`QR code generated for event ${created.id}`);
-            } catch (qrError) {
-                console.error('Failed to generate QR code:', qrError);
-            }
-
-            // Create professional HTML email template
+            // Create professional HTML email template with QR image URL
             const htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -180,14 +190,16 @@ const createEvent = async (req, res) => {
                 </div>
             </div>
 
+            ${qrImageUrl ? `
             <div class="qr-section">
                 <h3>📱 Scan to Register</h3>
                 <p>Share this QR code with your attendees for quick registration</p>
                 <div class="qr-code-img">
-                    <img src="cid:qrcode" alt="Event Registration QR Code" style="max-width: 300px; height: auto; display: block;">
+                    <img src="${qrImageUrl}" alt="Event Registration QR Code" width="200" style="display: block; margin: 0 auto;">
                 </div>
                 <p style="margin-top: 15px; font-size: 12px;">Attendees can scan this code with their phone camera to access the registration page instantly.</p>
             </div>
+            ` : ''}
 
             <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
         </div>
@@ -216,31 +228,19 @@ ${registration_link}
 
 Share this link with your attendees via email, social media, WhatsApp, or your website.
 
-A QR code for quick registration is included in this email. Share it with your attendees!
+${qrImageUrl ? `QR Code Image: ${qrImageUrl}` : ''}
 
 Powered by Billiton Event Management Platform
             `;
 
-            // Send email and wait for result
+            // Send email (no attachments needed - QR is embedded via URL)
             try {
-                const { sendEmailWithAttachments } = require('../services/notificationService');
-
-                // Prepare attachments array
-                const attachments = [];
-                if (qrCodeGenerated) {
-                    attachments.push({
-                        filename: 'event-registration-qr-code.png',
-                        path: qrCodePath,
-                        cid: 'qrcode' // Content ID for embedding in HTML
-                    });
-                }
-
-                const emailResult = await sendEmailWithAttachments({
+                const { sendEmail } = require('../services/notificationService');
+                const emailResult = await sendEmail({
                     to: organizerEmail,
                     subject: `Event Created: ${eventName} - Registration Link`,
                     text: textContent,
-                    html: htmlContent,
-                    attachments: attachments
+                    html: htmlContent
                 });
 
                 if (emailResult.success) {
@@ -256,9 +256,10 @@ Powered by Billiton Event Management Platform
             }
         }
 
-        // Include email status in response
+        // Include email status and QR URL in response
         return res.status(201).json({
             ...created,
+            qrImageUrl: qrImageUrl,
             emailStatus
         });
     } catch (err) {
@@ -275,7 +276,7 @@ const getEventByToken = async (req, res) => {
     const { token } = req.params;
     try {
         const result = await pool.query(
-            'SELECT id, event_name, name, start_date, end_date, venue, city, state FROM events WHERE qr_token = $1',
+            'SELECT id, event_name, name, start_date, end_date, venue, city, state, qr_image_path FROM events WHERE qr_token = $1',
             [token]
         );
 
@@ -283,11 +284,44 @@ const getEventByToken = async (req, res) => {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        return res.json(result.rows[0]);
+        const event = result.rows[0];
+        // Add full QR URL if path exists
+        if (event.qr_image_path) {
+            event.qr_image_url = getQRFullUrl(event.qr_image_path);
+        }
+
+        return res.json(event);
     } catch (error) {
         console.error('Error fetching event by token:', error);
         return res.status(500).json({ error: 'Failed to fetch event' });
     }
 };
 
-module.exports = { getEvents, createEvent, getEventByToken };
+// Update event ground layout
+const updateEventGroundLayout = async (req, res) => {
+    const { id } = req.params;
+    const { groundLayoutUrl } = req.body;
+
+    try {
+        const result = await pool.query(
+            'UPDATE events SET ground_layout_url = $1 WHERE id = $2 RETURNING *',
+            [groundLayoutUrl, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        console.log(`Ground layout updated for event ${id}: ${groundLayoutUrl}`);
+        return res.json({
+            success: true,
+            message: 'Ground layout updated successfully',
+            event: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Error updating ground layout:', error);
+        return res.status(500).json({ error: 'Failed to update ground layout' });
+    }
+};
+
+module.exports = { getEvents, createEvent, getEventByToken, updateEventGroundLayout };

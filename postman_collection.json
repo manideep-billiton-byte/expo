@@ -1,0 +1,992 @@
+{
+    "info": {
+        "_postman_id": "eventhub-api-collection",
+        "name": "EventHub API Collection",
+        "description": "Complete API documentation for EventHub Backend\n\nBase URL (Local): http://localhost:5000\nBase URL (Production): https://expo-project-prod-env.eba-i8rfmfk2.ap-south-1.elasticbeanstalk.com",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:5000",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "🔐 Authentication",
+            "description": "Login endpoints for different user types",
+            "item": [
+                {
+                    "name": "Unified Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\",\n    \"type\": \"organization\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "login"
+                            ]
+                        },
+                        "description": "Unified login endpoint that works for organizations, exhibitors, and visitors.\n\n**type** can be: 'organization', 'exhibitor', or 'visitor'\n\nIf type is not provided, it will try each in order."
+                    }
+                },
+                {
+                    "name": "Organization Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"org@example.com\",\n    \"password\": \"password123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/org-login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "org-login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Exhibitor Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"exhibitor@company.com\",\n    \"password\": \"password123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/exhibitor-login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "exhibitor-login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Visitor Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"visitor@example.com\",\n    \"password\": \"password123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/visitor-login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "visitor-login"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "🏢 Organizations",
+            "description": "Organization (Tenant) management endpoints",
+            "item": [
+                {
+                    "name": "Get All Organizations",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/organizations",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "organizations"
+                            ]
+                        },
+                        "description": "Returns list of all organizations (tenants) in the system"
+                    }
+                },
+                {
+                    "name": "Create Organization (Direct)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"org_name\": \"Test Company\",\n    \"trade_name\": \"Test Trade\",\n    \"tenant_type\": \"Enterprise\",\n    \"industry\": \"Technology\",\n    \"size\": \"50-100\",\n    \"primary_email\": \"test@company.com\",\n    \"primary_mobile\": \"+919876543210\",\n    \"password\": \"securePassword123\",\n    \"state\": \"Telangana\",\n    \"district\": \"Hyderabad\",\n    \"address\": \"123 Tech Park\",\n    \"contact_name\": \"John Doe\",\n    \"contact_email\": \"john@company.com\",\n    \"contact_phone\": \"+919876543211\",\n    \"gst_number\": \"36AAACH7409R116\",\n    \"plan\": \"Basic\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/organizations",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "organizations"
+                            ]
+                        },
+                        "description": "Create organization directly (admin only). For self-registration, use the invite flow."
+                    }
+                },
+                {
+                    "name": "Send Organization Invite",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"org_name\": \"New Company\",\n    \"email\": \"newcompany@example.com\",\n    \"contact_name\": \"Jane Smith\",\n    \"contact_phone\": \"+919876543210\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/send-invite",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "send-invite"
+                            ]
+                        },
+                        "description": "Send an invitation email to a new organization. They will receive a registration link."
+                    }
+                },
+                {
+                    "name": "Validate Invite Token",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/validate-invite/:token",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "validate-invite",
+                                ":token"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "token",
+                                    "value": "abc123-invite-token"
+                                }
+                            ]
+                        },
+                        "description": "Check if an invite token is valid and not expired"
+                    }
+                },
+                {
+                    "name": "Complete Registration from Invite",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"org_name\": \"My Company\",\n    \"trade_name\": \"My Trade Name\",\n    \"password\": \"securePassword123\",\n    \"primary_mobile\": \"+919876543210\",\n    \"gst_number\": \"36AAACH7409R116\",\n    \"state\": \"Telangana\",\n    \"district\": \"Hyderabad\",\n    \"address\": \"123 Business Park\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/register-organization/:token",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "register-organization",
+                                ":token"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "token",
+                                    "value": "abc123-invite-token"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create User (Org Employee)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"organization_id\": 1,\n    \"first_name\": \"John\",\n    \"last_name\": \"Doe\",\n    \"email\": \"john.doe@company.com\",\n    \"mobile\": \"+919876543210\",\n    \"role\": \"Manager\",\n    \"department\": \"Sales\",\n    \"password\": \"tempPassword123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/users",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "users"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📅 Events",
+            "description": "Event management endpoints",
+            "item": [
+                {
+                    "name": "Get All Events",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events"
+                            ]
+                        },
+                        "description": "Returns all events. For filtered results, use query parameters."
+                    }
+                },
+                {
+                    "name": "Get Events by Organization",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events?organizationId=1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events"
+                            ],
+                            "query": [
+                                {
+                                    "key": "organizationId",
+                                    "value": "1"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Event",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"organization_id\": 1,\n    \"event_name\": \"Tech Expo 2026\",\n    \"description\": \"Annual technology exhibition\",\n    \"event_type\": \"Exhibition\",\n    \"event_mode\": \"In-Person\",\n    \"industry\": \"Technology\",\n    \"start_date\": \"2026-03-15\",\n    \"end_date\": \"2026-03-17\",\n    \"venue\": \"HITEX Convention Center\",\n    \"city\": \"Hyderabad\",\n    \"state\": \"Telangana\",\n    \"country\": \"India\",\n    \"organizer_name\": \"Tech Events Pvt Ltd\",\n    \"contact_person\": \"Rahul Kumar\",\n    \"organizer_email\": \"rahul@techevents.com\",\n    \"organizer_mobile\": \"+919876543210\",\n    \"registration\": {\n        \"visitor_registration\": true,\n        \"exhibitor_registration\": true,\n        \"max_visitors\": 5000,\n        \"max_exhibitors\": 200\n    },\n    \"status\": \"Active\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/events",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "events"
+                            ]
+                        },
+                        "description": "Create a new event. QR code and registration link will be automatically generated."
+                    }
+                },
+                {
+                    "name": "Get Event by QR Token",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/event-by-token/:token",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "event-by-token",
+                                ":token"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "token",
+                                    "value": "abc123-qr-token"
+                                }
+                            ]
+                        },
+                        "description": "Public endpoint for registration page. Token comes from QR code."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "🏪 Exhibitors",
+            "description": "Exhibitor management endpoints",
+            "item": [
+                {
+                    "name": "Get All Exhibitors",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/exhibitors",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "exhibitors"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Exhibitors by Event",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/exhibitors?eventId=1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "exhibitors"
+                            ],
+                            "query": [
+                                {
+                                    "key": "eventId",
+                                    "value": "1"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Exhibitors by Organization",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/exhibitors?organizationId=1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "exhibitors"
+                            ],
+                            "query": [
+                                {
+                                    "key": "organizationId",
+                                    "value": "1"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Exhibitor",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"organization_id\": 1,\n    \"event_id\": 1,\n    \"company_name\": \"ABC Technologies\",\n    \"gst_number\": \"36AAACH7409R116\",\n    \"address\": \"456 Industrial Area\",\n    \"industry\": \"Software\",\n    \"contact_person\": \"Priya Sharma\",\n    \"email\": \"priya@abctech.com\",\n    \"mobile\": \"+919876543210\",\n    \"password\": \"exhibitor123\",\n    \"stall_number\": \"A-101\",\n    \"stall_category\": \"Premium\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/exhibitors",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "exhibitors"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Upcoming Events for Exhibitor",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/exhibitors/upcoming-events/:organizationId",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "exhibitors",
+                                "upcoming-events",
+                                ":organizationId"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "organizationId",
+                                    "value": "1"
+                                }
+                            ]
+                        },
+                        "description": "Get upcoming events for one-click registration"
+                    }
+                },
+                {
+                    "name": "Register Exhibitor for New Event",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"exhibitorId\": 1,\n    \"eventId\": 2,\n    \"stall_number\": \"B-202\",\n    \"stall_category\": \"Standard\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/exhibitors/register-for-event",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "exhibitors",
+                                "register-for-event"
+                            ]
+                        },
+                        "description": "One-click registration - copies exhibitor data to new event"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "👥 Visitors",
+            "description": "Visitor registration and management",
+            "item": [
+                {
+                    "name": "Get All Visitors",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/visitors",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "visitors"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Visitors by Event",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/visitors?eventId=1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "visitors"
+                            ],
+                            "query": [
+                                {
+                                    "key": "eventId",
+                                    "value": "1"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Register Visitor",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"event_id\": 1,\n    \"first_name\": \"Raj\",\n    \"last_name\": \"Kumar\",\n    \"email\": \"raj.kumar@email.com\",\n    \"mobile\": \"+919876543210\",\n    \"password\": \"visitor123\",\n    \"gender\": \"Male\",\n    \"age_group\": \"25-34\",\n    \"organization\": \"XYZ Corp\",\n    \"designation\": \"Manager\",\n    \"visitor_category\": \"Business\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/visitors",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "visitors"
+                            ]
+                        },
+                        "description": "Register new visitor. Returns unique_code (VIS-XXXXXXXX) for QR badge."
+                    }
+                },
+                {
+                    "name": "Get Visitor by QR Code",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/visitors/code/:code?eventId=1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "visitors",
+                                "code",
+                                ":code"
+                            ],
+                            "query": [
+                                {
+                                    "key": "eventId",
+                                    "value": "1"
+                                }
+                            ],
+                            "variable": [
+                                {
+                                    "key": "code",
+                                    "value": "VIS-ABCD1234"
+                                }
+                            ]
+                        },
+                        "description": "Get visitor details by scanning their QR code. eventId is required for security."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "💰 Invoices",
+            "description": "Invoice management",
+            "item": [
+                {
+                    "name": "Get All Invoices",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/invoices",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "invoices"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Invoice",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"organization_id\": 1,\n    \"invoice_number\": \"INV-2026-001\",\n    \"billing_email\": \"billing@company.com\",\n    \"billing_address\": \"123 Business St, Hyderabad\",\n    \"tax_id\": \"36AAACH7409R116\",\n    \"plan_type\": \"Premium\",\n    \"amount\": 50000,\n    \"currency\": \"INR\",\n    \"due_date\": \"2026-02-28\",\n    \"items\": [\n        {\"description\": \"Premium Plan - Annual\", \"quantity\": 1, \"price\": 50000}\n    ],\n    \"status\": \"Pending\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/invoices",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "invoices"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📊 Leads",
+            "description": "Lead capture management",
+            "item": [
+                {
+                    "name": "Get All Leads",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/leads",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "leads"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Lead",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"exhibitor_id\": 1,\n    \"event_id\": 1,\n    \"visitor_name\": \"Amit Patel\",\n    \"visitor_email\": \"amit@email.com\",\n    \"visitor_mobile\": \"+919876543210\",\n    \"visitor_company\": \"Tech Solutions\",\n    \"interest_level\": \"High\",\n    \"notes\": \"Interested in enterprise plan\",\n    \"capture_method\": \"QR Scan\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/leads",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "leads"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Lead",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"interest_level\": \"Very High\",\n    \"notes\": \"Follow up scheduled for next week\",\n    \"status\": \"Contacted\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/leads/:id",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "leads",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "1"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Lead",
+                    "request": {
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/leads/:id",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "leads",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "1"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "📱 Scanned Visitors",
+            "description": "QR and OCR scan records",
+            "item": [
+                {
+                    "name": "Save Scanned Visitor",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"exhibitor_id\": 1,\n    \"event_id\": 1,\n    \"visitor_id\": 5,\n    \"scan_type\": \"QR\",\n    \"notes\": \"Interested in product demo\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/scanned-visitors",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "scanned-visitors"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Scans by Exhibitor",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/scanned-visitors?exhibitorId=1",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "scanned-visitors"
+                            ],
+                            "query": [
+                                {
+                                    "key": "exhibitorId",
+                                    "value": "1"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "🔧 Utilities",
+            "description": "Utility and debug endpoints",
+            "item": [
+                {
+                    "name": "Get Dashboard Stats",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/dashboard",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "dashboard"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Verify GSTIN",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"gstin\": \"36AAACH7409R116\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/verify-gstin",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "verify-gstin"
+                            ]
+                        },
+                        "description": "Verify GST number and get company details"
+                    }
+                },
+                {
+                    "name": "Get All Routes (Debug)",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/__routes",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "__routes"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Table Columns (Debug)",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/__columns/:tableName",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "__columns",
+                                ":tableName"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "tableName",
+                                    "value": "exhibitors"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Plans",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/plans",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Plan",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Enterprise\",\n    \"description\": \"Full featured enterprise plan\",\n    \"price\": 100000,\n    \"currency\": \"INR\",\n    \"billing_cycle\": \"yearly\",\n    \"features\": [\"Unlimited events\", \"Priority support\", \"Custom branding\"],\n    \"max_events\": -1,\n    \"max_exhibitors\": -1,\n    \"max_visitors\": -1\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/plans",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Verify Coupon",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"code\": \"SAVE20\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/coupons/verify",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "coupons",
+                                "verify"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

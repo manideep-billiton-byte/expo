@@ -19,6 +19,7 @@ import UserLogsAudit from './components/UserLogsAudit';
 import AnalyticsAPI from './components/AnalyticsAPI';
 import CompliancePrivacy from './components/CompliancePrivacy';
 import SupportManagement from './components/SupportManagement';
+import OrganizationDashboard from './components/OrganizationDashboard';
 import {
     Building2, Calendar, Image as ImageIcon, Users,
     MapPin, MousePointer2, IndianRupee, UserCheck,
@@ -157,6 +158,12 @@ const Index = ({ onLogout, userType = 'master' }) => {
                 return <SupportManagement />;
             default:
                 const isOrganization = userType === 'organization';
+
+                // Render Organization Dashboard for organization users
+                if (isOrganization) {
+                    return <OrganizationDashboard onNavigate={handleNavigate} />;
+                }
+
                 const activeTenantsCount = dashboardOrgs.length;
                 const activeEventsCount = dashboardEvents.length;
                 const totalExhibitorsCount = dashboardExhibitors.length;

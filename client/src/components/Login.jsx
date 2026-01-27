@@ -76,6 +76,12 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
                     localStorage.setItem('userType', data.userType || 'exhibitor');
                     localStorage.setItem('exhibitorId', data.user.id);
                     localStorage.setItem('exhibitorName', data.user.name);
+                    // Store organization ID for event filtering
+                    if (data.user.organizationId) {
+                        localStorage.setItem('organizationId', data.user.organizationId);
+                    }
+                    // Store full user object for components that need it
+                    localStorage.setItem('user', JSON.stringify(data.user));
                     // Store event info for QR validation
                     if (data.user.eventId) {
                         localStorage.setItem('eventId', data.user.eventId);

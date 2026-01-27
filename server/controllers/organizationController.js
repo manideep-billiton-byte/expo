@@ -638,8 +638,9 @@ module.exports = {
             const pwCol = cols.has('password_hash') ? 'password_hash' : (cols.has('password') ? 'password' : null);
             const statusCol = cols.has('status') ? 'status' : null;
 
-            if (!primaryEmailCol && !contactEmailCol) {
-                return res.status(500).json({ error: 'Organizations table has no email column configured' });
+            // Only allow login with primary_email (organisation email) - not contact_email
+            if (!primaryEmailCol) {
+                return res.status(500).json({ error: 'Organizations table has no primary email column configured' });
             }
             if (!pwCol) {
                 return res.status(500).json({ error: 'Organizations table has no password hash column configured' });
@@ -648,21 +649,19 @@ module.exports = {
                 return res.status(500).json({ error: 'Organizations table has no organization name column configured' });
             }
 
-            const whereParts = [];
-            if (primaryEmailCol) whereParts.push(`${primaryEmailCol} = $1`);
-            if (contactEmailCol) whereParts.push(`${contactEmailCol} = $1`);
+            // Only use primary_email for login authentication
             const statusFilter = statusCol ? ` AND ${statusCol} = 'Active'` : '';
 
             const sql = `
                 SELECT
                     id,
                     ${nameCol} AS org_name,
-                    ${primaryEmailCol ? `${primaryEmailCol} AS primary_email,` : `NULL::text AS primary_email,`}
+                    ${primaryEmailCol} AS primary_email,
                     ${contactEmailCol ? `${contactEmailCol} AS contact_email,` : `NULL::text AS contact_email,`}
                     ${pwCol} AS password_hash,
                     ${statusCol ? `${statusCol} AS status` : `'Active'::text AS status`}
                 FROM organizations
-                WHERE (${whereParts.join(' OR ')})${statusFilter}
+                WHERE ${primaryEmailCol} = $1${statusFilter}
             `;
 
             const result = await client.query(sql, [email]);

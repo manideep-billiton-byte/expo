@@ -20,6 +20,7 @@ const ExhibitorsManagement = () => {
         mobile: '',
         password: '',
         confirmPassword: '',
+        organizationId: '',
         assignedEvent: '',
         stallNumber: '',
         stallCategory: '',
@@ -41,6 +42,8 @@ const ExhibitorsManagement = () => {
     const [exhibitorsLoading, setExhibitorsLoading] = useState(false);
     const [events, setEvents] = useState([]);
     const [eventsLoading, setEventsLoading] = useState(false);
+    const [organizations, setOrganizations] = useState([]);
+    const [organizationsLoading, setOrganizationsLoading] = useState(false);
     const [createExhibitorLoading, setCreateExhibitorLoading] = useState(false);
 
     const [exhibitorData, setExhibitorData] = useState({
@@ -74,6 +77,21 @@ const ExhibitorsManagement = () => {
             setEvents([]);
         } finally {
             setEventsLoading(false);
+        }
+    };
+
+    const loadOrganizations = async () => {
+        setOrganizationsLoading(true);
+        try {
+            const resp = await apiFetch('/api/organizations');
+            const data = await resp.json();
+            console.log('Loaded organizations:', data);
+            setOrganizations(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to load organizations', err);
+            setOrganizations([]);
+        } finally {
+            setOrganizationsLoading(false);
         }
     };
 
@@ -112,6 +130,7 @@ const ExhibitorsManagement = () => {
     useEffect(() => {
         loadEvents();
         loadExhibitors();
+        loadOrganizations();
     }, []);
 
     const handleCreateExhibitor = async () => {
@@ -133,6 +152,7 @@ const ExhibitorsManagement = () => {
                 email: exhibitorData.email,
                 mobile: exhibitorData.mobile,
                 password: exhibitorData.password || null,
+                organizationId: exhibitorData.organizationId || null,
                 eventId: exhibitorData.assignedEvent || null,
                 stallNumber: exhibitorData.stallNumber,
                 stallCategory: exhibitorData.stallCategory,
@@ -566,6 +586,22 @@ const ExhibitorsManagement = () => {
                                                 />
                                             </div>
 
+                                            <div style={{ marginBottom: '20px' }}>
+                                                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Organization Name *</label>
+                                                <select
+                                                    value={exhibitorData.organizationId}
+                                                    onChange={e => setExhibitorData({ ...exhibitorData, organizationId: e.target.value })}
+                                                    style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                >
+                                                    <option value="">Select organization</option>
+                                                    {organizations.map((org) => (
+                                                        <option key={org.id} value={String(org.id)}>
+                                                            {org.org_name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Password *</label>
@@ -632,6 +668,345 @@ const ExhibitorsManagement = () => {
                                                     />
                                                 </div>
                                             </div>
+
+                                            {/* Ground Layout Display with Interactive Stall Selection */}
+                                            {(() => {
+                                                if (!exhibitorData.assignedEvent) {
+                                                    // No event selected - show prompt
+                                                    return (
+                                                        <div style={{
+                                                            marginBottom: '24px',
+                                                            border: '2px dashed #e2e8f0',
+                                                            borderRadius: '16px',
+                                                            padding: '32px',
+                                                            background: '#fafbfc',
+                                                            textAlign: 'center'
+                                                        }}>
+                                                            <Image size={40} color="#cbd5e1" style={{ marginBottom: '12px' }} />
+                                                            <p style={{ fontSize: '14px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
+                                                                Select an Event First
+                                                            </p>
+                                                            <p style={{ fontSize: '12px', color: '#cbd5e1' }}>
+                                                                The stall selection grid will appear here after selecting an event
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                const selectedEvent = events.find(ev => String(ev.id) === exhibitorData.assignedEvent);
+                                                const groundLayoutUrl = selectedEvent?.ground_layout_url;
+                                                const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+                                                // Parse stall configuration
+                                                let stallConfig = { rows: 10, columns: 10, stallPrefix: 'S', totalStalls: 100 };
+                                                let stallTypes = [
+                                                    { id: 1, name: 'Basic', color: '#3b82f6', startNumber: 1, endNumber: 40, price: 25000 },
+                                                    { id: 2, name: 'Standard', color: '#10b981', startNumber: 41, endNumber: 70, price: 50000 },
+                                                    { id: 3, name: 'Premium', color: '#8b5cf6', startNumber: 71, endNumber: 90, price: 85000 },
+                                                    { id: 4, name: 'Corner', color: '#f97316', startNumber: 91, endNumber: 100, price: 25000 }
+                                                ];
+
+                                                try {
+                                                    if (selectedEvent?.stall_config) {
+                                                        const parsed = typeof selectedEvent.stall_config === 'string'
+                                                            ? JSON.parse(selectedEvent.stall_config)
+                                                            : selectedEvent.stall_config;
+                                                        stallConfig = { ...stallConfig, ...parsed };
+                                                    }
+                                                    if (selectedEvent?.stall_types && Array.isArray(selectedEvent.stall_types)) {
+                                                        stallTypes = typeof selectedEvent.stall_types[0] === 'string'
+                                                            ? JSON.parse(selectedEvent.stall_types)
+                                                            : selectedEvent.stall_types;
+                                                    } else if (selectedEvent?.stall_types && typeof selectedEvent.stall_types === 'string') {
+                                                        stallTypes = JSON.parse(selectedEvent.stall_types);
+                                                    }
+                                                } catch (e) {
+                                                    console.error('Error parsing stall config:', e);
+                                                }
+
+                                                // Get booked stalls from exhibitors (stalls already assigned)
+                                                const bookedStalls = exhibitors
+                                                    .filter(ex => String(ex.event) === selectedEvent?.event_name || String(ex.eventId) === selectedEvent?.id)
+                                                    .map(ex => ex.stallNumber || ex.stall_number)
+                                                    .filter(Boolean);
+
+                                                // Generate stalls grid
+                                                const totalStalls = stallConfig.totalStalls || (stallConfig.rows * stallConfig.columns);
+                                                const columns = stallConfig.columns || 10;
+                                                const rows = Math.ceil(totalStalls / columns);
+                                                const prefix = stallConfig.stallPrefix || 'S';
+
+                                                // Function to get stall type by number
+                                                const getStallType = (stallNum) => {
+                                                    for (const type of stallTypes) {
+                                                        if (stallNum >= type.startNumber && stallNum <= type.endNumber) {
+                                                            return type;
+                                                        }
+                                                    }
+                                                    return stallTypes[0] || { name: 'Basic', color: '#3b82f6', price: 0 };
+                                                };
+
+                                                // Check if stall is booked
+                                                const isBooked = (stallId) => bookedStalls.includes(stallId);
+
+                                                // Check if stall is selected
+                                                const isSelected = (stallId) => exhibitorData.stallNumber === stallId;
+
+                                                return (
+                                                    <div style={{
+                                                        marginBottom: '24px',
+                                                        border: '2px solid #0d89a4',
+                                                        borderRadius: '16px',
+                                                        padding: '20px',
+                                                        background: 'linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%)'
+                                                    }}>
+                                                        {/* Header */}
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                <Image size={20} color="#0d89a4" />
+                                                                <span style={{ fontSize: '16px', fontWeight: 700, color: '#0d89a4' }}>
+                                                                    Select Your Stall
+                                                                </span>
+                                                                <span style={{
+                                                                    fontSize: '12px',
+                                                                    background: '#0d89a4',
+                                                                    color: 'white',
+                                                                    padding: '4px 12px',
+                                                                    borderRadius: '20px',
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                    {selectedEvent?.event_name}
+                                                                </span>
+                                                            </div>
+                                                            {exhibitorData.stallNumber && (
+                                                                <div style={{
+                                                                    background: '#10b981',
+                                                                    color: 'white',
+                                                                    padding: '8px 16px',
+                                                                    borderRadius: '8px',
+                                                                    fontWeight: 700,
+                                                                    fontSize: '14px'
+                                                                }}>
+                                                                    Selected: {exhibitorData.stallNumber}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Legend */}
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            gap: '16px',
+                                                            marginBottom: '16px',
+                                                            flexWrap: 'wrap',
+                                                            padding: '12px',
+                                                            background: 'rgba(255,255,255,0.7)',
+                                                            borderRadius: '10px'
+                                                        }}>
+                                                            {stallTypes.map(type => (
+                                                                <div key={type.id || type.name} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                    <div style={{
+                                                                        width: '20px',
+                                                                        height: '20px',
+                                                                        background: type.color,
+                                                                        borderRadius: '4px',
+                                                                        border: '2px solid white',
+                                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                                    }} />
+                                                                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                                                                        {type.name} (₹{(type.price || 0).toLocaleString()})
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                <div style={{
+                                                                    width: '20px',
+                                                                    height: '20px',
+                                                                    background: '#94a3b8',
+                                                                    borderRadius: '4px',
+                                                                    position: 'relative'
+                                                                }}>
+                                                                    <X size={14} color="white" style={{ position: 'absolute', top: '3px', left: '3px' }} />
+                                                                </div>
+                                                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>Booked</span>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                <div style={{
+                                                                    width: '20px',
+                                                                    height: '20px',
+                                                                    background: '#10b981',
+                                                                    borderRadius: '4px',
+                                                                    border: '3px solid #059669'
+                                                                }} />
+                                                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>Selected</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Interactive Stall Grid */}
+                                                        <div style={{
+                                                            background: 'white',
+                                                            borderRadius: '12px',
+                                                            padding: '16px',
+                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                                            overflowX: 'auto'
+                                                        }}>
+                                                            {/* Stage/Entry indicator */}
+                                                            <div style={{
+                                                                background: 'linear-gradient(90deg, #1e293b, #334155)',
+                                                                color: 'white',
+                                                                padding: '10px 24px',
+                                                                borderRadius: '8px',
+                                                                textAlign: 'center',
+                                                                fontWeight: 700,
+                                                                fontSize: '14px',
+                                                                marginBottom: '20px',
+                                                                letterSpacing: '2px'
+                                                            }}>
+                                                                🎤 STAGE / MAIN ENTRANCE
+                                                            </div>
+
+                                                            {/* Stalls Grid */}
+                                                            <div style={{
+                                                                display: 'grid',
+                                                                gridTemplateColumns: `repeat(${columns}, minmax(45px, 1fr))`,
+                                                                gap: '8px',
+                                                                justifyContent: 'center'
+                                                            }}>
+                                                                {Array.from({ length: totalStalls }, (_, i) => {
+                                                                    const stallNum = i + 1;
+                                                                    const stallId = `${prefix}${stallNum}`;
+                                                                    const type = getStallType(stallNum);
+                                                                    const booked = isBooked(stallId);
+                                                                    const selected = isSelected(stallId);
+
+                                                                    return (
+                                                                        <div
+                                                                            key={stallId}
+                                                                            onClick={() => {
+                                                                                if (!booked) {
+                                                                                    setExhibitorData({
+                                                                                        ...exhibitorData,
+                                                                                        stallNumber: stallId,
+                                                                                        stallCategory: type.name.toLowerCase()
+                                                                                    });
+                                                                                }
+                                                                            }}
+                                                                            style={{
+                                                                                position: 'relative',
+                                                                                width: '100%',
+                                                                                aspectRatio: '1',
+                                                                                minWidth: '45px',
+                                                                                background: booked
+                                                                                    ? '#94a3b8'
+                                                                                    : selected
+                                                                                        ? '#10b981'
+                                                                                        : type.color,
+                                                                                borderRadius: '8px',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                cursor: booked ? 'not-allowed' : 'pointer',
+                                                                                border: selected
+                                                                                    ? '4px solid #059669'
+                                                                                    : '2px solid rgba(255,255,255,0.3)',
+                                                                                boxShadow: selected
+                                                                                    ? '0 0 12px rgba(16, 185, 129, 0.5)'
+                                                                                    : '0 2px 4px rgba(0,0,0,0.1)',
+                                                                                transition: 'all 0.2s ease',
+                                                                                transform: selected ? 'scale(1.1)' : 'scale(1)',
+                                                                                opacity: booked ? 0.6 : 1
+                                                                            }}
+                                                                            onMouseEnter={(e) => {
+                                                                                if (!booked && !selected) {
+                                                                                    e.currentTarget.style.transform = 'scale(1.08)';
+                                                                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+                                                                                }
+                                                                            }}
+                                                                            onMouseLeave={(e) => {
+                                                                                if (!booked && !selected) {
+                                                                                    e.currentTarget.style.transform = 'scale(1)';
+                                                                                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                                                                                }
+                                                                            }}
+                                                                            title={booked
+                                                                                ? `${stallId} - Already Booked`
+                                                                                : `${stallId} - ${type.name} - ₹${(type.price || 0).toLocaleString()}`
+                                                                            }
+                                                                        >
+                                                                            {booked ? (
+                                                                                <X size={16} color="white" />
+                                                                            ) : (
+                                                                                <span style={{
+                                                                                    color: 'white',
+                                                                                    fontWeight: 700,
+                                                                                    fontSize: '11px',
+                                                                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                                                                }}>
+                                                                                    {stallNum}
+                                                                                </span>
+                                                                            )}
+                                                                            {selected && (
+                                                                                <Check
+                                                                                    size={14}
+                                                                                    color="white"
+                                                                                    style={{
+                                                                                        position: 'absolute',
+                                                                                        top: '-4px',
+                                                                                        right: '-4px',
+                                                                                        background: '#059669',
+                                                                                        borderRadius: '50%',
+                                                                                        padding: '2px'
+                                                                                    }}
+                                                                                />
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Floor Plan Reference (collapsible) */}
+                                                        {groundLayoutUrl && (
+                                                            <details style={{ marginTop: '16px' }}>
+                                                                <summary style={{
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '13px',
+                                                                    fontWeight: 600,
+                                                                    color: '#0d89a4',
+                                                                    padding: '8px 12px',
+                                                                    background: 'rgba(255,255,255,0.7)',
+                                                                    borderRadius: '8px',
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '8px'
+                                                                }}>
+                                                                    📋 View Actual Floor Plan Image
+                                                                </summary>
+                                                                <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                                                                    <img
+                                                                        src={groundLayoutUrl.startsWith('http') ? groundLayoutUrl : `${apiBase}${groundLayoutUrl}`}
+                                                                        alt="Event Ground Layout"
+                                                                        style={{
+                                                                            maxWidth: '100%',
+                                                                            height: 'auto',
+                                                                            borderRadius: '8px',
+                                                                            cursor: 'zoom-in',
+                                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                                                        }}
+                                                                        onClick={() => {
+                                                                            const fullUrl = groundLayoutUrl.startsWith('http') ? groundLayoutUrl : `${apiBase}${groundLayoutUrl}`;
+                                                                            window.open(fullUrl, '_blank');
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            </details>
+                                                        )}
+
+                                                        <p style={{ fontSize: '11px', color: '#64748b', marginTop: '12px', textAlign: 'center' }}>
+                                                            💡 Click on any available stall to select it. Your selection will be highlighted in green.
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })()}
 
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                                                 <div>

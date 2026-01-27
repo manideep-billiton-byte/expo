@@ -327,10 +327,10 @@ const TenantManagement = () => {
                 return;
             }
 
-            // Check email in multiple places (createOrgData or wizardData.contactEmail)
-            const emailValue = createOrgData.email?.trim() || wizardData.contactEmail?.trim() || '';
+            // Only use the organisation email from Step 1 for login
+            const emailValue = createOrgData.email?.trim() || '';
             if (!emailValue) {
-                alert('Email is required. Please fill in the basic information.');
+                alert('Organisation Email Address is required. Please fill in Step 1.');
                 return;
             }
 
@@ -789,11 +789,11 @@ const TenantManagement = () => {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                         <div>
                                             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>
-                                                Email Address <span style={{ color: '#ef4444' }}>*</span>
+                                                Organisation Email Address <span style={{ color: '#ef4444' }}>*</span>
                                             </label>
                                             <input
                                                 type="email"
-                                                placeholder="Enter your email"
+                                                placeholder="Enter organisation email address"
                                                 value={createOrgData.email}
                                                 onChange={(e) => {
                                                     setCreateOrgData({ ...createOrgData, email: e.target.value });

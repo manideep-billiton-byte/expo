@@ -31,7 +31,8 @@ export const apiFetch = (endpoint, options = {}) => {
     };
 
     // If there's a body and no Content-Type is set, add JSON Content-Type
-    if (options.body && !headers['Content-Type']) {
+    // BUT skip this for FormData (file uploads) - browser sets it automatically with boundary
+    if (options.body && !headers['Content-Type'] && !(options.body instanceof FormData)) {
         headers['Content-Type'] = 'application/json';
     }
 

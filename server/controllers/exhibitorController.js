@@ -25,9 +25,11 @@ const getExhibitors = async (req, res) => {
                 e.communication,
                 e.created_at,
                 e.updated_at,
-                ev.event_name
+                ev.event_name,
+                org.org_name AS organization_name
             FROM exhibitors e
             LEFT JOIN events ev ON ev.id = e.event_id
+            LEFT JOIN organizations org ON org.id = e.organization_id
             ORDER BY e.created_at DESC
         `);
         return res.json(result.rows);
@@ -53,12 +55,13 @@ const createExhibitor = async (req, res) => {
         }
 
         const insertSql = `INSERT INTO exhibitors(
-            company_name, gst_number, address, industry, contact_person, email, mobile,
+            organization_id, company_name, gst_number, address, industry, contact_person, email, mobile,
             password_hash,
             event_id, stall_number, stall_category, access_status, lead_capture, communication
-        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`;
+        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`;
 
         const values = [
+            p.organizationId || p.organization_id || null,
             p.companyName || p.company_name || null,
             p.gstNumber || p.gst_number || null,
             p.address || null,
@@ -110,7 +113,7 @@ const loginExhibitor = async (req, res) => {
 
     try {
         const result = await pool.query(
-            `SELECT e.id, e.company_name, e.email, e.password_hash, e.access_status, e.event_id, ev.event_name
+            `SELECT e.id, e.company_name, e.email, e.password_hash, e.access_status, e.event_id, e.organization_id, ev.event_name
              FROM exhibitors e
              LEFT JOIN events ev ON ev.id = e.event_id
              WHERE e.email = $1 AND (e.access_status IS NULL OR e.access_status = 'Active')`,
@@ -131,7 +134,7 @@ const loginExhibitor = async (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
-        console.log(`✅ Exhibitor logged in: ${exhibitor.company_name} (event: ${exhibitor.event_name || 'none'})`);
+        console.log(`✅ Exhibitor logged in: ${exhibitor.company_name} (org: ${exhibitor.organization_id}, event: ${exhibitor.event_name || 'none'})`);
 
         return res.json({
             success: true,
@@ -141,7 +144,8 @@ const loginExhibitor = async (req, res) => {
                 name: exhibitor.company_name,
                 email: exhibitor.email,
                 eventId: exhibitor.event_id,
-                eventName: exhibitor.event_name
+                eventName: exhibitor.event_name,
+                organizationId: exhibitor.organization_id
             }
         });
     } catch (err) {
@@ -150,4 +154,178 @@ const loginExhibitor = async (req, res) => {
     }
 };
 
-module.exports = { getExhibitors, createExhibitor, loginExhibitor };
+// Get upcoming events by organization ID
+const getUpcomingEventsByOrganization = async (req, res) => {
+    const { organizationId } = req.params;
+
+    if (!organizationId) {
+        return res.status(400).json({ error: 'Organization ID is required' });
+    }
+
+    try {
+        console.log('=== Fetching upcoming events ===');
+        console.log('Organization ID:', organizationId);
+        console.log('Current Date:', new Date().toISOString());
+
+        // First, let's get ALL events for this organization to debug
+        const allEventsResult = await pool.query(`
+            SELECT id, event_name, start_date, end_date, status, organization_id
+            FROM events
+            WHERE organization_id = $1
+            ORDER BY start_date ASC
+        `, [organizationId]);
+
+        console.log(`Total events for organization ${organizationId}:`, allEventsResult.rows.length);
+        if (allEventsResult.rows.length > 0) {
+            console.log('All events:', allEventsResult.rows.map(e => ({
+                id: e.id,
+                name: e.event_name,
+                start_date: e.start_date,
+                status: e.status,
+                org_id: e.organization_id
+            })));
+        }
+
+        // Now get upcoming events (start_date >= today, excluding Cancelled and Completed)
+        const result = await pool.query(`
+            SELECT
+                e.id,
+                e.event_name,
+                e.description,
+                e.event_type,
+                e.event_mode,
+                e.industry,
+                e.start_date,
+                e.end_date,
+                e.venue,
+                e.city,
+                e.state,
+                e.country,
+                e.organizer_name,
+                e.contact_person,
+                e.organizer_email,
+                e.organizer_mobile,
+                e.status,
+                e.created_at
+            FROM events e
+            WHERE e.organization_id = $1
+            AND e.start_date >= CURRENT_DATE
+            AND e.status NOT IN ('Cancelled', 'Completed')
+            ORDER BY e.start_date ASC
+        `, [organizationId]);
+
+        console.log(`Found ${result.rows.length} upcoming events for organization ${organizationId}`);
+        if (result.rows.length > 0) {
+            console.log('Upcoming events:', result.rows.map(e => ({
+                id: e.id,
+                name: e.event_name,
+                status: e.status,
+                start_date: e.start_date
+            })));
+        } else {
+            console.log('No upcoming events found - check if start_date values are in the future');
+        }
+
+        return res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching upcoming events:', err);
+        return res.status(500).json({ error: 'Failed to fetch upcoming events', details: err.message });
+    }
+};
+
+// Register exhibitor for an event (one-click registration with auto-fill)
+const registerExhibitorForEvent = async (req, res) => {
+    const { exhibitorId, eventId } = req.body;
+
+    if (!exhibitorId || !eventId) {
+        return res.status(400).json({ error: 'Exhibitor ID and Event ID are required' });
+    }
+
+    try {
+        // First, get the exhibitor's existing data
+        const exhibitorResult = await pool.query(
+            'SELECT * FROM exhibitors WHERE id = $1',
+            [exhibitorId]
+        );
+
+        if (exhibitorResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Exhibitor not found' });
+        }
+
+        const exhibitor = exhibitorResult.rows[0];
+
+        // Check if exhibitor is already registered for this event
+        const existingRegistration = await pool.query(
+            'SELECT id FROM exhibitors WHERE organization_id = $1 AND event_id = $2 AND email = $3',
+            [exhibitor.organization_id, eventId, exhibitor.email]
+        );
+
+        if (existingRegistration.rows.length > 0) {
+            return res.status(400).json({ error: 'You are already registered for this event' });
+        }
+
+        // Get event details
+        const eventResult = await pool.query(
+            'SELECT event_name, organization_id FROM events WHERE id = $1',
+            [eventId]
+        );
+
+        if (eventResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        const event = eventResult.rows[0];
+
+        // Verify event belongs to same organization
+        if (event.organization_id !== exhibitor.organization_id) {
+            return res.status(403).json({ error: 'Cannot register for events from different organizations' });
+        }
+
+        // Create new exhibitor registration with auto-filled data
+        const insertSql = `INSERT INTO exhibitors(
+            organization_id, company_name, gst_number, address, industry, 
+            contact_person, email, mobile, password_hash,
+            event_id, access_status, lead_capture, communication
+        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`;
+
+        const values = [
+            exhibitor.organization_id,
+            exhibitor.company_name,
+            exhibitor.gst_number,
+            exhibitor.address,
+            exhibitor.industry,
+            exhibitor.contact_person,
+            exhibitor.email,
+            exhibitor.mobile,
+            exhibitor.password_hash, // Reuse existing password
+            eventId,
+            'Active',
+            exhibitor.lead_capture || {},
+            exhibitor.communication || {}
+        ];
+
+        const result = await pool.query(insertSql, values);
+        console.log('Exhibitor registered for event successfully:', result.rows[0].id);
+
+        return res.status(201).json({
+            success: true,
+            message: 'Successfully registered for the event!',
+            registration: result.rows[0],
+            eventName: event.event_name
+        });
+    } catch (err) {
+        console.error('Error registering exhibitor for event:', err);
+        return res.status(500).json({
+            error: 'Failed to register for event',
+            details: err.message
+        });
+    }
+};
+
+module.exports = {
+    getExhibitors,
+    createExhibitor,
+    loginExhibitor,
+    getUpcomingEventsByOrganization,
+    registerExhibitorForEvent
+};
