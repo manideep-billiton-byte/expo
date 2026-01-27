@@ -220,16 +220,12 @@ const ExhibitorsManagement = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                         <div>
                             <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600, marginBottom: '8px' }}>Total Exhibitors</div>
-                            <div style={{ fontSize: '32px', fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>11</div>
+                            <div style={{ fontSize: '32px', fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>{exhibitorsLoading ? '...' : exhibitors.length}</div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>Right Now</div>
                         </div>
                         <div style={{ background: 'rgba(6, 182, 212, 0.1)', padding: '10px', borderRadius: '10px' }}>
                             <Image size={20} color="#06b6d4" />
                         </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#10b981', fontWeight: 600 }}>
-                        <TrendingUp size={14} />
-                        +80%
                     </div>
                 </div>
 
@@ -237,16 +233,12 @@ const ExhibitorsManagement = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                         <div>
                             <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600, marginBottom: '8px' }}>Active</div>
-                            <div style={{ fontSize: '32px', fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>03</div>
+                            <div style={{ fontSize: '32px', fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>{exhibitorsLoading ? '...' : exhibitors.filter(e => e.status === 'Active').length}</div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>Currently Running</div>
                         </div>
                         <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '10px', borderRadius: '10px' }}>
                             <Image size={20} color="#3b82f6" />
                         </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#10b981', fontWeight: 600 }}>
-                        <TrendingUp size={14} />
-                        +8.4%
                     </div>
                 </div>
 
@@ -254,16 +246,12 @@ const ExhibitorsManagement = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                         <div>
                             <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600, marginBottom: '8px' }}>Total Leads</div>
-                            <div style={{ fontSize: '32px', fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>233</div>
+                            <div style={{ fontSize: '32px', fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>0</div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>Right Now</div>
                         </div>
                         <div style={{ background: 'rgba(37, 99, 235, 0.1)', padding: '10px', borderRadius: '10px' }}>
                             <Users size={20} color="#2563eb" />
                         </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#10b981', fontWeight: 600 }}>
-                        <TrendingUp size={14} />
-                        +8.4%
                     </div>
                 </div>
 
@@ -271,7 +259,7 @@ const ExhibitorsManagement = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                         <div>
                             <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600, marginBottom: '8px' }}>Staff Members</div>
-                            <div style={{ fontSize: '32px', fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>23</div>
+                            <div style={{ fontSize: '32px', fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>0</div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>Right Now</div>
                         </div>
                         <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '10px', borderRadius: '10px' }}>
@@ -365,31 +353,41 @@ const ExhibitorsManagement = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {exhibitors.map((exhibitor, idx) => (
-                                <tr key={idx} className="hover-lift">
-                                    <td style={{ fontWeight: 600, color: '#475569' }}>{exhibitor.id}</td>
-                                    <td>
-                                        <div style={{ fontWeight: 600, color: '#1e293b' }}>{exhibitor.company}</div>
-                                        <div style={{ fontSize: '12px', color: '#94a3b8' }}>{exhibitor.email}</div>
-                                    </td>
-                                    <td>
-                                        <span className={`badge ${getStatusBadge(exhibitor.status)}`}>
-                                            {exhibitor.status}
-                                        </span>
-                                    </td>
-                                    <td style={{ color: '#475569' }}>{exhibitor.event}</td>
-                                    <td style={{ color: '#475569' }}>{exhibitor.tenant}</td>
-                                    <td style={{ fontWeight: 600 }}>{exhibitor.leads}</td>
-                                    <td style={{ fontWeight: 600 }}>{exhibitor.staff}</td>
-                                    <td style={{ fontSize: '13px', color: '#64748b' }}>{exhibitor.lastActive}</td>
-                                    <td style={{ fontSize: '13px', color: '#64748b' }}>{exhibitor.lastDate}</td>
-                                    <td>
-                                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                                            <MoreHorizontal size={18} color="#64748b" />
-                                        </button>
-                                    </td>
+                            {exhibitorsLoading ? (
+                                <tr>
+                                    <td colSpan="10" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>Loading...</td>
                                 </tr>
-                            ))}
+                            ) : exhibitors.length === 0 ? (
+                                <tr>
+                                    <td colSpan="10" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>No exhibitors found</td>
+                                </tr>
+                            ) : (
+                                exhibitors.slice(0, entriesPerPage).map((exhibitor, idx) => (
+                                    <tr key={idx} className="hover-lift">
+                                        <td style={{ fontWeight: 600, color: '#475569' }}>{exhibitor.id}</td>
+                                        <td>
+                                            <div style={{ fontWeight: 600, color: '#1e293b' }}>{exhibitor.company}</div>
+                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{exhibitor.email}</div>
+                                        </td>
+                                        <td>
+                                            <span className={`badge ${getStatusBadge(exhibitor.status)}`}>
+                                                {exhibitor.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ color: '#475569' }}>{exhibitor.event}</td>
+                                        <td style={{ color: '#475569' }}>{exhibitor.tenant}</td>
+                                        <td style={{ fontWeight: 600 }}>{exhibitor.leads}</td>
+                                        <td style={{ fontWeight: 600 }}>{exhibitor.staff}</td>
+                                        <td style={{ fontSize: '13px', color: '#64748b' }}>{exhibitor.lastActive}</td>
+                                        <td style={{ fontSize: '13px', color: '#64748b' }}>{exhibitor.lastDate}</td>
+                                        <td>
+                                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                                <MoreHorizontal size={18} color="#64748b" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -397,7 +395,7 @@ const ExhibitorsManagement = () => {
                 {/* Pagination */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #f1f5f9' }}>
                     <div style={{ fontSize: '13px', color: '#64748b' }}>
-                        Showing 1 to 9 of 9 entries
+                        Showing {exhibitors.length > 0 ? 1 : 0} to {Math.min(exhibitors.length, entriesPerPage)} of {exhibitors.length} entries
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <button style={{ padding: '8px 12px', border: '1px solid #e2e8f0', background: 'white', borderRadius: '6px', fontSize: '13px', color: '#64748b', cursor: 'pointer' }}>«</button>
