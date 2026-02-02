@@ -8,8 +8,8 @@ set -e
 echo "🔧 Fixing CloudFront Configuration..."
 
 # Configuration
-CLOUDFRONT_DOMAIN="d36p7i1koir3da.cloudfront.net"
-BACKEND_URL="expo-project-prod-env.eba-i8rfmfk2.ap-south-1.elasticbeanstalk.com"
+CLOUDFRONT_DOMAIN="d2mwpnz04jz48g.cloudfront.net"
+BACKEND_URL="expo-project-staging-env.eba-msq3qh3p.ap-south-1.elasticbeanstalk.com"
 REGION="ap-south-1"
 
 # Get CloudFront distribution ID
@@ -47,9 +47,7 @@ if [ -z "$BACKEND_ORIGIN_EXISTS" ]; then
           "Id": "backend-api",
           "DomainName": $domain,
           "OriginPath": "",
-          "CustomHeaders": {
-            "Quantity": 0
-          },
+          "CustomHeaders": { "Quantity": 0 },
           "CustomOriginConfig": {
             "HTTPPort": 80,
             "HTTPSPort": 443,
@@ -63,15 +61,9 @@ if [ -z "$BACKEND_ORIGIN_EXISTS" ]; then
           },
           "ConnectionAttempts": 3,
           "ConnectionTimeout": 10,
-          "OriginShield": {
-            "Enabled": false
-          }
-        }]' /tmp/cf-dist-config.json > /tmp/cf-dist-config-new.json
-    
-    mv /tmp/cf-dist-config-new.json /tmp/cf-dist-config.json
-    echo "✅ Backend origin added"
-else
-    echo "ℹ️  Backend origin already exists"
+          "OriginShield": { "Enabled": false }
+        }]' /tmp/cf-dist-config.json > /tmp/cf-dist-config-temp.json
+    mv /tmp/cf-dist-config-temp.json /tmp/cf-dist-config.json
 fi
 
 # Check if /api/* behavior already exists
@@ -80,11 +72,9 @@ API_BEHAVIOR_EXISTS=$(jq '.CacheBehaviors.Items[]? | select(.PathPattern == "/ap
 if [ -z "$API_BEHAVIOR_EXISTS" ]; then
     echo "➕ Adding /api/* cache behavior..."
     
-    # Get default cache behavior settings to use as template
-    DEFAULT_TARGET_ORIGIN=$(jq -r '.DefaultCacheBehavior.TargetOriginId' /tmp/cf-dist-config.json)
-    
     # Add /api/* cache behavior
-    jq '.CacheBehaviors.Quantity += 1 | 
+    jq '.CacheBehaviors = (if .CacheBehaviors then .CacheBehaviors else { "Quantity": 0, "Items": [] } end) |
+        .CacheBehaviors.Quantity += 1 | 
         .CacheBehaviors.Items += [{
           "PathPattern": "/api/*",
           "TargetOriginId": "backend-api",
@@ -102,20 +92,12 @@ if [ -z "$API_BEHAVIOR_EXISTS" ]; then
           "OriginRequestPolicyId": "216adef6-5c7f-47e4-b989-5492eafa07d3",
           "SmoothStreaming": false,
           "FieldLevelEncryptionId": "",
-          "TrustedSigners": {
-            "Enabled": false,
-            "Quantity": 0
-          },
-          "TrustedKeyGroups": {
-            "Enabled": false,
-            "Quantity": 0
-          }
-        }]' /tmp/cf-dist-config.json > /tmp/cf-dist-config-new.json
-    
-    mv /tmp/cf-dist-config-new.json /tmp/cf-dist-config.json
-    echo "✅ /api/* cache behavior added"
-else
-    echo "ℹ️  /api/* cache behavior already exists"
+          "TrustedSigners": { "Enabled": false, "Quantity": 0 },
+          "TrustedKeyGroups": { "Enabled": false, "Quantity": 0 },
+          "LambdaFunctionAssociations": { "Quantity": 0 },
+          "FunctionAssociations": { "Quantity": 0 }
+        }]' /tmp/cf-dist-config.json > /tmp/cf-dist-config-temp.json
+    mv /tmp/cf-dist-config-temp.json /tmp/cf-dist-config.json
 fi
 
 # Update the distribution
@@ -126,19 +108,7 @@ aws cloudfront update-distribution \
     --if-match "$ETAG" > /tmp/cf-update-result.json
 
 echo "✅ CloudFront distribution updated successfully!"
-echo ""
-echo "⏳ CloudFront is now deploying the changes..."
-echo "   This typically takes 5-15 minutes."
-echo ""
-echo "📊 You can check the status with:"
-echo "   aws cloudfront get-distribution --id $DISTRIBUTION_ID --query 'Distribution.Status'"
-echo ""
-echo "🔄 To monitor deployment progress:"
-echo "   aws cloudfront wait distribution-deployed --id $DISTRIBUTION_ID"
-echo ""
-echo "✨ Once deployed, your API requests to https://${CLOUDFRONT_DOMAIN}/api/* will be routed to the backend!"
-
-# Clean up
+echo "⏳ Changes are being deployed (5-15 mins)."
 rm -f /tmp/cf-config.json /tmp/cf-dist-config.json /tmp/cf-update-result.json
 
 echo ""

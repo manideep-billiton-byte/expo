@@ -13,23 +13,35 @@ function App() {
     const [isRegistering, setIsRegistering] = useState(false);
 
     useEffect(() => {
-        // Clear authentication on app load - users must login each time
-        localStorage.removeItem('isAuthenticated');
-        setIsAuthenticated(false);
+        // Check if user is already authenticated (from localStorage)
+        const storedAuth = localStorage.getItem('isAuthenticated');
+        const storedUserType = localStorage.getItem('userType');
 
-        // Check URL params for login type
-        const urlParams = new URLSearchParams(window.location.search);
-        const loginTypeParam = urlParams.get('type');
-        if (loginTypeParam === 'organization') {
-            setLoginType('organization');
-        } else if (loginTypeParam === 'exhibitor') {
-            setLoginType('exhibitor');
-        } else if (loginTypeParam === 'visitor') {
-            setLoginType('visitor');
+        if (storedAuth === 'true' && storedUserType) {
+            // Restore authentication state
+            setIsAuthenticated(true);
+            setUserType(storedUserType);
+            setLoginType(storedUserType);
+        } else {
+            // Not authenticated
+            setIsAuthenticated(false);
         }
 
-        if (urlParams.get('action') === 'register') {
-            setIsRegistering(true);
+        // Check URL params for login type (only if not already authenticated)
+        if (!storedAuth) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const loginTypeParam = urlParams.get('type');
+            if (loginTypeParam === 'organization') {
+                setLoginType('organization');
+            } else if (loginTypeParam === 'exhibitor') {
+                setLoginType('exhibitor');
+            } else if (loginTypeParam === 'visitor') {
+                setLoginType('visitor');
+            }
+
+            if (urlParams.get('action') === 'register') {
+                setIsRegistering(true);
+            }
         }
 
         setLoading(false);

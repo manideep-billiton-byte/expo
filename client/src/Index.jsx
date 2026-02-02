@@ -4,7 +4,7 @@ import Layout from './components/Layout';
 import StatsCard from './components/StatsCard';
 import EventManagement from './components/EventManagement';
 import ExhibitorsManagement from './components/ExhibitorsManagement';
-import TenantManagement from './components/TenantManagement';
+import OrganisationManagement from './components/OrganisationManagement';
 import UserManagement from './components/UserManagement';
 import VisitorsManagement from './components/VisitorsManagement';
 import BillingManagement from './components/BillingManagement';
@@ -136,8 +136,8 @@ const Index = ({ onLogout, userType = 'master' }) => {
                 return <EventManagement />;
             case 'exhibitors':
                 return <ExhibitorsManagement />;
-            case 'tenants':
-                return <TenantManagement />;
+            case 'organisations':
+                return <OrganisationManagement />;
             case 'users':
                 return <UserManagement />;
             case 'visitors':
@@ -164,7 +164,7 @@ const Index = ({ onLogout, userType = 'master' }) => {
                     return <OrganizationDashboard onNavigate={handleNavigate} />;
                 }
 
-                const activeTenantsCount = dashboardOrgs.length;
+                const activeOrganisationsCount = dashboardOrgs.length;
                 const activeEventsCount = dashboardEvents.length;
                 const totalExhibitorsCount = dashboardExhibitors.length;
                 const totalVisitorsCount = dashboardVisitors.length;
@@ -194,7 +194,7 @@ const Index = ({ onLogout, userType = 'master' }) => {
                         </div>
 
                         <div className="stats-grid fade-in">
-                            <StatsCard label="Active Tenants" value={String(activeTenantsCount)} change={dashboardLoading ? 'Loading...' : undefined} icon={Building2} colorClass="text-blue-500" customClass="stat-card-blue" />
+                            <StatsCard label="Active Organisations" value={String(activeOrganisationsCount)} change={dashboardLoading ? 'Loading...' : undefined} icon={Building2} colorClass="text-blue-500" customClass="stat-card-blue" />
                             <StatsCard label="Active Events" value={String(activeEventsCount)} change={dashboardLoading ? 'Loading...' : undefined} icon={Calendar} colorClass="text-emerald-500" customClass="stat-card-green" />
                             <StatsCard label="Total Exhibitors" value={String(totalExhibitorsCount)} change={dashboardLoading ? 'Loading...' : undefined} icon={ImageIcon} colorClass="text-purple-500" customClass="stat-card-purple" />
                             <StatsCard label="Registered Visitors" value={String(totalVisitorsCount)} change={dashboardLoading ? 'Loading...' : undefined} icon={Users} colorClass="text-blue-400" customClass="stat-card-blue" />
@@ -482,7 +482,7 @@ const Index = ({ onLogout, userType = 'master' }) => {
                                         <thead>
                                             <tr>
                                                 <th>Event Name</th>
-                                                <th>Tenant</th>
+                                                <th>Organisation</th>
                                                 <th>Status</th>
                                                 <th>Visitors</th>
                                                 <th>Leads</th>
@@ -609,7 +609,7 @@ const Index = ({ onLogout, userType = 'master' }) => {
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                                        <span style={{ color: '#64748b' }}>Active Paid Tenants</span>
+                                        <span style={{ color: '#64748b' }}>Active Paid Organisations</span>
                                         <span style={{ fontWeight: 700 }}>47</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
@@ -642,13 +642,13 @@ const Index = ({ onLogout, userType = 'master' }) => {
                                         <div style={{ fontSize: '9px', fontWeight: 600, color: '#64748b', marginTop: '4px' }}>Create Event</div>
                                     </div>
                                     <div
-                                        onClick={() => handleNavigate('tenants')}
+                                        onClick={() => handleNavigate('organisations')}
                                         style={{ background: '#f8fafc', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid #f1f5f9', transition: 'all 0.2s' }}
                                         onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
                                     >
                                         <Building2 size={14} color="#64748b" />
-                                        <div style={{ fontSize: '9px', fontWeight: 600, color: '#64748b', marginTop: '4px' }}>Add Tenant</div>
+                                        <div style={{ fontSize: '9px', fontWeight: 600, color: '#64748b', marginTop: '4px' }}>Add Organisation</div>
                                     </div>
                                     <div
                                         onClick={() => handleNavigate('users')}
@@ -681,7 +681,7 @@ const Index = ({ onLogout, userType = 'master' }) => {
                                 {[
                                     { text: 'High WhatsApp usage for TechCorp India - 85% quota used', time: '5 min ago', color: '#f59e0b', bg: '#fffaf0' },
                                     { text: 'Payment failed for StartupHub subscription renewal', time: '12 min ago', color: '#f43f5e', bg: '#fef2f2' },
-                                    { text: 'New tenant registration: EventPro Solutions', time: '1 hour ago', color: '#2563eb', bg: '#f0f7ff' },
+                                    { text: 'New organisation registration: EventPro Solutions', time: '1 hour ago', color: '#2563eb', bg: '#f0f7ff' },
                                     { text: 'MSME Connect event successfully published', time: '2 hours ago', color: '#10b981', bg: '#f0fdf4' }
                                 ].map((alert, idx) => (
                                     <div key={idx} style={{ background: alert.bg, border: '1px solid #f1f5f9', padding: '12px 16px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

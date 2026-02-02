@@ -65,7 +65,7 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
     // Master admin navigation items
     const masterItems = [
         { icon: Building2, label: 'Control Room', screen: 'dashboard' },
-        { icon: Building2, label: 'Organization', screen: 'tenants' },
+        { icon: Building2, label: 'Organization', screen: 'organisations' },
         { icon: Users, label: 'Users', screen: 'users' },
         { icon: Calendar, label: 'Events', screen: 'events' },
         { icon: Image, label: 'Exhibitors', screen: 'exhibitors' },
@@ -162,7 +162,7 @@ const Header = ({ activeScreen = 'dashboard', onNavigate, isNavCollapsed, onTogg
                             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                             <input
                                 type="text"
-                                placeholder="Search tenants, events, exhibitors..."
+                                placeholder="Search organisations, events, exhibitors..."
                                 style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '14px' }}
                             />
                         </div>

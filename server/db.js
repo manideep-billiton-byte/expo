@@ -1,42 +1,40 @@
 const { Pool } = require('pg');
+require('dotenv').config();
 
 /*
  * ============================================================================
  * DATABASE CONFIGURATION
  * ============================================================================
  * 
- * Choose ONE of the following configurations by uncommenting it.
- * Make sure to comment out the other configuration.
- * 
- * OPTION 1: LOCAL - For local development with local PostgreSQL
- * OPTION 2: SERVER - For production/server with AWS RDS PostgreSQL
+ * Uses DATABASE_URL environment variable for connection.
+ * This allows different databases for staging vs production.
  * 
  * ============================================================================
  */
 
-// ============================================================================
-// OPTION 1: LOCAL DATABASE (Comment this section when deploying to server)
-// ============================================================================
-// const dbConfig = {
-//     host: 'localhost',
-//     port: 5432,
-//     user: 'postgres',
-//     password: 'password@123',  // <-- Change this to your local PostgreSQL password
-//     database: 'event_platform',
-//     ssl: false
-// };
-// console.log('DB: Connected to LOCAL database');
+// Get database URL from environment
+const databaseUrl = process.env.DATABASE_URL;
 
-// ============================================================================
-// OPTION 2: SERVER DATABASE - AWS RDS (Uncomment this for production)
-// ============================================================================
+if (!databaseUrl) {
+    console.error('ERROR: DATABASE_URL environment variable is not set!');
+    console.log('Please set DATABASE_URL in your environment or .env file');
+    process.exit(1);
+}
+
+// Determine environment
+const nodeEnv = process.env.NODE_ENV || 'development';
+
+// Configure the pool
 const dbConfig = {
-    connectionString: 'postgresql://postgres:EventPass123!@expo-project-prod-db.cvmk8awyksm7.ap-south-1.rds.amazonaws.com:5432/expo_db',
-    ssl: { rejectUnauthorized: false }
+    connectionString: databaseUrl,
+    ssl: nodeEnv === 'production' || nodeEnv === 'staging'
+        ? { rejectUnauthorized: false }
+        : false
 };
-console.log('DB: Connected to SERVER (AWS RDS) database');
+
+console.log(`DB: Connected to ${nodeEnv.toUpperCase()} database`);
+console.log(`DB: Host: ${databaseUrl.includes('staging') ? 'STAGING' : databaseUrl.includes('prod') ? 'PRODUCTION' : 'OTHER'}`);
 
 const pool = new Pool(dbConfig);
 
 module.exports = pool;
-

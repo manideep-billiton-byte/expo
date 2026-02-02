@@ -40,13 +40,30 @@ const UserManagement = () => {
     const [orgsLoading, setOrgsLoading] = useState(false);
     const [createUserLoading, setCreateUserLoading] = useState(false);
 
+    // View User Modal State
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [viewUserModal, setViewUserModal] = useState(false);
+
     const [userData, setUserData] = useState({
         ...defaultUserData
     });
 
+    const handleViewUser = async (userId) => {
+        try {
+            const resp = await apiFetch(`/api/users/${userId}`);
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Failed to load user details');
+            setSelectedUser(data.user || data);
+            setViewUserModal(true);
+        } catch (err) {
+            console.error('Failed to load user details', err);
+            alert('Failed to load user details: ' + (err.message || err));
+        }
+    };
+
     const roles = [
-        { id: 'super_admin', title: 'Super Admin', desc: 'Full control over entire platform, all tenants, billing, configuration and security.' },
-        { id: 'platform_admin', title: 'Platform Admin', desc: 'Manages tenants, events, configurations and monitors platform health.' },
+        { id: 'super_admin', title: 'Super Admin', desc: 'Full control over entire platform, all organisations, billing, configuration and security.' },
+        { id: 'platform_admin', title: 'Platform Admin', desc: 'Manages organisations, events, configurations and monitors platform health.' },
         { id: 'support_admin', title: 'Support Admin', desc: 'Handles support tickets, incidents and customer issues across platform.' },
         { id: 'finance_admin', title: 'Finance Admin', desc: 'Manages subscriptions, billing, invoices and payments.' },
         { id: 'compliance_admin', title: 'Compliance Admin', desc: 'Ensures legal, privacy, audit and government compliance.' },
@@ -55,7 +72,7 @@ const UserManagement = () => {
 
     const modules = [
         { id: 'control_room', label: 'Control Room', icon: Building2 },
-        { id: 'tenant_mgmt', label: 'Tenant Management', icon: Building2 },
+        { id: 'organisation_mgmt', label: 'Organisation Management', icon: Building2 },
         { id: 'user_mgmt', label: 'User Management', icon: Users },
         { id: 'event_mgmt', label: 'Event Management', icon: Calendar },
         { id: 'exhibitor_mgmt', label: 'Exhibitor Management', icon: Image },
@@ -355,7 +372,12 @@ const UserManagement = () => {
                         </thead>
                         <tbody>
                             {users.map((user, idx) => (
-                                <tr key={idx} className="hover-lift">
+                                <tr 
+                                    key={idx} 
+                                    className="hover-lift"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => handleViewUser(user.id)}
+                                >
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                             <div style={{
@@ -384,7 +406,7 @@ const UserManagement = () => {
                                     <td>{getRoleBadge(user.role)}</td>
                                     <td style={{ fontSize: '13px', color: '#64748b' }}>{user.lastLogin}</td>
                                     <td style={{ color: '#475569' }}>{user.organization}</td>
-                                    <td>
+                                    <td onClick={(e) => e.stopPropagation()}>
                                         <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
                                             <MoreHorizontal size={18} color="#64748b" />
                                         </button>
@@ -855,6 +877,81 @@ const UserManagement = () => {
                                         <ChevronDown size={16} />
                                     </>
                                 ) : 'Next'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* View User Details Modal */}
+            {viewUserModal && selectedUser && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }}>
+                    <div style={{
+                        background: 'white', borderRadius: '24px', padding: '40px',
+                        width: '700px', maxWidth: '95%', maxHeight: '90vh',
+                        overflowY: 'auto', position: 'relative',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }} onClick={e => e.stopPropagation()}>
+                        
+                        <button onClick={() => { setViewUserModal(false); setSelectedUser(null); }} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                            <X size={24} />
+                        </button>
+
+                        <div style={{ marginBottom: '32px' }}>
+                            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>User Details</h2>
+                            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>View user profile and permissions</p>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>USER ID</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.id}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ROLE</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.role || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>FIRST NAME</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.first_name || selectedUser.firstName}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>LAST NAME</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.last_name || selectedUser.lastName}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EMAIL ADDRESS</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.email}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>MOBILE NUMBER</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.mobile || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZATION</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.organization_name || selectedUser.organization || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>DEPARTMENT</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.department || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATUS</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.status || 'Active'}</div>
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button 
+                                onClick={() => { setViewUserModal(false); setSelectedUser(null); }}
+                                style={{ padding: '12px 24px', borderRadius: '10px', border: 'none', background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                            >
+                                Close
                             </button>
                         </div>
                     </div>

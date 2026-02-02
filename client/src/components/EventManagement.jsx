@@ -90,10 +90,98 @@ const EventManagement = () => {
         price: 50000
     });
 
+    // View Event Modal State
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    const [viewEventModal, setViewEventModal] = useState(false);
+
+    // Handle View Event
+    const handleViewEvent = async (eventId) => {
+        try {
+            const response = await apiFetch(`/api/events/${eventId}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to fetch event details');
+            setSelectedEvent(data.event || data);
+            setViewEventModal(true);
+        } catch (error) {
+            console.error('Failed to load event details:', error);
+            alert('Failed to load event details: ' + (error.message || error));
+        }
+    };
     const handleOpenModal = () => {
         setModalStep(1);
         setShowSuccess(false);
         setCopied(false);
+
+        // Auto-fill organizationId for organization users
+        const userType = localStorage.getItem('userType');
+        const organizationId = localStorage.getItem('organizationId');
+
+        if (userType === 'organization' && organizationId) {
+            // Pre-fill the organization ID for organization users
+            setEventData(prev => ({
+                ...prev,
+                organizationId: organizationId
+            }));
+        } else {
+            // Reset to default for master admin
+            setEventData({
+                organizationId: '',
+                eventName: '',
+                description: '',
+                eventType: '',
+                eventMode: '',
+                industry: '',
+                startDate: '',
+                endDate: '',
+                venue: '',
+                city: '',
+                state: '',
+                country: 'India',
+                organizerName: '',
+                contactPerson: '',
+                organizerEmail: '',
+                organizerMobile: '',
+                enableStalls: false,
+                stallConfig: {
+                    totalStalls: 100,
+                    rows: 10,
+                    columns: 10,
+                    stallPrefix: 'S'
+                },
+                stallTypes: [
+                    { id: 1, name: 'Basic', color: '#3b82f6', startNumber: 1, endNumber: 40, price: 25000 },
+                    { id: 2, name: 'Standard', color: '#10b981', startNumber: 41, endNumber: 70, price: 50000 },
+                    { id: 3, name: 'Premium', color: '#8b5cf6', startNumber: 71, endNumber: 90, price: 85000 },
+                    { id: 4, name: 'Corner', color: '#f97316', startNumber: 91, endNumber: 100, price: 25000 }
+                ],
+                groundLayoutUrl: null,
+                registration: {
+                    enableVisitor: true,
+                    approvalRequired: false,
+                    externalMode: false,
+                    startDate: '',
+                    endDate: '',
+                    generateQR: true,
+                    passType: 'Digital Only',
+                    allowQRRegen: false
+                },
+                leadCapture: {
+                    enableQR: true,
+                    enableStallQR: true,
+                    enableOCR: false,
+                    manualCapture: true
+                },
+                communication: {
+                    enableWhatsApp: true,
+                    enableEmail: true,
+                    enableSMS: false,
+                    triggerQRScan: true,
+                    triggerStallQRScan: true,
+                    triggerManualSend: true
+                }
+            });
+        }
+
         setShowModal(true);
     };
 
@@ -130,7 +218,17 @@ const EventManagement = () => {
     const loadEvents = async () => {
         setEventsLoading(true);
         try {
-            const resp = await apiFetch('/api/events');
+            // Get organizationId from localStorage if user is logged in as organization
+            const organizationId = localStorage.getItem('organizationId');
+            const userType = localStorage.getItem('userType');
+
+            // Build API URL with organization filter if applicable
+            let apiUrl = '/api/events';
+            if (userType === 'organization' && organizationId) {
+                apiUrl += `?organization_id=${organizationId}`;
+            }
+
+            const resp = await apiFetch(apiUrl);
             let data;
             const txt = await resp.clone().text();
             try { data = JSON.parse(txt); } catch (e) { data = txt; }
@@ -294,7 +392,7 @@ const EventManagement = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }} className="fade-in">
                 <div>
                     <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#1e3a8a', margin: 0, letterSpacing: '-0.02em' }}>Event Management</h1>
-                    <p style={{ fontSize: '13px', color: '#64748b', marginTop: '6px' }}>Manage all events across tenants</p>
+                    <p style={{ fontSize: '13px', color: '#64748b', marginTop: '6px' }}>Manage all events across organisations</p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <button style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
@@ -462,7 +560,12 @@ const EventManagement = () => {
                         </thead>
                         <tbody>
                             {events.map((event, idx) => (
-                                <tr key={idx} className="hover-lift">
+                                <tr
+                                    key={idx}
+                                    className="hover-lift"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => handleViewEvent(event.id)}
+                                >
                                     <td style={{ fontWeight: 600, color: '#475569' }}>{event.id}</td>
                                     <td>
                                         <div style={{ fontWeight: 600, color: '#1e293b' }}>{event.name}</div>
@@ -478,7 +581,7 @@ const EventManagement = () => {
                                     <td style={{ fontWeight: 600 }}>{event.visitors}</td>
                                     <td style={{ fontSize: '13px', color: '#64748b' }}>{event.createdDate}</td>
                                     <td style={{ fontSize: '13px', color: '#64748b' }}>{event.lastDate}</td>
-                                    <td>
+                                    <td onClick={(e) => e.stopPropagation()}>
                                         <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
                                             <MoreHorizontal size={18} color="#64748b" />
                                         </button>
@@ -669,7 +772,18 @@ const EventManagement = () => {
                                             <select
                                                 value={eventData.organizationId}
                                                 onChange={e => setEventData({ ...eventData, organizationId: e.target.value })}
-                                                style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                disabled={localStorage.getItem('userType') === 'organization'}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '12px 14px',
+                                                    border: '1.5px solid #e2e8f0',
+                                                    borderRadius: '10px',
+                                                    fontSize: '14px',
+                                                    outline: 'none',
+                                                    background: localStorage.getItem('userType') === 'organization' ? '#f8fafc' : 'white',
+                                                    cursor: localStorage.getItem('userType') === 'organization' ? 'not-allowed' : 'pointer',
+                                                    opacity: localStorage.getItem('userType') === 'organization' ? 0.7 : 1
+                                                }}
                                             >
                                                 <option value="">Select organization</option>
                                                 {orgs.map(org => (
@@ -679,6 +793,11 @@ const EventManagement = () => {
                                                 ))}
                                             </select>
                                             {orgsLoading && <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Loading organizations...</p>}
+                                            {localStorage.getItem('userType') === 'organization' && (
+                                                <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                                                    📌 Events will be created for your organization: {localStorage.getItem('organizationName')}
+                                                </p>
+                                            )}
                                         </div>
 
                                         <div style={{ marginBottom: '20px' }}>
@@ -1799,6 +1918,97 @@ const EventManagement = () => {
                                 </div>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* View Event Details Modal */}
+            {viewEventModal && selectedEvent && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }}>
+                    <div style={{
+                        background: 'white', borderRadius: '24px', padding: '40px',
+                        width: '700px', maxWidth: '95%', maxHeight: '90vh',
+                        overflowY: 'auto', position: 'relative',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }} onClick={e => e.stopPropagation()}>
+
+                        <button onClick={() => { setViewEventModal(false); setSelectedEvent(null); }} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                            <X size={24} />
+                        </button>
+
+                        <div style={{ marginBottom: '32px' }}>
+                            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Event Details</h2>
+                            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>View event information</p>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT ID</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.id}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATUS</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.status || 'Draft'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT NAME</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_name || selectedEvent.name}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>DESCRIPTION</div>
+                                <div style={{ fontSize: '14px', color: '#475569' }}>{selectedEvent.description || 'No description'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT TYPE</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_type || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT MODE</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_mode || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>START DATE</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.start_date ? new Date(selectedEvent.start_date).toLocaleDateString() : '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>END DATE</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.end_date ? new Date(selectedEvent.end_date).toLocaleDateString() : '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>VENUE</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.venue || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>CITY</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.city || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATE</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.state || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZER NAME</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.organizer_name || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZER EMAIL</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.organizer_email || '-'}</div>
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => { setViewEventModal(false); setSelectedEvent(null); }}
+                                style={{ padding: '12px 24px', borderRadius: '10px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

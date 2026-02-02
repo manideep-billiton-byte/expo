@@ -14,8 +14,8 @@ echo "Solution: We need to add your backend as an origin and create a behavior f
 echo ""
 
 # Configuration
-CLOUDFRONT_DOMAIN="d36p7i1koir3da.cloudfront.net"
-BACKEND_URL="expo-project-prod-env.eba-i8rfmfk2.ap-south-1.elasticbeanstalk.com"
+CLOUDFRONT_DOMAIN="d2mwpnz04jz48g.cloudfront.net"
+BACKEND_URL="expo-project-staging-env.eba-msq3qh3p.ap-south-1.elasticbeanstalk.com"
 
 # Get distribution ID
 DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?DomainName=='${CLOUDFRONT_DOMAIN}'].Id" --output text)

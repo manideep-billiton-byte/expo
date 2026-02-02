@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Search, Download, Plus, MoreHorizontal, X, UserPlus, Users, ArrowLeft } from 'lucide-react';
+import { Building2, Search, Download, Plus, MoreHorizontal, X, UserPlus, Users, ArrowLeft, Eye, Edit, Ban, Trash2 } from 'lucide-react';
 import { verifyGSTINViaAPI, validateGSTINFormat } from '../utils/gstinValidator';
 import { apiFetch } from '../utils/api';
 
-const TenantManagement = () => {
+const OrganisationManagement = () => {
     const [activeTab, setActiveTab] = useState('All Organizations');
     const [searchQuery, setSearchQuery] = useState('');
     const [entriesPerPage, setEntriesPerPage] = useState(10);
+    const [openDropdown, setOpenDropdown] = useState(null);
 
     const [organizations, setOrganizations] = useState([]);
     const [organizationsLoading, setOrganizationsLoading] = useState(false);
@@ -56,11 +57,16 @@ const TenantManagement = () => {
         setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
     };
 
+    // View/Edit Organization State
+    const [viewOrgModal, setViewOrgModal] = useState(false);
+    const [editOrgModal, setEditOrgModal] = useState(false);
+    const [selectedOrg, setSelectedOrg] = useState(null);
+
     // Wizard State
     const [wizardTab, setWizardTab] = useState('BASIC'); // BASIC, CONTACT, GST, FEATURES, SUBSCRIPTION
     const [wizardData, setWizardData] = useState({
         // Basic
-        orgName: '', tradeName: '', tenantType: '', industry: '', size: '',
+        orgName: '', tradeName: '', organisationType: '', industry: '', size: '',
         apiAccess: false, state: '', district: '', town: '', address: '',
         // Contact
         contactName: '', contactEmail: '', contactPhone: '', altPhone: '', website: '',
@@ -132,7 +138,7 @@ const TenantManagement = () => {
         setCreateOrgErrors({});
         setGstData({ gstNumber: '' });
         setWizardData({
-            orgName: '', tradeName: '', tenantType: '', industry: '', size: '',
+            orgName: '', tradeName: '', organisationType: '', industry: '', size: '',
             apiAccess: false, state: '', district: '', town: '', address: '',
             contactName: '', contactEmail: '', contactPhone: '', altPhone: '', website: '',
             gstNumber: '', panNumber: '', regNumber: '', dateInc: '', isVerified: false,
@@ -338,7 +344,7 @@ const TenantManagement = () => {
             const orgData = {
                 orgName: wizardData.orgName.trim(),
                 tradeName: wizardData.tradeName || wizardData.orgName.trim(),
-                tenantType: wizardData.tenantType || '',
+                organisationType: wizardData.organisationType || '',
                 industry: wizardData.industry || '',
                 size: wizardData.size || '',
                 apiAccess: wizardData.apiAccess || false,
@@ -402,6 +408,23 @@ const TenantManagement = () => {
         loadOrganizations();
     }, []);
 
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (openDropdown !== null) {
+                setOpenDropdown(null);
+            }
+        };
+
+        if (openDropdown !== null) {
+            document.addEventListener('click', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [openDropdown]);
+
     // Add this function to handle wizard form submission
     const handleWizardSubmit = () => {
         // If this is the last tab, submit the form
@@ -416,9 +439,111 @@ const TenantManagement = () => {
         }
     };
 
+    // Handle View Organization
+    const handleViewOrganization = async (orgId) => {
+        try {
+            const response = await apiFetch(`/api/organizations/${orgId}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to fetch organization details');
+            setSelectedOrg(data.organization);
+            setViewOrgModal(true);
+            setOpenDropdown(null);
+        } catch (error) {
+            showToast(error.message || 'Failed to load organization details', 'error');
+        }
+    };
+
+    // Handle Edit Organization
+    const handleEditOrganization = async (orgId) => {
+        try {
+            const response = await apiFetch(`/api/organizations/${orgId}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to fetch organization details');
+            setSelectedOrg(data.organization);
+            setEditOrgModal(true);
+            setOpenDropdown(null);
+        } catch (error) {
+            showToast(error.message || 'Failed to load organization details', 'error');
+        }
+    };
+
+    // Handle Update Organization
+    const handleUpdateOrganization = async (e) => {
+        e.preventDefault();
+        if (!selectedOrg) return;
+
+        try {
+            const response = await apiFetch(`/api/organizations/${selectedOrg.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedOrg)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to update organization');
+            
+            showToast('✅ Organization updated successfully!', 'success');
+            setEditOrgModal(false);
+            setSelectedOrg(null);
+            await loadOrganizations();
+        } catch (error) {
+            showToast('❌ ' + (error.message || 'Failed to update organization'), 'error');
+        }
+    };
+
+    // Handle Suspend/Activate Organization
+    const handleSuspendOrganization = async (orgId, currentStatus) => {
+        const newStatus = currentStatus === 'Suspended' ? 'Active' : 'Suspended';
+        const action = newStatus === 'Suspended' ? 'suspend' : 'activate';
+        
+        if (!confirm(`Are you sure you want to ${action} this organization?`)) {
+            setOpenDropdown(null);
+            return;
+        }
+
+        try {
+            const response = await apiFetch(`/api/organizations/${orgId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || `Failed to ${action} organization`);
+            
+            showToast(`✅ Organization ${action}d successfully!`, 'success');
+            setOpenDropdown(null);
+            await loadOrganizations();
+        } catch (error) {
+            showToast('❌ ' + (error.message || `Failed to ${action} organization`), 'error');
+            setOpenDropdown(null);
+        }
+    };
+
+    // Handle Delete Organization
+    const handleDeleteOrganization = async (orgId, orgName) => {
+        if (!confirm(`⚠️ Are you sure you want to DELETE "${orgName}"?\n\nThis action cannot be undone and will remove all associated data.`)) {
+            setOpenDropdown(null);
+            return;
+        }
+
+        try {
+            const response = await apiFetch(`/api/organizations/${orgId}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to delete organization');
+            
+            showToast('✅ Organization deleted successfully!', 'success');
+            setOpenDropdown(null);
+            await loadOrganizations();
+        } catch (error) {
+            showToast('❌ ' + (error.message || 'Failed to delete organization'), 'error');
+            setOpenDropdown(null);
+        }
+    };
+
     const tabs = ['All Organizations', 'Active', 'Pending', 'Suspended', 'Plans'];
 
-    const normalizedTenants = organizations.map((row) => {
+    const normalizedOrganisations = organizations.map((row) => {
         const createdAt = row.created_at ? new Date(row.created_at) : null;
         const updatedAt = row.updated_at ? new Date(row.updated_at) : null;
 
@@ -435,7 +560,7 @@ const TenantManagement = () => {
         };
     });
 
-    const filteredTenants = normalizedTenants
+    const filteredOrganisations = normalizedOrganisations
         .filter((t) => {
             if (!searchQuery) return true;
             const q = searchQuery.toLowerCase();
@@ -576,34 +701,163 @@ const TenantManagement = () => {
                                         {organizationsError}
                                     </td>
                                 </tr>
-                            ) : filteredTenants.length === 0 ? (
+                            ) : filteredOrganisations.length === 0 ? (
                                 <tr>
                                     <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
                                         No organizations found
                                     </td>
                                 </tr>
                             ) : (
-                                filteredTenants.slice(0, entriesPerPage).map((tenant, idx) => (
-                                    <tr key={idx} className="hover-lift">
-                                        <td style={{ fontWeight: 600, color: '#475569' }}>{tenant.id}</td>
+                                filteredOrganisations.slice(0, entriesPerPage).map((org, idx) => (
+                                    <tr 
+                                        key={idx} 
+                                        className="hover-lift" 
+                                        style={{ position: 'relative', zIndex: openDropdown === org.id ? 100 : 1, cursor: 'pointer' }}
+                                        onClick={() => handleViewOrganization(org.id)}
+                                    >
+                                        <td style={{ fontWeight: 600, color: '#475569' }}>{org.id}</td>
                                         <td>
-                                            <div style={{ fontWeight: 600, color: '#1e293b' }}>{tenant.name}</div>
-                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{tenant.email}</div>
+                                            <div style={{ fontWeight: 600, color: '#1e293b' }}>{org.name}</div>
+                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{org.email}</div>
                                         </td>
                                         <td>
-                                            <span className={`badge ${getStatusBadge(tenant.status)}`}>
-                                                {tenant.status}
+                                            <span className={`badge ${getStatusBadge(org.status)}`}>
+                                                {org.status}
                                             </span>
                                         </td>
-                                        <td style={{ color: '#475569' }}>{tenant.plan}</td>
-                                        <td style={{ fontWeight: 600 }}>{tenant.events}</td>
-                                        <td style={{ fontWeight: 600 }}>{tenant.exhibitors}</td>
-                                        <td style={{ fontSize: '13px', color: '#64748b' }}>{tenant.createdDate}</td>
-                                        <td style={{ fontSize: '13px', color: '#64748b' }}>{tenant.lastDate}</td>
-                                        <td>
-                                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                        <td style={{ color: '#475569' }}>{org.plan}</td>
+                                        <td style={{ fontWeight: 600 }}>{org.events}</td>
+                                        <td style={{ fontWeight: 600 }}>{org.exhibitors}</td>
+                                        <td style={{ fontSize: '13px', color: '#64748b' }}>{org.createdDate}</td>
+                                        <td style={{ fontSize: '13px', color: '#64748b' }}>{org.lastDate}</td>
+                                        <td style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setOpenDropdown(openDropdown === org.id ? null : org.id);
+                                                }}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                                            >
                                                 <MoreHorizontal size={18} color="#64748b" />
                                             </button>
+
+                                            {/* Dropdown Menu */}
+                                            {openDropdown === org.id && (
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        right: '0',
+                                                        top: '100%',
+                                                        marginTop: '4px',
+                                                        background: '#ffffff',
+                                                        borderRadius: '8px',
+                                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                                        border: '1px solid #e5e7eb',
+                                                        minWidth: '200px',
+                                                        zIndex: 9999,
+                                                        overflow: 'visible',
+                                                        backdropFilter: 'none',
+                                                        WebkitBackdropFilter: 'none'
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <div style={{ padding: '8px 0' }}>
+                                                        <button
+                                                            onClick={() => handleViewOrganization(org.id)}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px 16px',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                textAlign: 'left',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '12px',
+                                                                fontSize: '14px',
+                                                                color: '#334155',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Eye size={16} color="#64748b" />
+                                                            <span>View Details</span>
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => handleEditOrganization(org.id)}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px 16px',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                textAlign: 'left',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '12px',
+                                                                fontSize: '14px',
+                                                                color: '#334155',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Edit size={16} color="#64748b" />
+                                                            <span>Edit Organization</span>
+                                                        </button>
+
+                                                        <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }}></div>
+
+                                                        <button
+                                                            onClick={() => handleSuspendOrganization(org.id, org.status)}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px 16px',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                textAlign: 'left',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '12px',
+                                                                fontSize: '14px',
+                                                                color: '#f59e0b',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#fffbeb'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Ban size={16} color="#f59e0b" />
+                                                            <span>{org.status === 'Suspended' ? 'Activate Organization' : 'Suspend Organization'}</span>
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => handleDeleteOrganization(org.id, org.name)}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px 16px',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                textAlign: 'left',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '12px',
+                                                                fontSize: '14px',
+                                                                color: '#ef4444',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Trash2 size={16} color="#ef4444" />
+                                                            <span>Delete Organization</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))
@@ -615,7 +869,7 @@ const TenantManagement = () => {
                 {/* Pagination */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #f1f5f9' }}>
                     <div style={{ fontSize: '13px', color: '#64748b' }}>
-                        Showing {Math.min(filteredTenants.length, entriesPerPage)} of {filteredTenants.length} entries
+                        Showing {Math.min(filteredOrganisations.length, entriesPerPage)} of {filteredOrganisations.length} entries
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <button style={{ padding: '8px 12px', border: '1px solid #e2e8f0', background: 'white', borderRadius: '6px', fontSize: '13px', color: '#64748b', cursor: 'pointer' }}>«</button>
@@ -1181,12 +1435,12 @@ const TenantManagement = () => {
                                                         style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
                                                     />
                                                 </div>
-                                                {/* Tenant Type */}
+                                                {/* Organisation Type */}
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Organization Type <span style={{ color: '#ef4444' }}>*</span></label>
                                                     <select
-                                                        value={wizardData.tenantType}
-                                                        onChange={(e) => setWizardData({ ...wizardData, tenantType: e.target.value })}
+                                                        value={wizardData.organisationType}
+                                                        onChange={(e) => setWizardData({ ...wizardData, organisationType: e.target.value })}
                                                         style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', background: 'white' }}
                                                     >
                                                         <option value="">Select organization type</option>
@@ -1669,7 +1923,7 @@ const TenantManagement = () => {
                                                 borderRadius: '8px', fontSize: '14px', fontWeight: 600, color: 'white', cursor: 'pointer'
                                             }}
                                         >
-                                            {wizardTab === 'SUBSCRIPTION' ? 'Create Tenant' : 'Next'} {wizardTab !== 'SUBSCRIPTION' && '→'}
+                                            {wizardTab === 'SUBSCRIPTION' ? 'Create Organisation' : 'Next'} {wizardTab !== 'SUBSCRIPTION' && '→'}
                                         </button>
                                     </div>
                                 </div>
@@ -1803,6 +2057,295 @@ const TenantManagement = () => {
                 </div>
             )}
 
+            {/* View Organization Modal */}
+            {viewOrgModal && selectedOrg && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }} onClick={() => setViewOrgModal(false)}>
+                    <div style={{
+                        background: 'white',
+                        borderRadius: '16px',
+                        padding: '32px',
+                        width: '600px',
+                        maxWidth: '90%',
+                        maxHeight: '80vh',
+                        overflowY: 'auto',
+                        position: 'relative',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setViewOrgModal(false)}
+                            style={{
+                                position: 'absolute',
+                                top: '20px',
+                                right: '20px',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#94a3b8'
+                            }}
+                        >
+                            <X size={24} />
+                        </button>
+
+                        <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#1e40af', marginBottom: '24px' }}>Organization Details</h2>
+
+                        <div style={{ display: 'grid', gap: '16px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Organization ID</label>
+                                    <div style={{ fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{selectedOrg.id}</div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Status</label>
+                                    <span className={`badge ${getStatusBadge(selectedOrg.status)}`}>{selectedOrg.status}</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Organization Name</label>
+                                <div style={{ fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{selectedOrg.org_name || selectedOrg.name}</div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Email</label>
+                                    <div style={{ fontSize: '14px', color: '#1e293b' }}>{selectedOrg.primary_email || selectedOrg.email || '-'}</div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Mobile</label>
+                                    <div style={{ fontSize: '14px', color: '#1e293b' }}>{selectedOrg.primary_mobile || selectedOrg.phone || '-'}</div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Plan</label>
+                                    <div style={{ fontSize: '14px', color: '#1e293b' }}>{selectedOrg.plan || '-'}</div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Business Type</label>
+                                    <div style={{ fontSize: '14px', color: '#1e293b' }}>{selectedOrg.business_type || '-'}</div>
+                                </div>
+                            </div>
+
+                            {selectedOrg.gst_number && (
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>GST Number</label>
+                                    <div style={{ fontSize: '14px', color: '#1e293b' }}>{selectedOrg.gst_number}</div>
+                                </div>
+                            )}
+
+                            {selectedOrg.address && (
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Address</label>
+                                    <div style={{ fontSize: '14px', color: '#1e293b' }}>{selectedOrg.address}</div>
+                                </div>
+                            )}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Created Date</label>
+                                    <div style={{ fontSize: '14px', color: '#1e293b' }}>{selectedOrg.created_at ? new Date(selectedOrg.created_at).toLocaleDateString() : '-'}</div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Last Updated</label>
+                                    <div style={{ fontSize: '14px', color: '#1e293b' }}>{selectedOrg.updated_at ? new Date(selectedOrg.updated_at).toLocaleDateString() : '-'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Organization Modal */}
+            {editOrgModal && selectedOrg && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }} onClick={() => setEditOrgModal(false)}>
+                    <div style={{
+                        background: 'white',
+                        borderRadius: '16px',
+                        padding: '32px',
+                        width: '700px',
+                        maxWidth: '90%',
+                        maxHeight: '80vh',
+                        overflowY: 'auto',
+                        position: 'relative',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setEditOrgModal(false)}
+                            style={{
+                                position: 'absolute',
+                                top: '20px',
+                                right: '20px',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#94a3b8'
+                            }}
+                        >
+                            <X size={24} />
+                        </button>
+
+                        <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#1e40af', marginBottom: '24px' }}>Edit Organization</h2>
+
+                        <form onSubmit={handleUpdateOrganization}>
+                            <div style={{ display: 'grid', gap: '16px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>
+                                        Organization Name <span style={{ color: '#ef4444' }}>*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={selectedOrg.org_name || selectedOrg.name || ''}
+                                        onChange={(e) => setSelectedOrg({ ...selectedOrg, org_name: e.target.value })}
+                                        required
+                                        style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Email</label>
+                                        <input
+                                            type="email"
+                                            value={selectedOrg.primary_email || selectedOrg.email || ''}
+                                            onChange={(e) => setSelectedOrg({ ...selectedOrg, primary_email: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Mobile</label>
+                                        <input
+                                            type="tel"
+                                            value={selectedOrg.primary_mobile || selectedOrg.phone || ''}
+                                            onChange={(e) => setSelectedOrg({ ...selectedOrg, primary_mobile: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Plan</label>
+                                        <select
+                                            value={selectedOrg.plan || ''}
+                                            onChange={(e) => setSelectedOrg({ ...selectedOrg, plan: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                        >
+                                            <option value="">Select Plan</option>
+                                            <option value="Free">Free</option>
+                                            <option value="Basic">Basic</option>
+                                            <option value="Pro">Pro</option>
+                                            <option value="Enterprise">Enterprise</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Status</label>
+                                        <select
+                                            value={selectedOrg.status || 'Active'}
+                                            onChange={(e) => setSelectedOrg({ ...selectedOrg, status: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                        >
+                                            <option value="Active">Active</option>
+                                            <option value="Suspended">Suspended</option>
+                                            <option value="Inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Address</label>
+                                    <textarea
+                                        value={selectedOrg.address || ''}
+                                        onChange={(e) => setSelectedOrg({ ...selectedOrg, address: e.target.value })}
+                                        rows={3}
+                                        style={{ width: '100%', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', resize: 'vertical' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditOrgModal(false)}
+                                        style={{
+                                            padding: '10px 20px',
+                                            border: '1px solid #e2e8f0',
+                                            background: 'white',
+                                            borderRadius: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            color: '#64748b',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        style={{
+                                            padding: '10px 20px',
+                                            border: 'none',
+                                            background: '#2563eb',
+                                            borderRadius: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            color: 'white',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Toast Notification */}
+            {toast.show && (
+                <div style={{
+                    position: 'fixed',
+                    top: '20px',
+                    right: '20px',
+                    background: toast.type === 'success' ? '#10b981' : '#ef4444',
+                    color: 'white',
+                    padding: '16px 24px',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    zIndex: 9999,
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    animation: 'slideInRight 0.3s ease-out',
+                    maxWidth: '400px'
+                }}>
+                    {toast.message}
+                </div>
+            )}
+
             {/* Add keyframe animation */}
             <style>{`
                 @keyframes slideInRight {
@@ -1820,4 +2363,4 @@ const TenantManagement = () => {
     );
 };
 
-export default TenantManagement;
+export default OrganisationManagement;

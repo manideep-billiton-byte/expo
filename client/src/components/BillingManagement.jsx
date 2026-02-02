@@ -234,7 +234,7 @@ const BillingManagement = () => {
 
                 return {
                     id: row.invoice_number ?? String(row.id ?? ''),
-                    org: row.organization_name ?? 'Unknown Tenant',
+                    org: row.organization_name ?? 'Unknown Organisation',
                     plan: row.plan_type ?? '',
                     amount: `₹${amount.toLocaleString('en-IN')}`,
                     rawAmount: amount,
@@ -366,13 +366,13 @@ const BillingManagement = () => {
     const subscriptionPlans = plans.length > 0 ? plans.map(p => ({
         plan: p.name || 'Unnamed',
         price: p.pricing?.monthly ? `₹${p.pricing.monthly}/mo` : 'Custom',
-        tenants: 0, // Could be derived from usage later
+        organisations: 0, // Could be derived from usage later
         status: p.status || 'Active'
     })) : [
-        { plan: 'Starter', price: '₹2,999/mo', tenants: 45, status: 'Active' },
-        { plan: 'Professional', price: '₹9,999/mo', tenants: 120, status: 'Active' },
-        { plan: 'Enterprise', price: '₹24,999/mo', tenants: 85, status: 'Active' },
-        { plan: 'Government', price: 'Custom', tenants: 18, status: 'Active' }
+        { plan: 'Starter', price: '₹2,999/mo', organisations: 45, status: 'Active' },
+        { plan: 'Professional', price: '₹9,999/mo', organisations: 120, status: 'Active' },
+        { plan: 'Enterprise', price: '₹24,999/mo', organisations: 85, status: 'Active' },
+        { plan: 'Government', price: 'Custom', organisations: 18, status: 'Active' }
     ];
 
     const getStatusStyle = (status) => {
@@ -497,7 +497,7 @@ const BillingManagement = () => {
                             </div>
                         </div>
 
-                        {/* Avg. Revenue/Tenant */}
+                        {/* Avg. Revenue/Organisation */}
                         <div style={{
                             background: 'white',
                             borderRadius: '12px',
@@ -506,7 +506,7 @@ const BillingManagement = () => {
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div>
-                                    <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>AVG. REVENUE/TENANT</div>
+                                    <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>AVG. REVENUE/ORGANISATION</div>
                                     <div style={{ fontSize: '28px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>₹5,000</div>
                                     <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 500 }}>+8% growth</div>
                                 </div>
@@ -554,7 +554,7 @@ const BillingManagement = () => {
                                 <thead>
                                     <tr style={{ background: '#fafafa' }}>
                                         <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>INVOICE #</th>
-                                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>TENANT</th>
+                                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>ORGANISATION</th>
                                         <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>AMOUNT</th>
                                         <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>STATUS</th>
                                         <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>DUE DATE</th>
@@ -642,7 +642,7 @@ const BillingManagement = () => {
                                     <tr style={{ background: '#fafafa' }}>
                                         <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>PLAN</th>
                                         <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>PRICE</th>
-                                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>TENANTS</th>
+                                        <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>ORGANISATIONS</th>
                                         <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>STATUS</th>
                                     </tr>
                                 </thead>
@@ -651,7 +651,7 @@ const BillingManagement = () => {
                                         <tr key={idx} style={{ borderTop: '1px solid #f5f5f5' }}>
                                             <td style={{ padding: '12px 20px', fontSize: '13px', color: '#374151', fontWeight: 500 }}>{plan.plan}</td>
                                             <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{plan.price}</td>
-                                            <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{plan.tenants}</td>
+                                            <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{plan.organisations}</td>
                                             <td style={{ padding: '12px 20px' }}>
                                                 <span style={{
                                                     display: 'inline-flex',

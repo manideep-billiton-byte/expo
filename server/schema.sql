@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS organizations (
   id BIGSERIAL PRIMARY KEY,
   org_name TEXT NOT NULL,
   trade_name TEXT,
-  tenant_type TEXT,
+  organisation_type TEXT,
   industry TEXT,
   size TEXT,
   api_access BOOLEAN NOT NULL DEFAULT FALSE,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS organizations (
 );
 
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS trade_name TEXT;
-ALTER TABLE organizations ADD COLUMN IF NOT EXISTS tenant_type TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS organisation_type TEXT;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS industry TEXT;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS size TEXT;
 ALTER TABLE organizations ADD COLUMN IF NOT EXISTS api_access BOOLEAN NOT NULL DEFAULT FALSE;

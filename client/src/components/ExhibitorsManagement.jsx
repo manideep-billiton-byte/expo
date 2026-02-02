@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, TrendingUp, Users, UserCheck, Search, Download, Plus, MoreHorizontal, X, ChevronRight, ChevronDown, Check, Building2, MapPin, CheckCircle2, FileText, Send } from 'lucide-react';
+import { Image, TrendingUp, Users, UserCheck, Search, Download, Plus, MoreHorizontal, X, ChevronRight, ChevronDown, Check, Building2, MapPin, CheckCircle2, FileText, Send, Eye, Edit, Ban, Trash2 } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 
 const ExhibitorsManagement = () => {
@@ -8,6 +8,7 @@ const ExhibitorsManagement = () => {
     const [entriesPerPage, setEntriesPerPage] = useState(10);
     const [showModal, setShowModal] = useState(false);
     const [modalStep, setModalStep] = useState(1);
+    const [openDropdown, setOpenDropdown] = useState(null);
 
     const defaultExhibitorData = {
         companyName: '',
@@ -22,8 +23,7 @@ const ExhibitorsManagement = () => {
         confirmPassword: '',
         organizationId: '',
         assignedEvent: '',
-        stallNumber: '',
-        stallCategory: '',
+        stallNumbers: [],
         accessStatus: 'Active',
         leadCapture: {
             visitorQR: true,
@@ -52,9 +52,37 @@ const ExhibitorsManagement = () => {
 
     const [showSuccess, setShowSuccess] = useState(false);
 
+    // State for exhibitor actions (View, Edit, Suspend, Delete)
+    const [selectedExhibitor, setSelectedExhibitor] = useState(null);
+    const [viewExhibitorModal, setViewExhibitorModal] = useState(false);
+    const [editExhibitorModal, setEditExhibitorModal] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+    // Toast notification helper
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+    };
+
     const handleOpenModal = () => {
         setModalStep(1);
         setShowSuccess(false);
+
+        // Auto-fill organizationId for organization users
+        const userType = localStorage.getItem('userType');
+        const organizationId = localStorage.getItem('organizationId');
+
+        if (userType === 'organization' && organizationId) {
+            // Pre-fill the organization ID for organization users
+            setExhibitorData({
+                ...defaultExhibitorData,
+                organizationId: organizationId
+            });
+        } else {
+            // Reset to default for master admin
+            setExhibitorData({ ...defaultExhibitorData });
+        }
+
         setShowModal(true);
     };
 
@@ -68,7 +96,17 @@ const ExhibitorsManagement = () => {
     const loadEvents = async () => {
         setEventsLoading(true);
         try {
-            const resp = await apiFetch('/api/events');
+            // Get organizationId from localStorage if user is logged in as organization
+            const organizationId = localStorage.getItem('organizationId');
+            const userType = localStorage.getItem('userType');
+
+            // Build API URL with organization filter if applicable
+            let apiUrl = '/api/events';
+            if (userType === 'organization' && organizationId) {
+                apiUrl += `?organization_id=${organizationId}`;
+            }
+
+            const resp = await apiFetch(apiUrl);
             const data = await resp.json();
             console.log('Loaded events:', data);
             setEvents(Array.isArray(data) ? data : []);
@@ -98,7 +136,17 @@ const ExhibitorsManagement = () => {
     const loadExhibitors = async () => {
         setExhibitorsLoading(true);
         try {
-            const resp = await apiFetch('/api/exhibitors');
+            // Get organizationId from localStorage if user is logged in as organization
+            const organizationId = localStorage.getItem('organizationId');
+            const userType = localStorage.getItem('userType');
+
+            // Build API URL with organization filter if applicable
+            let apiUrl = '/api/exhibitors';
+            if (userType === 'organization' && organizationId) {
+                apiUrl += `?organization_id=${organizationId}`;
+            }
+
+            const resp = await apiFetch(apiUrl);
             const data = await resp.json();
 
             const mapped = (Array.isArray(data) ? data : []).map((row) => {
@@ -110,7 +158,7 @@ const ExhibitorsManagement = () => {
                     email: row.email ?? '',
                     status: row.access_status ?? 'Active',
                     event: row.event_name ?? '',
-                    tenant: row.organization_name ?? '',
+                    organisation: row.organization_name ?? '',
                     leads: '-',
                     staff: '-',
                     lastActive: createdDate,
@@ -133,6 +181,23 @@ const ExhibitorsManagement = () => {
         loadOrganizations();
     }, []);
 
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (openDropdown !== null) {
+                setOpenDropdown(null);
+            }
+        };
+
+        if (openDropdown !== null) {
+            document.addEventListener('click', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [openDropdown]);
+
     const handleCreateExhibitor = async () => {
         // Validate password match
         if (exhibitorData.password && exhibitorData.password !== exhibitorData.confirmPassword) {
@@ -154,8 +219,7 @@ const ExhibitorsManagement = () => {
                 password: exhibitorData.password || null,
                 organizationId: exhibitorData.organizationId || null,
                 eventId: exhibitorData.assignedEvent || null,
-                stallNumber: exhibitorData.stallNumber,
-                stallCategory: exhibitorData.stallCategory,
+                stallNumbers: exhibitorData.stallNumbers,
                 accessStatus: exhibitorData.accessStatus,
                 leadCapture: exhibitorData.leadCapture,
                 communication: exhibitorData.communication
@@ -179,6 +243,108 @@ const ExhibitorsManagement = () => {
             alert('Failed to create exhibitor: ' + (err.message || err));
         } finally {
             setCreateExhibitorLoading(false);
+        }
+    };
+
+    // Handle View Exhibitor
+    const handleViewExhibitor = async (exhibitorId) => {
+        try {
+            const response = await apiFetch(`/api/exhibitors/${exhibitorId}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to fetch exhibitor details');
+            setSelectedExhibitor(data.exhibitor);
+            setViewExhibitorModal(true);
+            setOpenDropdown(null);
+        } catch (error) {
+            showToast(error.message || 'Failed to load exhibitor details', 'error');
+        }
+    };
+
+    // Handle Edit Exhibitor
+    const handleEditExhibitor = async (exhibitorId) => {
+        try {
+            const response = await apiFetch(`/api/exhibitors/${exhibitorId}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to fetch exhibitor details');
+            setSelectedExhibitor(data.exhibitor);
+            setEditExhibitorModal(true);
+            setOpenDropdown(null);
+        } catch (error) {
+            showToast(error.message || 'Failed to load exhibitor details', 'error');
+        }
+    };
+
+    // Handle Update Exhibitor
+    const handleUpdateExhibitor = async (e) => {
+        e.preventDefault();
+        if (!selectedExhibitor) return;
+
+        try {
+            const response = await apiFetch(`/api/exhibitors/${selectedExhibitor.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedExhibitor)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to update exhibitor');
+
+            showToast('✅ Exhibitor updated successfully!', 'success');
+            setEditExhibitorModal(false);
+            setSelectedExhibitor(null);
+            await loadExhibitors();
+        } catch (error) {
+            showToast('❌ ' + (error.message || 'Failed to update exhibitor'), 'error');
+        }
+    };
+
+    // Handle Suspend/Activate Exhibitor
+    const handleSuspendExhibitor = async (exhibitorId, currentStatus) => {
+        const newStatus = currentStatus === 'Suspended' ? 'Active' : 'Suspended';
+        const action = newStatus === 'Suspended' ? 'suspend' : 'activate';
+
+        if (!confirm(`Are you sure you want to ${action} this exhibitor?`)) {
+            setOpenDropdown(null);
+            return;
+        }
+
+        try {
+            const response = await apiFetch(`/api/exhibitors/${exhibitorId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || `Failed to ${action} exhibitor`);
+
+            showToast(`✅ Exhibitor ${action}d successfully!`, 'success');
+            setOpenDropdown(null);
+            await loadExhibitors();
+        } catch (error) {
+            showToast('❌ ' + (error.message || `Failed to ${action} exhibitor`), 'error');
+            setOpenDropdown(null);
+        }
+    };
+
+    // Handle Delete Exhibitor
+    const handleDeleteExhibitor = async (exhibitorId, companyName) => {
+        if (!confirm(`⚠️ Are you sure you want to DELETE "${companyName}"?\n\nThis action cannot be undone and will remove all associated data.`)) {
+            setOpenDropdown(null);
+            return;
+        }
+
+        try {
+            const response = await apiFetch(`/api/exhibitors/${exhibitorId}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to delete exhibitor');
+
+            showToast('✅ Exhibitor deleted successfully!', 'success');
+            setOpenDropdown(null);
+            await loadExhibitors();
+        } catch (error) {
+            showToast('❌ ' + (error.message || 'Failed to delete exhibitor'), 'error');
+            setOpenDropdown(null);
         }
     };
 
@@ -344,7 +510,7 @@ const ExhibitorsManagement = () => {
                                 <th>COMPANY</th>
                                 <th>STATUS</th>
                                 <th>EVENT</th>
-                                <th>TENANT</th>
+                                <th>ORGANISATION</th>
                                 <th>LEADS</th>
                                 <th>STAFF</th>
                                 <th>LAST ACTIVE</th>
@@ -363,7 +529,12 @@ const ExhibitorsManagement = () => {
                                 </tr>
                             ) : (
                                 exhibitors.slice(0, entriesPerPage).map((exhibitor, idx) => (
-                                    <tr key={idx} className="hover-lift">
+                                    <tr
+                                        key={idx}
+                                        className="hover-lift"
+                                        style={{ position: 'relative', zIndex: openDropdown === exhibitor.id ? 100 : 1, cursor: 'pointer' }}
+                                        onClick={() => handleViewExhibitor(exhibitor.id)}
+                                    >
                                         <td style={{ fontWeight: 600, color: '#475569' }}>{exhibitor.id}</td>
                                         <td>
                                             <div style={{ fontWeight: 600, color: '#1e293b' }}>{exhibitor.company}</div>
@@ -375,15 +546,139 @@ const ExhibitorsManagement = () => {
                                             </span>
                                         </td>
                                         <td style={{ color: '#475569' }}>{exhibitor.event}</td>
-                                        <td style={{ color: '#475569' }}>{exhibitor.tenant}</td>
+                                        <td style={{ color: '#475569' }}>{exhibitor.organisation}</td>
                                         <td style={{ fontWeight: 600 }}>{exhibitor.leads}</td>
                                         <td style={{ fontWeight: 600 }}>{exhibitor.staff}</td>
                                         <td style={{ fontSize: '13px', color: '#64748b' }}>{exhibitor.lastActive}</td>
                                         <td style={{ fontSize: '13px', color: '#64748b' }}>{exhibitor.lastDate}</td>
-                                        <td>
-                                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                        <td style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setOpenDropdown(openDropdown === exhibitor.id ? null : exhibitor.id);
+                                                }}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                                            >
                                                 <MoreHorizontal size={18} color="#64748b" />
                                             </button>
+
+                                            {/* Dropdown Menu */}
+                                            {openDropdown === exhibitor.id && (
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        right: '0',
+                                                        top: '100%',
+                                                        marginTop: '4px',
+                                                        background: '#ffffff',
+                                                        borderRadius: '8px',
+                                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                                        border: '1px solid #e5e7eb',
+                                                        minWidth: '200px',
+                                                        zIndex: 9999,
+                                                        overflow: 'visible',
+                                                        backdropFilter: 'none',
+                                                        WebkitBackdropFilter: 'none'
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <div style={{ padding: '8px 0' }}>
+                                                        <button
+                                                            onClick={() => handleViewExhibitor(exhibitor.id)}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px 16px',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                textAlign: 'left',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '12px',
+                                                                fontSize: '14px',
+                                                                color: '#334155',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Eye size={16} color="#64748b" />
+                                                            <span>View Details</span>
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => handleEditExhibitor(exhibitor.id)}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px 16px',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                textAlign: 'left',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '12px',
+                                                                fontSize: '14px',
+                                                                color: '#334155',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Edit size={16} color="#64748b" />
+                                                            <span>Edit Exhibitor</span>
+                                                        </button>
+
+                                                        <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }}></div>
+
+                                                        <button
+                                                            onClick={() => handleSuspendExhibitor(exhibitor.id, exhibitor.status)}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px 16px',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                textAlign: 'left',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '12px',
+                                                                fontSize: '14px',
+                                                                color: '#f59e0b',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#fffbeb'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Ban size={16} color="#f59e0b" />
+                                                            <span>{exhibitor.status === 'Suspended' ? 'Activate Exhibitor' : 'Suspend Exhibitor'}</span>
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => handleDeleteExhibitor(exhibitor.id, exhibitor.company)}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '10px 16px',
+                                                                border: 'none',
+                                                                background: 'transparent',
+                                                                textAlign: 'left',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '12px',
+                                                                fontSize: '14px',
+                                                                color: '#ef4444',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                        >
+                                                            <Trash2 size={16} color="#ef4444" />
+                                                            <span>Delete Exhibitor</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))
@@ -589,7 +884,18 @@ const ExhibitorsManagement = () => {
                                                 <select
                                                     value={exhibitorData.organizationId}
                                                     onChange={e => setExhibitorData({ ...exhibitorData, organizationId: e.target.value })}
-                                                    style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                    disabled={localStorage.getItem('userType') === 'organization'}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '12px 14px',
+                                                        border: '1.5px solid #e2e8f0',
+                                                        borderRadius: '10px',
+                                                        fontSize: '14px',
+                                                        outline: 'none',
+                                                        background: localStorage.getItem('userType') === 'organization' ? '#f8fafc' : 'white',
+                                                        cursor: localStorage.getItem('userType') === 'organization' ? 'not-allowed' : 'pointer',
+                                                        opacity: localStorage.getItem('userType') === 'organization' ? 0.7 : 1
+                                                    }}
                                                 >
                                                     <option value="">Select organization</option>
                                                     {organizations.map((org) => (
@@ -598,6 +904,11 @@ const ExhibitorsManagement = () => {
                                                         </option>
                                                     ))}
                                                 </select>
+                                                {localStorage.getItem('userType') === 'organization' && (
+                                                    <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                                                        📌 Exhibitors will be created for your organization: {localStorage.getItem('organizationName')}
+                                                    </p>
+                                                )}
                                             </div>
 
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
@@ -656,13 +967,13 @@ const ExhibitorsManagement = () => {
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Stall Number</label>
+                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Selected Stalls</label>
                                                     <input
                                                         type="text"
-                                                        placeholder="e.g., A-101"
-                                                        value={exhibitorData.stallNumber}
-                                                        onChange={e => setExhibitorData({ ...exhibitorData, stallNumber: e.target.value })}
-                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                        placeholder="Select stalls from grid below"
+                                                        value={exhibitorData.stallNumbers.join(', ')}
+                                                        readOnly
+                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: '#f8fafc', cursor: 'not-allowed' }}
                                                     />
                                                 </div>
                                             </div>
@@ -748,7 +1059,7 @@ const ExhibitorsManagement = () => {
                                                 const isBooked = (stallId) => bookedStalls.includes(stallId);
 
                                                 // Check if stall is selected
-                                                const isSelected = (stallId) => exhibitorData.stallNumber === stallId;
+                                                const isSelected = (stallId) => exhibitorData.stallNumbers.includes(stallId);
 
                                                 return (
                                                     <div style={{
@@ -776,18 +1087,37 @@ const ExhibitorsManagement = () => {
                                                                     {selectedEvent?.event_name}
                                                                 </span>
                                                             </div>
-                                                            {exhibitorData.stallNumber && (
-                                                                <div style={{
-                                                                    background: '#10b981',
-                                                                    color: 'white',
-                                                                    padding: '8px 16px',
-                                                                    borderRadius: '8px',
-                                                                    fontWeight: 700,
-                                                                    fontSize: '14px'
-                                                                }}>
-                                                                    Selected: {exhibitorData.stallNumber}
-                                                                </div>
-                                                            )}
+                                                            {exhibitorData.stallNumbers.length > 0 && (() => {
+                                                                const totalPrice = exhibitorData.stallNumbers.reduce((sum, stallId) => {
+                                                                    const stallNum = parseInt(stallId.replace(/[^0-9]/g, ''));
+                                                                    const type = getStallType(stallNum);
+                                                                    return sum + (type.price || 0);
+                                                                }, 0);
+                                                                return (
+                                                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                                                        <div style={{
+                                                                            background: '#10b981',
+                                                                            color: 'white',
+                                                                            padding: '8px 16px',
+                                                                            borderRadius: '8px',
+                                                                            fontWeight: 700,
+                                                                            fontSize: '14px'
+                                                                        }}>
+                                                                            Selected: {exhibitorData.stallNumbers.length} Stall{exhibitorData.stallNumbers.length > 1 ? 's' : ''}
+                                                                        </div>
+                                                                        <div style={{
+                                                                            background: '#0d89a4',
+                                                                            color: 'white',
+                                                                            padding: '8px 16px',
+                                                                            borderRadius: '8px',
+                                                                            fontWeight: 700,
+                                                                            fontSize: '14px'
+                                                                        }}>
+                                                                            Total: ₹{totalPrice.toLocaleString()}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </div>
 
                                                         {/* Legend */}
@@ -881,10 +1211,13 @@ const ExhibitorsManagement = () => {
                                                                             key={stallId}
                                                                             onClick={() => {
                                                                                 if (!booked) {
+                                                                                    const currentStalls = exhibitorData.stallNumbers || [];
+                                                                                    const isAlreadySelected = currentStalls.includes(stallId);
                                                                                     setExhibitorData({
                                                                                         ...exhibitorData,
-                                                                                        stallNumber: stallId,
-                                                                                        stallCategory: type.name.toLowerCase()
+                                                                                        stallNumbers: isAlreadySelected
+                                                                                            ? currentStalls.filter(s => s !== stallId)
+                                                                                            : [...currentStalls, stallId]
                                                                                     });
                                                                                 }
                                                                             }}
@@ -1006,33 +1339,7 @@ const ExhibitorsManagement = () => {
                                                 );
                                             })()}
 
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Stall Category</label>
-                                                    <select
-                                                        value={exhibitorData.stallCategory}
-                                                        onChange={e => setExhibitorData({ ...exhibitorData, stallCategory: e.target.value })}
-                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
-                                                    >
-                                                        <option value="">Select category</option>
-                                                        <option value="premium">Premium Stall</option>
-                                                        <option value="standard">Standard Stall</option>
-                                                        <option value="economy">Economy Stall</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Access Status</label>
-                                                    <select
-                                                        value={exhibitorData.accessStatus}
-                                                        onChange={e => setExhibitorData({ ...exhibitorData, accessStatus: e.target.value })}
-                                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
-                                                    >
-                                                        <option value="Active">Active</option>
-                                                        <option value="Inactive">Inactive</option>
-                                                        <option value="Pending">Pending</option>
-                                                    </select>
-                                                </div>
-                                            </div>
+
                                         </div>
                                     )}
 
@@ -1143,6 +1450,270 @@ const ExhibitorsManagement = () => {
                             </>
                         )}
                     </div>
+                </div>
+            )}
+
+            {/* View Exhibitor Modal */}
+            {viewExhibitorModal && selectedExhibitor && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }}>
+                    <div style={{
+                        background: 'white', borderRadius: '24px', padding: '40px',
+                        width: '600px', maxWidth: '95%', maxHeight: '90vh',
+                        overflowY: 'auto', position: 'relative',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => { setViewExhibitorModal(false); setSelectedExhibitor(null); }}
+                            style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                            <X size={24} />
+                        </button>
+
+                        <div style={{ marginBottom: '24px' }}>
+                            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Exhibitor Details</h2>
+                            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>View exhibitor information</p>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '16px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Company Name</label>
+                                    <p style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', margin: '4px 0 0 0' }}>{selectedExhibitor.company_name || '-'}</p>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Status</label>
+                                    <p style={{ fontSize: '16px', fontWeight: 600, color: selectedExhibitor.access_status === 'Active' ? '#10b981' : '#ef4444', margin: '4px 0 0 0' }}>{selectedExhibitor.access_status || 'Active'}</p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Email</label>
+                                    <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.email || '-'}</p>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Mobile</label>
+                                    <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.mobile || '-'}</p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Contact Person</label>
+                                    <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.contact_person || '-'}</p>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Industry</label>
+                                    <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.industry || '-'}</p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Event</label>
+                                    <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.event_name || '-'}</p>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Organization</label>
+                                    <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.organization_name || '-'}</p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>GST Number</label>
+                                    <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.gst_number || '-'}</p>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Stall Number</label>
+                                    <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.stall_number || '-'}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Address</label>
+                                <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.address || '-'}</p>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Created At</label>
+                                    <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.created_at ? new Date(selectedExhibitor.created_at).toLocaleDateString() : '-'}</p>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Updated At</label>
+                                    <p style={{ fontSize: '16px', color: '#475569', margin: '4px 0 0 0' }}>{selectedExhibitor.updated_at ? new Date(selectedExhibitor.updated_at).toLocaleDateString() : '-'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '32px' }}>
+                            <button onClick={() => { setViewExhibitorModal(false); setSelectedExhibitor(null); }}
+                                style={{ padding: '12px 32px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Exhibitor Modal */}
+            {editExhibitorModal && selectedExhibitor && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }}>
+                    <div style={{
+                        background: 'white', borderRadius: '24px', padding: '40px',
+                        width: '700px', maxWidth: '95%', maxHeight: '90vh',
+                        overflowY: 'auto', position: 'relative',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => { setEditExhibitorModal(false); setSelectedExhibitor(null); }}
+                            style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                            <X size={24} />
+                        </button>
+
+                        <div style={{ marginBottom: '24px' }}>
+                            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Edit Exhibitor</h2>
+                            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Update exhibitor information</p>
+                        </div>
+
+                        <form onSubmit={handleUpdateExhibitor}>
+                            <div style={{ display: 'grid', gap: '20px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Company Name *</label>
+                                        <input
+                                            type="text"
+                                            value={selectedExhibitor.company_name || ''}
+                                            onChange={e => setSelectedExhibitor({ ...selectedExhibitor, company_name: e.target.value })}
+                                            style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Email *</label>
+                                        <input
+                                            type="email"
+                                            value={selectedExhibitor.email || ''}
+                                            onChange={e => setSelectedExhibitor({ ...selectedExhibitor, email: e.target.value })}
+                                            style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Contact Person</label>
+                                        <input
+                                            type="text"
+                                            value={selectedExhibitor.contact_person || ''}
+                                            onChange={e => setSelectedExhibitor({ ...selectedExhibitor, contact_person: e.target.value })}
+                                            style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Mobile</label>
+                                        <input
+                                            type="tel"
+                                            value={selectedExhibitor.mobile || ''}
+                                            onChange={e => setSelectedExhibitor({ ...selectedExhibitor, mobile: e.target.value })}
+                                            style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>GST Number</label>
+                                        <input
+                                            type="text"
+                                            value={selectedExhibitor.gst_number || ''}
+                                            onChange={e => setSelectedExhibitor({ ...selectedExhibitor, gst_number: e.target.value })}
+                                            style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Industry</label>
+                                        <select
+                                            value={selectedExhibitor.industry || ''}
+                                            onChange={e => setSelectedExhibitor({ ...selectedExhibitor, industry: e.target.value })}
+                                            style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                        >
+                                            <option value="">Select industry</option>
+                                            <option value="it">Information Technology</option>
+                                            <option value="healthcare">Healthcare</option>
+                                            <option value="manufacturing">Manufacturing</option>
+                                            <option value="retail">Retail</option>
+                                            <option value="finance">Finance</option>
+                                            <option value="education">Education</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Address</label>
+                                    <textarea
+                                        value={selectedExhibitor.address || ''}
+                                        onChange={e => setSelectedExhibitor({ ...selectedExhibitor, address: e.target.value })}
+                                        style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', minHeight: '80px', resize: 'vertical' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Stall Number</label>
+                                        <input
+                                            type="text"
+                                            value={selectedExhibitor.stall_number || ''}
+                                            onChange={e => setSelectedExhibitor({ ...selectedExhibitor, stall_number: e.target.value })}
+                                            style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Status</label>
+                                        <select
+                                            value={selectedExhibitor.access_status || 'Active'}
+                                            onChange={e => setSelectedExhibitor({ ...selectedExhibitor, access_status: e.target.value })}
+                                            style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                        >
+                                            <option value="Active">Active</option>
+                                            <option value="Inactive">Inactive</option>
+                                            <option value="Suspended">Suspended</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px' }}>
+                                <button type="button" onClick={() => { setEditExhibitorModal(false); setSelectedExhibitor(null); }}
+                                    style={{ padding: '12px 32px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                    style={{ padding: '12px 32px', borderRadius: '12px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
+                                    Update Exhibitor
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Toast Notification */}
+            {toast.show && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '24px',
+                    right: '24px',
+                    padding: '16px 24px',
+                    borderRadius: '12px',
+                    background: toast.type === 'success' ? '#dcfce7' : '#fef2f2',
+                    color: toast.type === 'success' ? '#166534' : '#991b1b',
+                    fontWeight: 600,
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    zIndex: 9999,
+                    animation: 'fadeIn 0.3s ease-in-out'
+                }}>
+                    {toast.message}
                 </div>
             )}
         </div>

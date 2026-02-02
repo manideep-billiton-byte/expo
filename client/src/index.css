@@ -245,6 +245,7 @@ body {
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     border: 1px solid #f1f5f9;
     transition: all 0.3s ease;
+    overflow: visible;
 }
 
 .card:hover {
@@ -384,14 +385,17 @@ body {
 
 /* Tables */
 .table-container {
-    overflow-x: auto;
+    overflow: visible;
     border-radius: 12px;
+    position: relative;
+    padding-bottom: 20px;
 }
 
 .table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
+    overflow: visible;
 }
 
 .table th {
@@ -414,8 +418,29 @@ body {
     transition: background 0.2s;
 }
 
+/* Last column (Actions) - allow overflow for dropdowns */
+.table td:last-child {
+    overflow: visible;
+    position: relative;
+}
+
 .table tr:hover td {
     background: #f8fafc;
+}
+
+/* Action Dropdown - ensure it appears above other elements */
+.action-dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    min-width: 200px;
+    z-index: 9999;
+    overflow: visible;
 }
 
 /* Quick Actions */

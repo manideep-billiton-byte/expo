@@ -1,0 +1,17 @@
+[
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "DATABASE_URL",
+        "Value": "postgresql://postgres:StgPasscbf21979!@expo-project-staging-db.cvmk8awyksm7.ap-south-1.rds.amazonaws.com:5432/expo_staging_db"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "NODE_ENV",
+        "Value": "staging"
+    },
+    {
+        "Namespace": "aws:elasticbeanstalk:application:environment",
+        "OptionName": "INVITE_LINK_BASE",
+        "Value": "https://d2mwpnz04jz48g.cloudfront.net"
+    }
+]

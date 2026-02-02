@@ -13,7 +13,7 @@ const SupportManagement = () => {
             subject: 'Unable to access event dashboard',
             issue: 'Login Issue',
             organization: 'TechCorp India',
-            tenant: 'Tech Corp',
+            organisation: 'Tech Corp',
             priority: 'Critical',
             status: 'Active',
             created: '2 hours ago'
@@ -23,7 +23,7 @@ const SupportManagement = () => {
             subject: 'WhatsApp integration not working',
             issue: 'Integration',
             organization: 'StartupHub',
-            tenant: 'Startup',
+            organisation: 'Startup',
             priority: 'High',
             status: 'Pending',
             created: '4 hours ago'
@@ -33,7 +33,7 @@ const SupportManagement = () => {
             subject: 'Invoice generation query',
             issue: 'Billing',
             organization: 'EventPro Solutions',
-            tenant: 'Event Pro',
+            organisation: 'Event Pro',
             priority: 'Low',
             status: 'Active',
             created: '1 day ago'
@@ -43,7 +43,7 @@ const SupportManagement = () => {
             subject: 'Feature request: Bulk visitor import',
             issue: 'Feature Request',
             organization: 'Industrial Assoc.',
-            tenant: 'Ind Assoc',
+            organisation: 'Ind Assoc',
             priority: 'Medium',
             status: 'Pending',
             created: '2 days ago'
@@ -53,7 +53,7 @@ const SupportManagement = () => {
             subject: 'QR scanner not reading codes',
             issue: 'Technical',
             organization: 'MSME Connect',
-            tenant: 'MSME',
+            organisation: 'MSME',
             priority: 'High',
             status: 'Completed',
             created: '3 days ago'
@@ -243,7 +243,7 @@ const SupportManagement = () => {
                                         </td>
                                         <td>
                                             <div style={{ fontWeight: 600, color: '#1e293b' }}>{ticket.organization}</div>
-                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{ticket.tenant}</div>
+                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{ticket.organisation}</div>
                                         </td>
                                         <td>{getPriorityBadge(ticket.priority)}</td>
                                         <td>

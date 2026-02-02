@@ -35,6 +35,10 @@ const VisitorsManagement = () => {
     const [eventsLoading, setEventsLoading] = useState(false);
     const [createVisitorLoading, setCreateVisitorLoading] = useState(false);
 
+    // View Visitor Modal State
+    const [selectedVisitor, setSelectedVisitor] = useState(null);
+    const [viewVisitorModal, setViewVisitorModal] = useState(false);
+
     const [visitorData, setVisitorData] = useState({
         ...defaultVisitorData
     });
@@ -42,7 +46,10 @@ const VisitorsManagement = () => {
     const handleOpenModal = () => {
         setModalStep(1);
         setShowSuccess(false);
+
+        // Reset to default visitor data
         setVisitorData({ ...defaultVisitorData });
+
         setShowModal(true);
     };
 
@@ -72,7 +79,17 @@ const VisitorsManagement = () => {
     const loadEvents = async () => {
         setEventsLoading(true);
         try {
-            const resp = await apiFetch('/api/events');
+            // Get organizationId from localStorage if user is logged in as organization
+            const organizationId = localStorage.getItem('organizationId');
+            const userType = localStorage.getItem('userType');
+
+            // Build API URL with organization filter if applicable
+            let apiUrl = '/api/events';
+            if (userType === 'organization' && organizationId) {
+                apiUrl += `?organization_id=${organizationId}`;
+            }
+
+            const resp = await apiFetch(apiUrl);
             let data;
             const txt = await resp.clone().text();
             try { data = JSON.parse(txt); } catch (e) { data = txt; }
@@ -89,7 +106,17 @@ const VisitorsManagement = () => {
     const loadVisitors = async () => {
         setVisitorsLoading(true);
         try {
-            const resp = await apiFetch('/api/visitors');
+            // Get organizationId from localStorage if user is logged in as organization
+            const organizationId = localStorage.getItem('organizationId');
+            const userType = localStorage.getItem('userType');
+
+            // Build API URL with organization filter if applicable
+            let apiUrl = '/api/visitors';
+            if (userType === 'organization' && organizationId) {
+                apiUrl += `?organization_id=${organizationId}`;
+            }
+
+            const resp = await apiFetch(apiUrl);
             let data;
             const txt = await resp.clone().text();
             try { data = JSON.parse(txt); } catch (e) { data = txt; }
@@ -98,11 +125,21 @@ const VisitorsManagement = () => {
             const mapped = (Array.isArray(data) ? data : []).map((row) => {
                 const created = row.created_at ? new Date(row.created_at) : null;
                 return {
+                    id: String(row.id ?? ''),
                     name: `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim(),
                     contact: {
                         email: maskEmail(row.email ?? ''),
                         phone: maskPhone(row.mobile ?? '')
                     },
+                    email: row.email ?? '',
+                    mobile: row.mobile ?? '',
+                    firstName: row.first_name ?? '',
+                    lastName: row.last_name ?? '',
+                    gender: row.gender ?? '',
+                    age: row.age ?? '',
+                    organization: row.organization ?? '',
+                    designation: row.designation ?? '',
+                    visitorCategory: row.visitor_category ?? '',
                     events: '-',
                     lastEvent: row.event_name ?? '',
                     consent: 'Check-In',
@@ -126,6 +163,11 @@ const VisitorsManagement = () => {
         loadEvents();
         loadVisitors();
     }, []);
+
+    const handleViewVisitor = (visitor) => {
+        setSelectedVisitor(visitor);
+        setViewVisitorModal(true);
+    };
 
     const handleCreateVisitor = async () => {
         setCreateVisitorLoading(true);
@@ -355,7 +397,12 @@ const VisitorsManagement = () => {
                         </thead>
                         <tbody>
                             {visitors.map((visitor, idx) => (
-                                <tr key={idx} className="hover-lift">
+                                <tr
+                                    key={idx}
+                                    className="hover-lift"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => handleViewVisitor(visitor)}
+                                >
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                             <div style={{
@@ -395,7 +442,7 @@ const VisitorsManagement = () => {
                                     <td style={{ color: '#475569' }}>{visitor.registered}</td>
                                     <td style={{ fontSize: '13px', color: '#64748b' }}>{visitor.checkIn}</td>
                                     <td style={{ fontSize: '13px', color: '#64748b' }}>{visitor.checkOut}</td>
-                                    <td>
+                                    <td onClick={(e) => e.stopPropagation()}>
                                         <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
                                             <MoreHorizontal size={18} color="#64748b" />
                                         </button>
@@ -695,6 +742,81 @@ const VisitorsManagement = () => {
                                 </div>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* View Visitor Details Modal */}
+            {viewVisitorModal && selectedVisitor && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }}>
+                    <div style={{
+                        background: 'white', borderRadius: '24px', padding: '40px',
+                        width: '700px', maxWidth: '95%', maxHeight: '90vh',
+                        overflowY: 'auto', position: 'relative',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }} onClick={e => e.stopPropagation()}>
+
+                        <button onClick={() => { setViewVisitorModal(false); setSelectedVisitor(null); }} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                            <X size={24} />
+                        </button>
+
+                        <div style={{ marginBottom: '32px' }}>
+                            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Visitor Details</h2>
+                            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Full visitor information (Unmasked for authorized view)</p>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>VISITOR ID</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedVisitor.id}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>CATEGORY</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedVisitor.visitorCategory || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>FIRST NAME</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedVisitor.firstName}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>LAST NAME</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedVisitor.lastName}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EMAIL ADDRESS</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedVisitor.email}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>MOBILE NUMBER</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedVisitor.mobile}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>GENDER</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedVisitor.gender || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZATION</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedVisitor.organization || '-'}</div>
+                            </div>
+                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>DESIGNATION</div>
+                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedVisitor.designation || '-'}</div>
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => { setViewVisitorModal(false); setSelectedVisitor(null); }}
+                                style={{ padding: '12px 24px', borderRadius: '10px', border: 'none', background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
