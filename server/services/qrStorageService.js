@@ -91,14 +91,15 @@ const uploadQRToS3 = async (qrBuffer, eventId) => {
     }
 
     const bucketName = process.env.S3_QR_BUCKET || 'expo-project-prod-frontend';
-    const fileName = `qrs/event-${eventId}.png`;
+    const fileName = `qr/event_${eventId}.png`;
 
     const params = {
         Bucket: bucketName,
         Key: fileName,
         Body: qrBuffer,
         ContentType: 'image/png',
-        CacheControl: 'max-age=31536000' // Cache for 1 year (QR codes don't change)
+        CacheControl: 'max-age=31536000', // Cache for 1 year (QR codes don't change)
+        ACL: 'public-read' // Make the QR image publicly readable for email clients
     };
 
     try {
@@ -109,10 +110,10 @@ const uploadQRToS3 = async (qrBuffer, eventId) => {
         const cloudFrontDomain = process.env.CLOUDFRONT_DOMAIN || 'd36p7i1koir3da.cloudfront.net';
         const qrUrl = `https://${cloudFrontDomain}/${fileName}`;
 
-        console.log(`QR code uploaded to S3: ${qrUrl}`);
+        console.log(`✅ QR code uploaded to S3 with public-read ACL: ${qrUrl}`);
         return qrUrl;
     } catch (error) {
-        console.error('Error uploading QR to S3:', error.message);
+        console.error('❌ Error uploading QR to S3:', error.message);
         // Fall back to local storage
         return saveQRLocally(qrBuffer, eventId);
     }
@@ -123,12 +124,15 @@ const uploadQRToS3 = async (qrBuffer, eventId) => {
  * Automatically chooses local or S3 storage based on environment
  * @param {string} registrationUrl - The URL to encode in the QR code
  * @param {number} eventId - The event ID
- * @returns {Promise<{path: string, fullUrl: string}>} - The stored path and full URL
+ * @returns {Promise<{path: string, fullUrl: string, base64: string}>} - The stored path, full URL, and base64 data
  */
 const generateAndStoreQR = async (registrationUrl, eventId) => {
     try {
         // Generate QR code buffer
         const qrBuffer = await generateQRBuffer(registrationUrl);
+
+        // Convert buffer to base64 for inline embedding in emails
+        const base64Data = qrBuffer.toString('base64');
 
         let qrPath;
         let fullUrl;
@@ -149,7 +153,7 @@ const generateAndStoreQR = async (registrationUrl, eventId) => {
         console.log(`  Path: ${qrPath}`);
         console.log(`  Full URL: ${fullUrl}`);
 
-        return { path: qrPath, fullUrl };
+        return { path: qrPath, fullUrl, base64: base64Data };
     } catch (error) {
         console.error('Error generating/storing QR code:', error);
         throw error;

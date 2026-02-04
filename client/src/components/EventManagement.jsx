@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2, Upload, Edit2, Trash2, Save } from 'lucide-react';
+import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2, Upload, Edit2, Trash2, Save, Grid } from 'lucide-react';
 import { apiFetch } from '../utils/api';
+import StallSelector from './StallSelector';
 
 const EventManagement = () => {
     const [activeTab, setActiveTab] = useState('All Events');
@@ -94,6 +95,10 @@ const EventManagement = () => {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [viewEventModal, setViewEventModal] = useState(false);
 
+    // Interactive Stall Selector State
+    const [showStallSelector, setShowStallSelector] = useState(false);
+    const [stallAssignments, setStallAssignments] = useState({});
+
     // Handle View Event
     const handleViewEvent = async (eventId) => {
         try {
@@ -107,6 +112,25 @@ const EventManagement = () => {
             alert('Failed to load event details: ' + (error.message || error));
         }
     };
+
+    // Handle Stall Selector Save
+    const handleStallSelectorSave = (payload) => {
+        setStallAssignments(payload.assignments);
+        setShowStallSelector(false);
+
+        // Update eventData with the new stall configuration
+        setEventData({
+            ...eventData,
+            stallConfig: {
+                ...eventData.stallConfig,
+                totalStalls: payload.totalStalls
+            },
+            stallAssignments: payload.assignments
+        });
+
+        alert('Stall assignments saved successfully!');
+    };
+
     const handleOpenModal = () => {
         setModalStep(1);
         setShowSuccess(false);
@@ -289,6 +313,7 @@ const EventManagement = () => {
                 enableStalls: eventData.enableStalls,
                 stallConfig: eventData.stallConfig,
                 stallTypes: eventData.stallTypes,
+                stallAssignments: stallAssignments,
                 groundLayoutUrl: eventData.groundLayoutUrl,
                 // Original fields
                 registration: eventData.registration,
@@ -896,7 +921,7 @@ const EventManagement = () => {
                                             />
                                         </div>
 
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>City</label>
                                                 <input
@@ -931,6 +956,70 @@ const EventManagement = () => {
                                                     <option value="USA">USA</option>
                                                     <option value="UAE">UAE</option>
                                                 </select>
+                                            </div>
+                                        </div>
+
+                                        {/* Total Number of Stalls */}
+                                        <div style={{
+                                            marginBottom: '20px',
+                                            padding: '20px',
+                                            background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                                            borderRadius: '12px',
+                                            border: '2px solid #0ea5e9'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                                <Grid size={18} color="#0ea5e9" />
+                                                <label style={{ fontSize: '15px', fontWeight: 700, color: '#0c4a6e', margin: 0 }}>
+                                                    Total Number of Stalls *
+                                                </label>
+                                            </div>
+                                            <p style={{ fontSize: '13px', color: '#0369a1', marginBottom: '12px', lineHeight: 1.5 }}>
+                                                Specify the total number of stalls available for this event (e.g., 100, 200, 300). This will determine the grid layout in the stall configuration.
+                                            </p>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="1000"
+                                                placeholder="Enter total number of stalls (e.g., 100, 200, 300)"
+                                                value={eventData.stallConfig.totalStalls}
+                                                onChange={e => {
+                                                    const totalStalls = parseInt(e.target.value) || 100;
+                                                    const sqrt = Math.sqrt(totalStalls);
+                                                    const cols = Math.ceil(sqrt);
+                                                    const rows = Math.ceil(totalStalls / cols);
+
+                                                    setEventData({
+                                                        ...eventData,
+                                                        stallConfig: {
+                                                            ...eventData.stallConfig,
+                                                            totalStalls: totalStalls,
+                                                            rows: rows,
+                                                            columns: cols
+                                                        }
+                                                    });
+                                                }}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '14px 16px',
+                                                    border: '2px solid #0ea5e9',
+                                                    borderRadius: '10px',
+                                                    fontSize: '15px',
+                                                    fontWeight: 600,
+                                                    outline: 'none',
+                                                    background: 'white',
+                                                    color: '#0c4a6e'
+                                                }}
+                                            />
+                                            <div style={{
+                                                marginTop: '12px',
+                                                padding: '10px 14px',
+                                                background: 'white',
+                                                borderRadius: '8px',
+                                                border: '1px solid #bae6fd'
+                                            }}>
+                                                <div style={{ fontSize: '12px', color: '#0369a1', fontWeight: 600 }}>
+                                                    Grid Layout: {eventData.stallConfig.rows} rows × {eventData.stallConfig.columns} columns
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1501,6 +1590,55 @@ const EventManagement = () => {
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* Interactive Stall Selection Button */}
+                                        {eventData.stallTypes.length > 0 && editingStallType !== 'new' && (
+                                            <div style={{ marginTop: '20px' }}>
+                                                <button
+                                                    onClick={() => {
+                                                        // Convert stallTypes to format expected by StallSelector
+                                                        const formattedStallTypes = eventData.stallTypes.map(type => ({
+                                                            name: type.name,
+                                                            price: type.price,
+                                                            color: type.color,
+                                                            limit: type.endNumber - type.startNumber + 1
+                                                        }));
+                                                        setShowStallSelector(true);
+                                                    }}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '20px',
+                                                        border: '2px solid #2563eb',
+                                                        borderRadius: '12px',
+                                                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                                                        color: 'white',
+                                                        fontWeight: 600,
+                                                        fontSize: '15px',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '10px',
+                                                        transition: 'all 0.3s',
+                                                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                                                    }}
+                                                    onMouseOver={e => {
+                                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                                        e.currentTarget.style.boxShadow = '0 8px 20px rgba(37, 99, 235, 0.4)';
+                                                    }}
+                                                    onMouseOut={e => {
+                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+                                                    }}
+                                                >
+                                                    <Grid size={20} />
+                                                    Open Interactive Stall Selection
+                                                </button>
+                                                <p style={{ fontSize: '12px', color: '#64748b', marginTop: '8px', textAlign: 'center' }}>
+                                                    Click to visually select and assign stalls on an interactive grid
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -1920,99 +2058,215 @@ const EventManagement = () => {
                         )}
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* View Event Details Modal */}
-            {viewEventModal && selectedEvent && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
-                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
-                    backdropFilter: 'blur(4px)'
-                }}>
+            {
+                viewEventModal && selectedEvent && (
                     <div style={{
-                        background: 'white', borderRadius: '24px', padding: '40px',
-                        width: '700px', maxWidth: '95%', maxHeight: '90vh',
-                        overflowY: 'auto', position: 'relative',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-                    }} onClick={e => e.stopPropagation()}>
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                        justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                        backdropFilter: 'blur(4px)'
+                    }}>
+                        <div style={{
+                            background: 'white', borderRadius: '24px', padding: '40px',
+                            width: '700px', maxWidth: '95%', maxHeight: '90vh',
+                            overflowY: 'auto', position: 'relative',
+                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                        }} onClick={e => e.stopPropagation()}>
 
-                        <button onClick={() => { setViewEventModal(false); setSelectedEvent(null); }} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
-                            <X size={24} />
-                        </button>
-
-                        <div style={{ marginBottom: '32px' }}>
-                            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Event Details</h2>
-                            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>View event information</p>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT ID</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.id}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATUS</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.status || 'Draft'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT NAME</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_name || selectedEvent.name}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>DESCRIPTION</div>
-                                <div style={{ fontSize: '14px', color: '#475569' }}>{selectedEvent.description || 'No description'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT TYPE</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_type || '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT MODE</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_mode || '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>START DATE</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.start_date ? new Date(selectedEvent.start_date).toLocaleDateString() : '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>END DATE</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.end_date ? new Date(selectedEvent.end_date).toLocaleDateString() : '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>VENUE</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.venue || '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>CITY</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.city || '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATE</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.state || '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZER NAME</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.organizer_name || '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZER EMAIL</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.organizer_email || '-'}</div>
-                            </div>
-                        </div>
-
-                        <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
-                            <button
-                                onClick={() => { setViewEventModal(false); setSelectedEvent(null); }}
-                                style={{ padding: '12px 24px', borderRadius: '10px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer' }}
-                            >
-                                Close
+                            <button onClick={() => { setViewEventModal(false); setSelectedEvent(null); }} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                                <X size={24} />
                             </button>
+
+                            <div style={{ marginBottom: '32px' }}>
+                                <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Event Details</h2>
+                                <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>View event information</p>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT ID</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.id}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATUS</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.status || 'Draft'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT NAME</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_name || selectedEvent.name}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>DESCRIPTION</div>
+                                    <div style={{ fontSize: '14px', color: '#475569' }}>{selectedEvent.description || 'No description'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT TYPE</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_type || '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT MODE</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_mode || '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>START DATE</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.start_date ? new Date(selectedEvent.start_date).toLocaleDateString() : '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>END DATE</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.end_date ? new Date(selectedEvent.end_date).toLocaleDateString() : '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>VENUE</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.venue || '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>CITY</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.city || '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATE</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.state || '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZER NAME</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.organizer_name || '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZER EMAIL</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.organizer_email || '-'}</div>
+                                </div>
+                            </div>
+
+                            <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
+                                <button
+                                    onClick={() => { setViewEventModal(false); setSelectedEvent(null); }}
+                                    style={{ padding: '12px 24px', borderRadius: '10px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )
+            }
+
+            {/* Interactive Stall Selector */}
+            {showStallSelector && (
+                <StallSelector
+                    totalStalls={eventData.stallConfig.totalStalls}
+                    stallTypes={eventData.stallTypes.map(type => ({
+                        name: type.name,
+                        price: type.price,
+                        color: type.color,
+                        limit: type.endNumber - type.startNumber + 1
+                    }))}
+                    initialAssignments={stallAssignments}
+                    onSave={handleStallSelectorSave}
+                    onClose={() => setShowStallSelector(false)}
+                />
             )}
-        </div>
+<<<<<<< HEAD
+
+    {/* View Event Details Modal */ }
+    {
+        viewEventModal && selectedEvent && (
+            <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                backdropFilter: 'blur(4px)'
+            }}>
+                <div style={{
+                    background: 'white', borderRadius: '24px', padding: '40px',
+                    width: '700px', maxWidth: '95%', maxHeight: '90vh',
+                    overflowY: 'auto', position: 'relative',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                }} onClick={e => e.stopPropagation()}>
+
+                    <button onClick={() => { setViewEventModal(false); setSelectedEvent(null); }} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                        <X size={24} />
+                    </button>
+
+                    <div style={{ marginBottom: '32px' }}>
+                        <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Event Details</h2>
+                        <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>View event information</p>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT ID</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.id}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATUS</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.status || 'Draft'}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT NAME</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_name || selectedEvent.name}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>DESCRIPTION</div>
+                            <div style={{ fontSize: '14px', color: '#475569' }}>{selectedEvent.description || 'No description'}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT TYPE</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_type || '-'}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EVENT MODE</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.event_mode || '-'}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>START DATE</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.start_date ? new Date(selectedEvent.start_date).toLocaleDateString() : '-'}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>END DATE</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.end_date ? new Date(selectedEvent.end_date).toLocaleDateString() : '-'}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>VENUE</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.venue || '-'}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>CITY</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.city || '-'}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATE</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.state || '-'}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZER NAME</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.organizer_name || '-'}</div>
+                        </div>
+                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZER EMAIL</div>
+                            <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedEvent.organizer_email || '-'}</div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                            onClick={() => { setViewEventModal(false); setSelectedEvent(null); }}
+                            style={{ padding: '12px 24px', borderRadius: '10px', border: 'none', background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+        </div >
+=======
+        </div >
+>>>>>>> 6bbc68f (Fix QR code in emails by embedding as base64 and general updates)
     );
 };
 
