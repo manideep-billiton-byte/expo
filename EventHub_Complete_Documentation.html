@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventHub - Complete Project Documentation</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+            pre, code { page-break-inside: avoid; }
+            h1, h2, h3 { page-break-after: avoid; }
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+        
+        h2 {
+            color: #1e40af;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 8px;
+            margin-top: 30px;
+        }
+        
+        h3 {
+            color: #3b82f6;
+            margin-top: 20px;
+        }
+        
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        pre code {
+            background: transparent;
+            color: #e2e8f0;
+            padding: 0;
+        }
+        
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        .toc {
+            background: #f0f9ff;
+            border-left: 4px solid #2563eb;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        
+        .toc h2 {
+            margin-top: 0;
+            border: none;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .toc li {
+            margin: 8px 0;
+        }
+        
+        .toc a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .print-button:hover {
+            background: #059669;
+        }
+        
+        blockquote {
+            border-left: 4px solid #fbbf24;
+            background: #fffbeb;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .architecture-diagram {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print to PDF</button>
+    <div class="container">
+<h1>EventHub - Complete Project Documentation</h1>
+<h2>Comprehensive Guide for Developers</h2><p><strong>Version:</strong> 1.0  
+<strong>Last Updated:</strong> February 4, 2026  
+<strong>Author:</strong> Billiton Event Management Team</p><p>---</p><h2>Table of Contents</h2><p>1. [Project Overview](#1-project-overview)
+2. [System Architecture](#2-system-architecture)
+3. [Technology Stack](#3-technology-stack)
+4. [Database Schema](#4-database-schema)
+5. [API Documentation](#5-api-documentation)
+6. [Frontend Architecture](#6-frontend-architecture)
+7. [Backend Architecture](#7-backend-architecture)
+8. [Authentication & Authorization](#8-authentication--authorization)
+9. [Key Features Implementation](#9-key-features-implementation)
+10. [Deployment Guide](#10-deployment-guide)
+11. [Development Workflow](#11-development-workflow)
+12. [Troubleshooting](#12-troubleshooting)</p><p>---</p><h2>1. Project Overview</h2><h3>1.1 What is EventHub?</h3><p>EventHub is a comprehensive event management platform designed for organizing exhibitions, managing exhibitors, capturing visitor leads, and facilitating business connections. It provides a complete solution for event organizers, exhibitors, and visitors.</p><h3>1.2 Core Capabilities</h3><ul>
+<li><strong>Multi-tenant Architecture</strong>: Support multiple organizations and events</li>
+<li><strong>User Management</strong>: Four distinct user roles (Master Admin, Organization, Exhibitor, Visitor)</li>
+<li><strong>QR Code System</strong>: Fast check-in and lead capture</li>
+<li><strong>Lead Management</strong>: Capture, track, and export leads</li>
+<li><strong>Analytics Dashboard</strong>: Real-time event metrics</li>
+<li><strong>Stall Management</strong>: Interactive stall selection and assignment</li>
+<li><strong>Email/SMS Notifications</strong>: Automated communication system</li>
+</ul><h3>1.3 Business Use Cases</h3><p>1. <strong>Event Organizers</strong>: Create and manage multiple events
+2. <strong>Exhibitors</strong>: Capture leads through QR scanning and business card OCR
+3. <strong>Visitors</strong>: Register for events and receive QR codes
+4. <strong>Administrators</strong>: Monitor system-wide analytics and manage organizations</p><p>---</p><h2>2. System Architecture</h2><h3>2.1 High-Level Architecture</h3><pre><code>┌─────────────────────────────────────────────────────────┐
+│                    Client Layer                          │
+│  (React SPA - Vite + React Router + Tailwind CSS)      │
+└─────────────────────────────────────────────────────────┘
+                          ↓ HTTPS
+┌─────────────────────────────────────────────────────────┐
+│                 CloudFront CDN (Production)              │
+│              S3 Static Hosting (Frontend)                │
+└─────────────────────────────────────────────────────────┘
+                          ↓ REST API
+┌─────────────────────────────────────────────────────────┐
+│              Application Layer (Backend)                 │
+│    Node.js + Express.js (Elastic Beanstalk/EC2)        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │ Controllers  │  │   Services   │  │  Middleware  │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│                   Data Layer                             │
+│         PostgreSQL (AWS RDS - Production)                │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│              External Services                           │
+│  AWS SES (Email) | AWS SNS (SMS) | S3 (QR Storage)     │
+└─────────────────────────────────────────────────────────┘</code></pre><h3>2.2 Request Flow</h3><p>1. <strong>User Request</strong> → CloudFront CDN
+2. <strong>Static Assets</strong> → Served from S3
+3. <strong>API Calls</strong> → Routed to Backend (Elastic Beanstalk)
+4. <strong>Authentication</strong> → JWT validation
+5. <strong>Business Logic</strong> → Controllers → Services
+6. <strong>Database</strong> → PostgreSQL queries
+7. <strong>Response</strong> → JSON back to client</p><h3>2.3 Multi-Tenant Architecture</h3><pre><code>Master Admin
+    ├── Organization 1
+    │   ├── Event 1
+    │   │   ├── Exhibitors
+    │   │   └── Visitors
+    │   └── Event 2
+    └── Organization 2
+        └── Event 3</code></pre><p><strong>Key Principle</strong>: All data is filtered by <code>organization_id</code> to ensure tenant isolation.</p><p>---</p><h2>3. Technology Stack</h2><h3>3.1 Frontend Technologies</h3><p>| Technology | Version | Purpose |
+|------------|---------|---------|
+| <strong>React</strong> | 18.x | UI framework |
+| <strong>Vite</strong> | 5.x | Build tool & dev server |
+| <strong>React Router</strong> | 6.x | Client-side routing |
+| <strong>Tailwind CSS</strong> | 3.x | Styling framework |
+| <strong>html5-qrcode</strong> | 2.x | QR code scanning |
+| <strong>qrcode</strong> | 1.x | QR code generation |
+| <strong>Tesseract.js</strong> | 5.x | OCR for business cards |
+| <strong>Axios</strong> | 1.x | HTTP client |</p><h3>3.2 Backend Technologies</h3><p>| Technology | Version | Purpose |
+|------------|---------|---------|
+| <strong>Node.js</strong> | 18+ | Runtime environment |
+| <strong>Express</strong> | 5.x | Web framework |
+| <strong>PostgreSQL</strong> | 15+ | Database |
+| <strong>pg</strong> | 8.x | PostgreSQL client |
+| <strong>dotenv</strong> | 16.x | Environment variables |
+| <strong>@aws-sdk/client-s3</strong> | 3.x | S3 file storage |
+| <strong>@aws-sdk/client-ses</strong> | 3.x | Email service |
+| <strong>@aws-sdk/client-sns</strong> | 3.x | SMS service |
+| <strong>qrcode</strong> | 1.x | QR generation |</p><h3>3.3 AWS Services</h3><p>| Service | Purpose |
+|---------|---------|
+| <strong>RDS (PostgreSQL)</strong> | Production database |
+| <strong>Elastic Beanstalk</strong> | Backend hosting |
+| <strong>S3</strong> | Frontend hosting & QR storage |
+| <strong>CloudFront</strong> | CDN for frontend |
+| <strong>SES</strong> | Email notifications |
+| <strong>SNS</strong> | SMS notifications |
+| <strong>Route 53</strong> | DNS management (optional) |</p><p>---</p><h2>4. Database Schema</h2><h3>4.1 Core Tables</h3><h4>4.1.1 Organizations Table</h4>
+<pre><code>CREATE TABLE organizations (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    contact_person VARCHAR(255),
+    phone VARCHAR(20),
+    address TEXT,
+    city VARCHAR(100),
+    state VARCHAR(100),
+    country VARCHAR(100),
+    gstin VARCHAR(15),
+    status VARCHAR(50) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);</code></pre><p><strong>Purpose</strong>: Stores organization/tenant information  
+<strong>Key Fields</strong>: 
+<ul>
+<li><code>id</code>: Primary key for tenant isolation</li>
+<li><code>status</code>: active/suspended/inactive</li>
+</ul><h4>4.1.2 Events Table</h4>
+<pre><code>CREATE TABLE events (
+    id SERIAL PRIMARY KEY,
+    organization_id INTEGER REFERENCES organizations(id),
+    name VARCHAR(255) NOT NULL,
+    event_name VARCHAR(255),
+    description TEXT,
+    event_type VARCHAR(100),
+    event_mode VARCHAR(50),
+    industry VARCHAR(100),
+    organizer_name VARCHAR(255),
+    contact_person VARCHAR(255),
+    organizer_email VARCHAR(255),
+    organizer_mobile VARCHAR(20),
+    venue VARCHAR(255),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    country VARCHAR(100),
+    start_date DATE,
+    end_date DATE,
+    registration JSONB,
+    lead_capture JSONB,
+    communication JSONB,
+    qr_token VARCHAR(255) UNIQUE,
+    qr_image_path TEXT,
+    registration_link TEXT,
+    status VARCHAR(50) DEFAULT 'Draft',
+    enable_stalls BOOLEAN DEFAULT false,
+    stall_config JSONB,
+    stall_types JSONB,
+    ground_layout_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);</code></pre><p><strong>Purpose</strong>: Stores event information  
+<strong>Key Fields</strong>:
+<ul>
+<li><code>organization_id</code>: Links to organization (tenant isolation)</li>
+<li><code>qr_token</code>: Unique token for registration links</li>
+<li><code>stall_config</code>: JSON configuration for stall layout</li>
+<li><code>registration_link</code>: Public registration URL</li>
+</ul><h4>4.1.3 Exhibitors Table</h4>
+<pre><code>CREATE TABLE exhibitors (
+    id SERIAL PRIMARY KEY,
+    organization_id INTEGER REFERENCES organizations(id),
+    event_id INTEGER REFERENCES events(id),
+    company_name VARCHAR(255) NOT NULL,
+    contact_person VARCHAR(255),
+    email VARCHAR(255),
+    phone VARCHAR(20),
+    stall_number VARCHAR(50),
+    category VARCHAR(100),
+    products_services TEXT,
+    username VARCHAR(255) UNIQUE,
+    password VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);</code></pre><p><strong>Purpose</strong>: Stores exhibitor information  
+<strong>Key Fields</strong>:
+<ul>
+<li><code>organization_id</code> + <code>event_id</code>: Multi-level filtering</li>
+<li><code>stall_number</code>: Assigned stall location</li>
+</ul><h4>4.1.4 Visitors Table</h4>
+<pre><code>CREATE TABLE visitors (
+    id SERIAL PRIMARY KEY,
+    organization_id INTEGER REFERENCES organizations(id),
+    event_id INTEGER REFERENCES events(id),
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(20),
+    company VARCHAR(255),
+    designation VARCHAR(100),
+    city VARCHAR(100),
+    unique_code VARCHAR(50) UNIQUE,
+    qr_code_path TEXT,
+    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'registered'
+);</code></pre><p><strong>Purpose</strong>: Stores visitor registrations  
+<strong>Key Fields</strong>:
+<ul>
+<li><code>unique_code</code>: Generated QR code identifier</li>
+<li><code>qr_code_path</code>: Path to QR image</li>
+</ul><h4>4.1.5 Leads Table</h4>
+<pre><code>CREATE TABLE leads (
+    id SERIAL PRIMARY KEY,
+    organization_id INTEGER REFERENCES organizations(id),
+    event_id INTEGER REFERENCES events(id),
+    exhibitor_id INTEGER REFERENCES exhibitors(id),
+    visitor_id INTEGER REFERENCES visitors(id),
+    visitor_name VARCHAR(255),
+    visitor_email VARCHAR(255),
+    visitor_phone VARCHAR(20),
+    visitor_company VARCHAR(255),
+    notes TEXT,
+    status VARCHAR(50) DEFAULT 'new',
+    captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);</code></pre><p><strong>Purpose</strong>: Stores captured leads  
+<strong>Key Relationships</strong>: Links exhibitors to visitors</p><h3>4.2 Data Relationships</h3><pre><code>organizations (1) ──→ (N) events
+organizations (1) ──→ (N) exhibitors
+events (1) ──→ (N) exhibitors
+events (1) ──→ (N) visitors
+exhibitors (1) ──→ (N) leads
+visitors (1) ──→ (N) leads</code></pre><p>---</p><h2>5. API Documentation</h2><h3>5.1 Authentication Endpoints</h3><h4>POST /api/login</h4>
+<strong>Purpose</strong>: Unified login for all user types  
+<strong>Request Body</strong>:
+<pre><code>{
+  "email": "user@example.com",
+  "password": "password123",
+  "userType": "organization" // or "exhibitor", "visitor", "master"
+}</code></pre>
+<strong>Response</strong>:
+<pre><code>{
+  "success": true,
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "Organization Name",
+    "userType": "organization"
+  }
+}</code></pre><h3>5.2 Organization Endpoints</h3><h4>GET /api/organizations</h4>
+<strong>Purpose</strong>: Get all organizations (Master Admin only)  
+<strong>Response</strong>:
+<pre><code>[
+  {
+    "id": 1,
+    "name": "Acme Corp",
+    "email": "admin@acme.com",
+    "status": "active",
+    "created_at": "2026-01-15T10:00:00Z"
+  }
+]</code></pre><h4>POST /api/create-organization</h4>
+<strong>Purpose</strong>: Create new organization  
+<strong>Request Body</strong>:
+<pre><code>{
+  "name": "New Org",
+  "email": "contact@neworg.com",
+  "password": "securepass",
+  "contact_person": "John Doe",
+  "phone": "+1234567890"
+}</code></pre><h3>5.3 Event Endpoints</h3><h4>GET /api/events?organization_id=1</h4>
+<strong>Purpose</strong>: Get events for an organization  
+<strong>Query Params</strong>: <code>organization_id</code> (required for filtering)</p><h4>POST /api/events</h4>
+<strong>Purpose</strong>: Create new event  
+<strong>Request Body</strong>:
+<pre><code>{
+  "organizationId": 1,
+  "eventName": "Tech Expo 2026",
+  "description": "Annual technology exhibition",
+  "startDate": "2026-03-15",
+  "endDate": "2026-03-17",
+  "venue": "Convention Center",
+  "city": "Mumbai",
+  "organizerEmail": "organizer@example.com",
+  "enableStalls": true,
+  "stallConfig": {
+    "totalStalls": 100,
+    "rows": 10,
+    "columns": 10
+  },
+  "stallTypes": [
+    {
+      "name": "Premium",
+      "price": 50000,
+      "limit": 20
+    }
+  ]
+}</code></pre><p><strong>Response</strong>: Event object with generated QR code and registration link</p><h3>5.4 Lead Endpoints</h3><h4>POST /api/leads</h4>
+<strong>Purpose</strong>: Capture a new lead  
+<strong>Request Body</strong>:
+<pre><code>{
+  "organization_id": 1,
+  "event_id": 5,
+  "exhibitor_id": 10,
+  "visitor_id": 25,
+  "notes": "Interested in product demo"
+}</code></pre><h4>GET /api/leads?exhibitor_id=10</h4>
+<strong>Purpose</strong>: Get leads for an exhibitor  
+<strong>Query Params</strong>: <code>exhibitor_id</code>, <code>event_id</code>, <code>organization_id</code></p><p>---</p><h2>6. Frontend Architecture</h2><h3>6.1 Component Structure</h3><pre><code>src/
+├── components/
+│   ├── Dashboard.jsx           # Main dashboard
+│   ├── Login.jsx               # Login page
+│   ├── EventManagement.jsx     # Event CRUD
+│   ├── ExhibitorManagement.jsx # Exhibitor CRUD
+│   ├── VisitorManagement.jsx   # Visitor CRUD
+│   ├── LeadManagement.jsx      # Lead capture
+│   ├── QRScanner.jsx           # QR scanning
+│   ├── StallSelector.jsx       # Stall selection UI
+│   └── Analytics.jsx           # Analytics dashboard
+├── utils/
+│   ├── api.js                  # API client
+│   └── auth.js                 # Auth helpers
+├── App.jsx                     # Root component
+└── Index.jsx                   # Entry point</code></pre><h3>6.2 Routing Structure</h3><pre><code><Routes>
+  <Route path="/" element={<Login />} />
+  <Route path="/dashboard" element={<Dashboard />} />
+  <Route path="/events" element={<EventManagement />} />
+  <Route path="/exhibitors" element={<ExhibitorManagement />} />
+  <Route path="/visitors" element={<VisitorManagement />} />
+  <Route path="/leads" element={<LeadManagement />} />
+  <Route path="/scan" element={<QRScanner />} />
+</Routes></code></pre><h3>6.3 State Management</h3><p><strong>Approach</strong>: React Context + Local State  
+<strong>Key Contexts</strong>:
+<ul>
+<li><code>AuthContext</code>: User authentication state</li>
+<li><code>EventContext</code>: Current event data</li>
+<li><code>OrganizationContext</code>: Current organization data</li>
+</ul><p>---</p><h2>7. Backend Architecture</h2><h3>7.1 Project Structure</h3><pre><code>server/
+├── controllers/
+│   ├── authController.js       # Authentication logic
+│   ├── eventController.js      # Event operations
+│   ├── exhibitorController.js  # Exhibitor operations
+│   ├── visitorController.js    # Visitor operations
+│   └── leadController.js       # Lead operations
+├── services/
+│   ├── notificationService.js  # Email/SMS
+│   ├── qrStorageService.js     # QR generation & S3
+│   └── gstService.js           # GST verification
+├── migrations/
+│   └── *.sql                   # Database migrations
+├── db.js                       # Database connection
+└── server.js                   # Express app</code></pre><h3>7.2 Middleware Stack</h3><p>1. <strong>CORS</strong>: Allow cross-origin requests
+2. <strong>Body Parser</strong>: Parse JSON requests
+3. <strong>Static Files</strong>: Serve uploads
+4. <strong>Error Handler</strong>: Centralized error handling</p><h3>7.3 Database Connection</h3><pre><code>// db.js
+const { Pool } = require('pg');</p><p>const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});</p><p>module.exports = pool;</code></pre><p>---</p><h2>8. Authentication & Authorization</h2><h3>8.1 User Types</h3><p>| Type | Login Endpoint | Access Level |
+|------|---------------|--------------|
+| Master Admin | <code>/api/login</code> | Full system access |
+| Organization | <code>/api/organization-login</code> | Organization events |
+| Exhibitor | <code>/api/exhibitor-login</code> | Assigned event leads |
+| Visitor | <code>/api/visitor-login</code> | Personal QR code |</p><h3>8.2 Session Management</h3><p><strong>Method</strong>: Session-based (stored in memory)  
+<strong>Storage</strong>: <code>req.session.user</code>  
+<strong>Validation</strong>: Check session on protected routes</p><p>---</p><h2>9. Key Features Implementation</h2><h3>9.1 QR Code System</h3><h4>Generation (Server-side)</h4>
+<pre><code>const QRCode = require('qrcode');</p><p>const generateQR = async (registrationLink, eventId) => {
+  const qrBuffer = await QRCode.toBuffer(registrationLink, {
+    width: 300,
+    errorCorrectionLevel: 'H'
+  });
+  
+  // Upload to S3 or save locally
+  const path = await uploadToS3(qrBuffer, eventId);
+  
+  // Return base64 for email embedding
+  const base64 = qrBuffer.toString('base64');
+  
+  return { path, base64 };
+};</code></pre><h4>Scanning (Client-side)</h4>
+<pre><code>import { Html5QrcodeScanner } from 'html5-qrcode';</p><p>const scanner = new Html5QrcodeScanner("reader", {
+  fps: 10,
+  qrbox: 250
+});</p><p>scanner.render(onScanSuccess, onScanError);</code></pre><h3>9.2 Email Notifications</h3><p><strong>Service</strong>: AWS SES  
+<strong>Implementation</strong>:
+<pre><code>const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');</p><p>const sendEmail = async ({ to, subject, html }) => {
+  const client = new SESClient({ region: 'ap-south-1' });
+  
+  const command = new SendEmailCommand({
+    Source: process.env.SES_FROM_EMAIL,
+    Destination: { ToAddresses: [to] },
+    Message: {
+      Subject: { Data: subject },
+      Body: { Html: { Data: html } }
+    }
+  });
+  
+  await client.send(command);
+};</code></pre><p><strong>QR Code Embedding</strong>: Uses base64 data URI for inline display</p><h3>9.3 Stall Management</h3><p><strong>Interactive Grid</strong>: Visual stall selection  
+<strong>Configuration</strong>: Stored as JSONB in database  
+<strong>Features</strong>:
+<ul>
+<li>Drag-and-drop stall assignment</li>
+<li>Color-coded stall types</li>
+<li>Real-time availability</li>
+</ul><p>---</p><h2>10. Deployment Guide</h2><h3>10.1 Local Development</h3><pre><code><h1>1. Clone repository</h1>
+git clone <repo-url>
+cd Expo_project</p><h1>2. Install dependencies</h1>
+cd server && npm install
+cd ../client && npm install</p><h1>3. Setup database</h1>
+createdb expo_db
+psql expo_db < server/schema.sql</p><h1>4. Configure environment</h1>
+cp server/.env.example server/.env
+<h1>Edit .env with your credentials</h1><h1>5. Start servers</h1>
+cd server && npm start
+cd client && npm run dev</code></pre><h3>10.2 AWS Production Deployment</h3><p><strong>Prerequisites</strong>:
+<ul>
+<li>AWS account configured</li>
+<li>AWS CLI installed</li>
+<li>EB CLI installed</li>
+</ul><p><strong>Steps</strong>:
+<pre><code><h1>1. Deploy backend</h1>
+cd server
+eb init
+eb create expo-prod
+eb deploy</p><h1>2. Deploy frontend</h1>
+cd client
+npm run build
+aws s3 sync dist/ s3://your-bucket/
+aws cloudfront create-invalidation --distribution-id XXX --paths "/*"</code></pre><h3>10.3 Environment Variables</h3><p><strong>Production .env</strong>:
+<pre><code>NODE_ENV=production
+DATABASE_URL=postgresql://user:pass@host:5432/db
+CLOUDFRONT_DOMAIN=d2ux36xl31uki3.cloudfront.net
+S3_QR_BUCKET=expo-project-prod-frontend
+AWS_REGION=ap-south-1
+SES_FROM_EMAIL=noreply@yourdomain.com</code></pre><p>---</p><h2>11. Development Workflow</h2><h3>11.1 Git Workflow</h3><pre><code><h1>Feature development</h1>
+git checkout -b feature/new-feature
+<h1>Make changes</h1>
+git commit -m "Add new feature"
+git push origin feature/new-feature
+<h1>Create pull request</h1></code></pre><h3>11.2 Database Migrations</h3><pre><code><h1>Create migration</h1>
+touch server/migrations/005_add_new_column.sql</p><h1>Apply migration</h1>
+psql expo_db < server/migrations/005_add_new_column.sql</code></pre><h3>11.3 Testing</h3><p><strong>Manual Testing</strong>: Use Postman collection  
+<strong>Test Accounts</strong>: Create test organizations/events  
+<strong>QR Testing</strong>: Use test QR generator scripts</p><p>---</p><h2>12. Troubleshooting</h2><h3>12.1 Common Issues</h3><p><strong>Issue</strong>: QR codes not displaying in emails  
+<strong>Solution</strong>: Ensure base64 embedding is enabled, check S3 permissions</p><p><strong>Issue</strong>: Camera not working  
+<strong>Solution</strong>: Ensure HTTPS is enabled (required for camera access)</p><p><strong>Issue</strong>: CORS errors  
+<strong>Solution</strong>: Check backend CORS configuration matches frontend URL</p><h3>12.2 Logs</h3><p><strong>Backend</strong>: <code>server/server.log</code>  
+<strong>AWS</strong>: CloudWatch logs  
+<strong>Database</strong>: PostgreSQL logs</p><p>---</p><h2>Appendix</h2><h3>A. Useful Commands</h3><pre><code><h1>Check database</h1>
+psql expo_db -c "SELECT * FROM organizations;"</p><h1>Test email</h1>
+node server/test-qr-email-diagnostic.js</p><h1>View logs</h1>
+tail -f server/server.log</code></pre><h3>B. Contact & Support</h3><p>For questions: Contact development team  
+For bugs: Create GitHub issue  
+For deployment: See deployment documentation</p><p>---</p><p><strong>End of Documentation</strong>
+</p>
+    </div>
+    <script>
+        // Add smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

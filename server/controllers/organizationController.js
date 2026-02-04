@@ -921,12 +921,30 @@ module.exports = {
 
     // Get all plans
     getPlans: async (req, res) => {
+        const client = await pool.connect();
         try {
-            const result = await pool.query('SELECT * FROM plans ORDER BY created_at DESC');
+            // Ensure plans table exists before querying
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS plans (
+                    id BIGSERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    type TEXT,
+                    description TEXT,
+                    validity_days INTEGER,
+                    status TEXT,
+                    limits JSONB,
+                    pricing JSONB,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            `);
+
+            const result = await client.query('SELECT * FROM plans ORDER BY created_at DESC');
             res.json(result.rows);
         } catch (err) {
             console.error('Error fetching plans:', err);
             res.status(500).json({ error: 'Failed to fetch plans', details: err.message });
+        } finally {
+            client.release();
         }
     },
 

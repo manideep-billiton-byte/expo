@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code System - Complete Documentation</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+            pre, code { page-break-inside: avoid; }
+            h1, h2, h3 { page-break-after: avoid; }
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+        h2 {
+            color: #1e40af;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 8px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #3b82f6;
+            margin-top: 20px;
+        }
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        pre code {
+            background: transparent;
+            color: #e2e8f0;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .print-button:hover {
+            background: #059669;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print to PDF</button>
+    <div class="container">
+
+<h1>QR Code System - Complete Technical Documentation</h1>
+<h2>EventHub Platform</h2><p><strong>Version:</strong> 2.0  
+<strong>Last Updated:</strong> February 4, 2026  
+<strong>Author:</strong> Billiton Event Management Team</p><p>---</p><h2>Table of Contents</h2><p>1. [Overview](#1-overview)
+2. [QR Code Architecture](#2-qr-code-architecture)
+3. [QR Code Generation Flow](#3-qr-code-generation-flow)
+4. [Local Environment Setup](#4-local-environment-setup)
+5. [Production Environment Setup](#5-production-environment-setup)
+6. [Code Implementation](#6-code-implementation)
+7. [Email Integration](#7-email-integration)
+8. [QR Code Scanning](#8-qr-code-scanning)
+9. [Storage Mechanisms](#9-storage-mechanisms)
+10. [Troubleshooting Guide](#10-troubleshooting-guide)
+11. [Testing & Verification](#11-testing--verification)
+12. [Best Practices](#12-best-practices)</p><p>---</p><h2>1. Overview</h2><h3>1.1 What is the QR Code System?</h3><p>The EventHub QR Code System is a comprehensive solution for generating, storing, distributing, and scanning QR codes for event registration and visitor management.</p><h3>1.2 Use Cases</h3><p>1. <strong>Event Registration</strong>: Generate unique QR codes for event registration links
+2. <strong>Visitor Check-in</strong>: Generate QR codes for registered visitors
+3. <strong>Lead Capture</strong>: Exhibitors scan visitor QR codes to capture leads
+4. <strong>Email Distribution</strong>: QR codes embedded in registration emails</p><h3>1.3 Key Features</h3><ul>
+<li>✅ <strong>Automatic Generation</strong>: QR codes generated on event creation</li>
+<li>✅ <strong>Dual Storage</strong>: Local files (dev) and AWS S3 (production)</li>
+<li>✅ <strong>Email Embedding</strong>: Base64 inline embedding for reliability</li>
+<li>✅ <strong>CDN Distribution</strong>: CloudFront for fast global access</li>
+<li>✅ <strong>High Availability</strong>: Multiple fallback mechanisms</li>
+<li>✅ <strong>Scalable</strong>: Handles thousands of QR codes</li>
+</ul><p>---</p><h2>2. QR Code Architecture</h2><h3>2.1 System Architecture Diagram</h3><pre><code>┌─────────────────────────────────────────────────────────────┐
+│                    EVENT CREATION                            │
+│                         ↓                                    │
+│              Generate Registration Link                      │
+│                         ↓                                    │
+│              Generate QR Code (PNG Buffer)                   │
+│                         ↓                                    │
+│                    ┌────────────┐                           │
+│                    │ Environment │                           │
+│                    │   Check     │                           │
+│                    └────────────┘                           │
+│                         ↓                                    │
+│          ┌──────────────┴──────────────┐                    │
+│          ↓                              ↓                    │
+│    LOCAL (Development)          PRODUCTION (AWS)            │
+│          ↓                              ↓                    │
+│   Save to /uploads/qrs/         Upload to S3 Bucket         │
+│   event-{id}.png                qr/event_{id}.png           │
+│          ↓                              ↓                    │
+│   URL: localhost:5000/          URL: CloudFront CDN         │
+│   uploads/qrs/event-{id}.png    /qr/event_{id}.png         │
+│          ↓                              ↓                    │
+│          └──────────────┬──────────────┘                    │
+│                         ↓                                    │
+│              Convert to Base64 String                        │
+│                         ↓                                    │
+│              Store in Database                               │
+│              (qr_image_path column)                          │
+│                         ↓                                    │
+│              Embed in Email                                  │
+│              (Base64 + URL fallback)                         │
+│                         ↓                                    │
+│              Send to Organizer                               │
+└─────────────────────────────────────────────────────────────┘</code></pre><h3>2.2 Data Flow</h3><pre><code>User Creates Event
+    ↓
+Backend Generates UUID Token
+    ↓
+Create Registration Link
+    ↓
+Generate QR Code (PNG)
+    ↓
+Store QR Code (Local/S3)
+    ↓
+Convert to Base64
+    ↓
+Update Database
+    ↓
+Send Email with QR Code
+    ↓
+User Receives Email
+    ↓
+QR Code Displayed (Base64 or URL)
+    ↓
+User Scans QR Code
+    ↓
+Redirects to Registration Page</code></pre><h3>2.3 Component Interaction</h3><pre><code>┌──────────────────┐
+│  Event Creation  │
+│   (Frontend)     │
+└────────┬─────────┘
+         ↓ POST /api/events
+┌────────┴─────────┐
+│ Event Controller │
+│   (Backend)      │
+└────────┬─────────┘
+         ↓ generateAndStoreQR()
+┌────────┴─────────┐
+│ QR Storage       │
+│   Service        │
+└────────┬─────────┘
+         ↓
+┌────────┴─────────┐     ┌──────────────┐
+│  Local Storage   │ OR  │  AWS S3      │
+│  /uploads/qrs/   │     │  Bucket      │
+└────────┬─────────┘     └──────┬───────┘
+         └────────┬──────────────┘
+                  ↓
+         ┌────────┴─────────┐
+         │   Database       │
+         │ (qr_image_path)  │
+         └────────┬─────────┘
+                  ↓
+         ┌────────┴─────────┐
+         │ Email Service    │
+         │ (AWS SES)        │
+         └──────────────────┘</code></pre><p>---</p><h2>3. QR Code Generation Flow</h2><h3>3.1 Step-by-Step Process</h3><h4>Step 1: Event Creation Trigger</h4>
+<pre><code>// User creates event via frontend
+POST /api/events
+{
+  "organizationId": 1,
+  "eventName": "Tech Expo 2026",
+  "organizerEmail": "organizer@example.com",
+  ...
+}</code></pre><h4>Step 2: Generate Unique Token</h4>
+<pre><code>// Backend generates UUID token
+const { v4: uuidv4 } = require('uuid');
+const token = uuidv4();
+// Example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"</code></pre><h4>Step 3: Create Registration Link</h4>
+<pre><code>const base = process.env.INVITE_LINK_BASE || 'https://d2ux36xl31uki3.cloudfront.net';
+const registration_link = <code>${base}?action=register&eventId=${eventName}&token=${token}</code>;
+// Example: https://d2ux36xl31uki3.cloudfront.net?action=register&eventId=TechExpo&token=a1b2c3d4...</code></pre><h4>Step 4: Generate QR Code Image</h4>
+<pre><code>const QRCode = require('qrcode');</p><p>const qrBuffer = await QRCode.toBuffer(registration_link, {
+  type: 'png',
+  width: 300,
+  margin: 2,
+  color: {
+    dark: '#000000',
+    light: '#FFFFFF'
+  },
+  errorCorrectionLevel: 'H' // High error correction
+});</code></pre><h4>Step 5: Store QR Code</h4>
+<pre><code>// Environment-based storage
+if (process.env.NODE_ENV === 'production') {
+  // Upload to S3
+  await uploadToS3(qrBuffer, eventId);
+} else {
+  // Save locally
+  saveToLocal(qrBuffer, eventId);
+}</code></pre><h4>Step 6: Convert to Base64</h4>
+<pre><code>const base64Data = qrBuffer.toString('base64');
+// Used for email embedding</code></pre><h4>Step 7: Update Database</h4>
+<pre><code>await pool.query(
+  'UPDATE events SET qr_image_path = $1 WHERE id = $2',
+  [qrImagePath, eventId]
+);</code></pre><h4>Step 8: Send Email</h4>
+<pre><code>const htmlContent = <code>
+  <img src="data:image/png;base64,${base64Data}" alt="QR Code" />
+</code>;
+await sendEmail({ to: organizerEmail, html: htmlContent });</code></pre><h3>3.2 Timing Breakdown</h3><p>| Step | Operation | Time | Notes |
+|------|-----------|------|-------|
+| 1 | Event creation | ~50ms | Database insert |
+| 2 | Token generation | ~1ms | UUID v4 |
+| 3 | Link creation | ~1ms | String concatenation |
+| 4 | QR generation | ~100ms | Image rendering |
+| 5 | Storage (local) | ~10ms | File write |
+| 5 | Storage (S3) | ~200ms | Network upload |
+| 6 | Base64 conversion | ~5ms | Buffer encoding |
+| 7 | Database update | ~20ms | SQL update |
+| 8 | Email sending | ~500ms | AWS SES |
+| <strong>Total (Local)</strong> | | <strong>~687ms</strong> | < 1 second |
+| <strong>Total (Production)</strong> | | <strong>~877ms</strong> | < 1 second |</p><p>---</p><h2>4. Local Environment Setup</h2><h3>4.1 Prerequisites</h3><pre><code><h1>Required software</h1>
+<ul>
+<li>Node.js 18+</li>
+<li>PostgreSQL 15+</li>
+<li>npm or yarn</code></pre></li>
+</ul><h3>4.2 Environment Configuration</h3><p><strong>File: <code>server/.env</code></strong>
+<pre><code><h1>Server Configuration</h1>
+PORT=5000
+NODE_ENV=development</p><h1>Database</h1>
+DATABASE_URL=postgresql://postgres:password@localhost:5432/expo_db</p><h1>API Base URL (for QR code URLs)</h1>
+API_BASE_URL=http://localhost:5000</p><h1>Email (optional for local testing)</h1>
+SES_FROM_EMAIL=test@example.com</code></pre><h3>4.3 Directory Structure</h3><pre><code>server/
+├── uploads/              # Local QR storage
+│   └── qrs/             # QR code images
+│       ├── event-1.png
+│       ├── event-2.png
+│       └── ...
+├── services/
+│   └── qrStorageService.js  # QR generation logic
+└── controllers/
+    └── eventController.js   # Event creation logic</code></pre><h3>4.4 Local Storage Implementation</h3><pre><code>// File: server/services/qrStorageService.js</p><p>const saveQRLocally = (qrBuffer, eventId) => {
+  const uploadDir = path.join(process.cwd(), 'uploads', 'qrs');
+  
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+  
+  const fileName = <code>event-${eventId}.png</code>;
+  const filePath = path.join(uploadDir, fileName);
+  
+  // Write the file
+  fs.writeFileSync(filePath, qrBuffer);
+  
+  console.log(<code>QR code saved locally: ${filePath}</code>);
+  
+  // Return relative path for database
+  return <code>/uploads/qrs/${fileName}</code>;
+};</code></pre><h3>4.5 Serving Local QR Codes</h3><pre><code>// File: server/server.js</p><p>// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));</p><p>// QR codes accessible at:
+// http://localhost:5000/uploads/qrs/event-1.png</code></pre><h3>4.6 Local Testing</h3><pre><code><h1>1. Start the server</h1>
+cd server
+npm start</p><h1>2. Create an event</h1>
+curl -X POST http://localhost:5000/api/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organizationId": 1,
+    "eventName": "Test Event",
+    "organizerEmail": "test@example.com"
+  }'</p><h1>3. Check the uploads directory</h1>
+ls -la server/uploads/qrs/</p><h1>4. Access QR code in browser</h1>
+<h1>http://localhost:5000/uploads/qrs/event-{id}.png</h1></code></pre><p>---</p><h2>5. Production Environment Setup</h2><h3>5.1 AWS Services Required</h3><p>| Service | Purpose | Configuration |
+|---------|---------|---------------|
+| <strong>S3</strong> | QR code storage | Bucket: <code>expo-project-prod-frontend</code> |
+| <strong>CloudFront</strong> | CDN distribution | Domain: <code>d2ux36xl31uki3.cloudfront.net</code> |
+| <strong>SES</strong> | Email delivery | Region: <code>ap-south-1</code> |
+| <strong>IAM</strong> | Access credentials | S3 + SES permissions |</p><h3>5.2 Environment Configuration</h3><p><strong>File: <code>server/.env</code> (Production)</strong>
+<pre><code><h1>Server Configuration</h1>
+PORT=5000
+NODE_ENV=production</p><h1>Database (AWS RDS)</h1>
+DATABASE_URL=postgresql://user:pass@rds-endpoint:5432/expo_db</p><h1>AWS Configuration</h1>
+AWS_REGION=ap-south-1
+AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXX
+AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p><h1>CloudFront & S3</h1>
+CLOUDFRONT_DOMAIN=d2ux36xl31uki3.cloudfront.net
+S3_QR_BUCKET=expo-project-prod-frontend</p><h1>Email</h1>
+SES_FROM_EMAIL=noreply@yourdomain.com</p><h1>Registration Link Base</h1>
+INVITE_LINK_BASE=https://d2ux36xl31uki3.cloudfront.net</code></pre><h3>5.3 S3 Bucket Configuration</h3><h4>Bucket Structure</h4>
+<pre><code>expo-project-prod-frontend/
+├── index.html              # Frontend files
+├── assets/                 # Frontend assets
+└── qr/                     # QR codes folder
+    ├── event_1.png
+    ├── event_2.png
+    └── ...</code></pre><h4>Bucket Policy (Public Read for QR Codes)</h4>
+<pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadQRCodes",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::expo-project-prod-frontend/qr/*"
+    }
+  ]
+}</code></pre><h4>Apply Bucket Policy</h4>
+<pre><code><h1>Save policy to file</h1>
+cat > bucket-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadQRCodes",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::expo-project-prod-frontend/qr/*"
+    }
+  ]
+}
+EOF</p><h1>Apply policy</h1>
+aws s3api put-bucket-policy \
+  --bucket expo-project-prod-frontend \
+  --policy file://bucket-policy.json \
+  --region ap-south-1</code></pre><h4>Disable Block Public Access</h4>
+<pre><code>aws s3api put-public-access-block \
+  --bucket expo-project-prod-frontend \
+  --public-access-block-configuration \
+    "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false" \
+  --region ap-south-1</code></pre><h3>5.4 CloudFront Configuration</h3><p><strong>Distribution Settings:</strong>
+<ul>
+<li><strong>Origin</strong>: S3 bucket <code>expo-project-prod-frontend</code></li>
+<li><strong>Origin Path</strong>: <code>/</code> (root)</li>
+<li><strong>Viewer Protocol</strong>: Redirect HTTP to HTTPS</li>
+<li><strong>Allowed HTTP Methods</strong>: GET, HEAD</li>
+<li><strong>Cache Behavior</strong>:</li>
+<li>Default TTL: 86400 (1 day)</li>
+<li>Max TTL: 31536000 (1 year)</li>
+<li>Min TTL: 0</li>
+</ul><p><strong>QR Code URLs:</strong>
+<pre><code>https://d2ux36xl31uki3.cloudfront.net/qr/event_1.png
+https://d2ux36xl31uki3.cloudfront.net/qr/event_2.png</code></pre><h3>5.5 Production Storage Implementation</h3><pre><code>// File: server/services/qrStorageService.js</p><p>const uploadQRToS3 = async (qrBuffer, eventId) => {
+  const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+  
+  const client = new S3Client({
+    region: process.env.AWS_REGION,
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    }
+  });
+  
+  const bucketName = process.env.S3_QR_BUCKET;
+  const fileName = <code>qr/event_${eventId}.png</code>;
+  
+  const params = {
+    Bucket: bucketName,
+    Key: fileName,
+    Body: qrBuffer,
+    ContentType: 'image/png',
+    CacheControl: 'max-age=31536000' // 1 year
+  };
+  
+  const command = new PutObjectCommand(params);
+  await client.send(command);
+  
+  // Return CloudFront URL
+  const cloudFrontDomain = process.env.CLOUDFRONT_DOMAIN;
+  const qrUrl = <code>https://${cloudFrontDomain}/${fileName}</code>;
+  
+  console.log(<code>✅ QR code uploaded to S3: ${qrUrl}</code>);
+  return qrUrl;
+};</code></pre><h3>5.6 IAM Permissions Required</h3><pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::expo-project-prod-frontend/qr/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+      ],
+      "Resource": "*"
+    }
+  ]
+}</code></pre><p>---</p><h2>6. Code Implementation</h2><h3>6.1 QR Storage Service (Complete)</h3><p><strong>File: <code>server/services/qrStorageService.js</code></strong></p><pre><code>/**
+<ul>
+<li>QR Code Storage Service</li>
+<li>Handles QR code generation and storage for events</li>
+<li>- Local: Saves to /uploads/qrs/ directory</li>
+<li>- Production: Uploads to S3 and serves via CloudFront</li>
+</ul>
+ */</p><p>const QRCode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');</p><p>// S3 client for production uploads
+let s3Client = null;</p><p>const getS3Client = () => {
+  if (!s3Client && process.env.NODE_ENV === 'production') {
+    const config = {
+      region: process.env.AWS_REGION || 'ap-south-1'
+    };
+    
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      config.credentials = {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+      };
+    }
+    
+    s3Client = new S3Client(config);
+  }
+  return s3Client;
+};</p><p>/**
+<ul>
+<li>Generate QR code buffer from a URL</li>
+<li>@param {string} url - The URL to encode in the QR code</li>
+<li>@returns {Promise<Buffer>} - PNG buffer of the QR code</li>
+</ul>
+ */
+const generateQRBuffer = async (url) => {
+  const qrBuffer = await QRCode.toBuffer(url, {
+    type: 'png',
+    width: 300,
+    margin: 2,
+    color: {
+      dark: '#000000',
+      light: '#FFFFFF'
+    },
+    errorCorrectionLevel: 'H' // High error correction for better scanning
+  });
+  return qrBuffer;
+};</p><p>/**
+<ul>
+<li>Save QR code locally (for development)</li>
+<li>@param {Buffer} qrBuffer - The QR code PNG buffer</li>
+<li>@param {number} eventId - The event ID</li>
+<li>@returns {string} - The relative path to the saved QR code</li>
+</ul>
+ */
+const saveQRLocally = (qrBuffer, eventId) => {
+  const uploadDir = path.join(process.cwd(), 'uploads', 'qrs');
+  
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+  
+  const fileName = <code>event-${eventId}.png</code>;
+  const filePath = path.join(uploadDir, fileName);
+  
+  // Write the file
+  fs.writeFileSync(filePath, qrBuffer);
+  
+  console.log(<code>QR code saved locally: ${filePath}</code>);
+  
+  // Return the relative path for database storage
+  return <code>/uploads/qrs/${fileName}</code>;
+};</p><p>/**
+<ul>
+<li>Upload QR code to S3 (for production)</li>
+<li>@param {Buffer} qrBuffer - The QR code PNG buffer</li>
+<li>@param {number} eventId - The event ID</li>
+<li>@returns {Promise<string>} - The full CloudFront URL to the QR code</li>
+</ul>
+ */
+const uploadQRToS3 = async (qrBuffer, eventId) => {
+  const client = getS3Client();
+  
+  if (!client) {
+    console.error('S3 client not available, falling back to local storage');
+    return saveQRLocally(qrBuffer, eventId);
+  }
+  
+  const bucketName = process.env.S3_QR_BUCKET || 'expo-project-prod-frontend';
+  const fileName = <code>qr/event_${eventId}.png</code>;
+  
+  const params = {
+    Bucket: bucketName,
+    Key: fileName,
+    Body: qrBuffer,
+    ContentType: 'image/png',
+    CacheControl: 'max-age=31536000' // Cache for 1 year (QR codes don't change)
+  };
+  
+  try {
+    const command = new PutObjectCommand(params);
+    await client.send(command);
+    
+    // Return CloudFront URL
+    const cloudFrontDomain = process.env.CLOUDFRONT_DOMAIN || 'd2ux36xl31uki3.cloudfront.net';
+    const qrUrl = <code>https://${cloudFrontDomain}/${fileName}</code>;
+    
+    console.log(<code>✅ QR code uploaded to S3: ${qrUrl}</code>);
+    return qrUrl;
+  } catch (error) {
+    console.error('❌ Error uploading QR to S3:', error.message);
+    // Fall back to local storage
+    return saveQRLocally(qrBuffer, eventId);
+  }
+};</p><p>/**
+<ul>
+<li>Generate and store QR code for an event</li>
+<li>Automatically chooses local or S3 storage based on environment</li>
+<li>@param {string} registrationUrl - The URL to encode in the QR code</li>
+<li>@param {number} eventId - The event ID</li>
+<li>@returns {Promise<{path: string, fullUrl: string, base64: string}>}</li>
+</ul>
+ */
+const generateAndStoreQR = async (registrationUrl, eventId) => {
+  try {
+    // Generate QR code buffer
+    const qrBuffer = await generateQRBuffer(registrationUrl);
+    
+    // Convert buffer to base64 for inline embedding in emails
+    const base64Data = qrBuffer.toString('base64');
+    
+    let qrPath;
+    let fullUrl;
+    
+    if (process.env.NODE_ENV === 'production') {
+      // Production: Upload to S3 and get CloudFront URL
+      qrPath = await uploadQRToS3(qrBuffer, eventId);
+      fullUrl = qrPath; // In production, the path IS the full URL
+    } else {
+      // Development: Save locally
+      qrPath = saveQRLocally(qrBuffer, eventId);
+      // Construct full URL for local development
+      const baseUrl = process.env.API_BASE_URL || 'http://localhost:5000';
+      fullUrl = <code>${baseUrl}${qrPath}</code>;
+    }
+    
+    console.log(<code>QR code generated for event ${eventId}:</code>);
+    console.log(<code>  Path: ${qrPath}</code>);
+    console.log(<code>  Full URL: ${fullUrl}</code>);
+    
+    return { path: qrPath, fullUrl, base64: base64Data };
+  } catch (error) {
+    console.error('Error generating/storing QR code:', error);
+    throw error;
+  }
+};</p><p>/**
+<ul>
+<li>Get the full URL for a stored QR code path</li>
+<li>@param {string} qrPath - The stored QR path from database</li>
+<li>@returns {string} - The full URL to access the QR code</li>
+</ul>
+ */
+const getQRFullUrl = (qrPath) => {
+  if (!qrPath) return null;
+  
+  // If the path is already a full URL (production), return as-is
+  if (qrPath.startsWith('http://') || qrPath.startsWith('https://')) {
+    return qrPath;
+  }
+  
+  // Otherwise, construct the full URL (development)
+  const baseUrl = process.env.API_BASE_URL || 'http://localhost:5000';
+  return <code>${baseUrl}${qrPath}</code>;
+};</p><p>module.exports = {
+  generateQRBuffer,
+  saveQRLocally,
+  uploadQRToS3,
+  generateAndStoreQR,
+  getQRFullUrl
+};</code></pre><h3>6.2 Event Controller Integration</h3><p><strong>File: <code>server/controllers/eventController.js</code></strong> (Relevant excerpt)</p><pre><code>const { generateAndStoreQR, getQRFullUrl } = require('../services/qrStorageService');</p><p>const createEvent = async (req, res) => {
+  try {
+    // 1. Generate unique token
+    const token = uuidv4();
+    
+    // 2. Create registration link
+    const base = process.env.INVITE_LINK_BASE || 'https://d2ux36xl31uki3.cloudfront.net';
+    const registration_link = <code>${base}?action=register&eventId=${eventName}&token=${token}</code>;
+    
+    // 3. Insert event into database (without QR initially)
+    const result = await pool.query(insertSql, values);
+    let created = result.rows[0];
+    
+    // 4. Generate and store QR code
+    let qrImagePath = null;
+    let qrImageUrl = null;
+    let qrBase64 = null;
+    
+    try {
+      const qrResult = await generateAndStoreQR(registration_link, created.id);
+      qrImagePath = qrResult.path;
+      qrImageUrl = qrResult.fullUrl;
+      qrBase64 = qrResult.base64; // For email embedding
+      
+      // 5. Update event with QR image path
+      await pool.query(
+        'UPDATE events SET qr_image_path = $1 WHERE id = $2',
+        [qrImagePath, created.id]
+      );
+      created.qr_image_path = qrImagePath;
+      
+      console.log(<code>QR code stored for event ${created.id}: ${qrImagePath}</code>);
+    } catch (qrError) {
+      console.error('Failed to generate/store QR code:', qrError);
+    }
+    
+    // 6. Send email with QR code
+    if (organizerEmail) {
+      const htmlContent = createEmailTemplate(qrBase64, qrImageUrl, eventData);
+      await sendEmail({ to: organizerEmail, html: htmlContent });
+    }
+    
+    // 7. Return response
+    return res.status(201).json({
+      ...created,
+      qrImageUrl: qrImageUrl
+    });
+  } catch (err) {
+    console.error('createEvent error:', err);
+    res.status(500).json({ error: 'Failed to create event' });
+  }
+};</code></pre><p>---</p><h2>7. Email Integration</h2><h3>7.1 Email Template with QR Code</h3><pre><code>const createEmailTemplate = (qrBase64, qrImageUrl, eventData) => {
+  // Prefer base64 for reliability, fallback to URL
+  const qrSrc = qrBase64 
+    ? <code>data:image/png;base64,${qrBase64}</code> 
+    : qrImageUrl;
+  
+  return <code>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    .qr-section {
+      background: #f0fdf4;
+      border: 2px solid #10b981;
+      padding: 30px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .qr-code-img {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="qr-section">
+    <h3>📱 Scan to Register</h3>
+    <p>Share this QR code with your attendees</p>
+    <div class="qr-code-img">
+      <img src="${qrSrc}" alt="Event QR Code" width="200">
+    </div>
+  </div>
+</body>
+</html>
+  </code>;
+};</code></pre><h3>7.2 Email Embedding Methods</h3><h4>Method 1: Base64 Inline (Primary - Always Works)</h4>
+<pre><code><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." /></code></pre><p><strong>Advantages:</strong>
+<ul>
+<li>✅ Embedded directly in email HTML</li>
+<li>✅ No external dependencies</li>
+<li>✅ Works even if S3 is down</li>
+<li>✅ No CORS issues</li>
+<li>✅ Displays in all email clients</li>
+</ul><p><strong>Disadvantages:</strong>
+<ul>
+<li>⚠️ Increases email size (~5KB per QR code)</li>
+</ul><h4>Method 2: External URL (Fallback)</h4>
+<pre><code><img src="https://d2ux36xl31uki3.cloudfront.net/qr/event_1.png" /></code></pre><p><strong>Advantages:</strong>
+<ul>
+<li>✅ Smaller email size</li>
+<li>✅ Cached by CDN</li>
+<li>✅ Can be updated without resending email</li>
+</ul><p><strong>Disadvantages:</strong>
+<ul>
+<li>❌ Requires S3 public access</li>
+<li>❌ Can break if object deleted</li>
+<li>❌ Some email clients block external images</li>
+</ul><h3>7.3 Dual Method Implementation</h3><pre><code>// ALWAYS prefer Base64 for emails
+const qrSrc = qrBase64 ? <code>data:image/png;base64,${qrBase64}</code> : qrImageUrl;</p><p>return qrSrc ? <code>
+  <div class="qr-section">
+    <img src="${qrSrc}" alt="Event QR Code" width="200">
+  </div>
+</code> : '';</code></pre><p><strong>Logic:</strong>
+1. If <code>qrBase64</code> exists → Use base64 (primary)
+2. Else if <code>qrImageUrl</code> exists → Use external URL (fallback)
+3. Else → Don't show QR section</p><p>---</p><h2>8. QR Code Scanning</h2><h3>8.1 Frontend Scanner Implementation</h3><p><strong>File: <code>client/src/components/QRScanner.jsx</code></strong></p><pre><code>import { Html5QrcodeScanner } from 'html5-qrcode';
+import { useEffect } from 'react';</p><p>const QRScanner = () => {
+  useEffect(() => {
+    const scanner = new Html5QrcodeScanner(
+      "qr-reader",
+      { 
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+      },
+      false
+    );
+    
+    scanner.render(onScanSuccess, onScanError);
+    
+    return () => {
+      scanner.clear();
+    };
+  }, []);
+  
+  const onScanSuccess = (decodedText, decodedResult) => {
+    console.log(<code>QR Code scanned: ${decodedText}</code>);
+    
+    // Extract token from URL
+    const url = new URL(decodedText);
+    const token = url.searchParams.get('token');
+    
+    // Redirect to registration page
+    window.location.href = decodedText;
+  };
+  
+  const onScanError = (error) => {
+    // Handle scan errors silently
+    console.warn(<code>QR scan error: ${error}</code>);
+  };
+  
+  return (
+    <div>
+      <h2>Scan QR Code</h2>
+      <div id="qr-reader"></div>
+    </div>
+  );
+};</p><p>export default QRScanner;</code></pre><h3>8.2 QR Code Content Format</h3><p><strong>Encoded URL:</strong>
+<pre><code>https://d2ux36xl31uki3.cloudfront.net?action=register&eventId=TechExpo2026&eventName=Tech%20Expo%202026&eventDate=2026-03-15&token=a1b2c3d4-e5f6-7890-abcd-ef1234567890</code></pre><p><strong>URL Parameters:</strong>
+<ul>
+<li><code>action</code>: <code>register</code> (action type)</li>
+<li><code>eventId</code>: Event identifier</li>
+<li><code>eventName</code>: Event name (URL encoded)</li>
+<li><code>eventDate</code>: Event start date</li>
+<li><code>token</code>: Unique registration token (UUID)</li>
+</ul><h3>8.3 Registration Flow</h3><pre><code>User Scans QR Code
+    ↓
+QR Scanner Decodes URL
+    ↓
+Extract Token from URL
+    ↓
+Redirect to Registration Page
+    ↓
+Frontend Loads with Token
+    ↓
+Fetch Event Details by Token
+    ↓
+Display Registration Form
+    ↓
+User Fills Form
+    ↓
+Submit Registration
+    ↓
+Generate Visitor QR Code
+    ↓
+Send Confirmation Email</code></pre><p>---</p><h2>9. Storage Mechanisms</h2><h3>9.1 Local Storage (Development)</h3><p><strong>Directory Structure:</strong>
+<pre><code>server/
+└── uploads/
+    └── qrs/
+        ├── event-1.png
+        ├── event-2.png
+        ├── event-3.png
+        └── ...</code></pre><p><strong>File Naming Convention:</strong>
+<pre><code>event-{eventId}.png</code></pre><p><strong>Access URL:</strong>
+<pre><code>http://localhost:5000/uploads/qrs/event-{eventId}.png</code></pre><p><strong>Storage Code:</strong>
+<pre><code>const uploadDir = path.join(process.cwd(), 'uploads', 'qrs');
+fs.mkdirSync(uploadDir, { recursive: true });
+const filePath = path.join(uploadDir, <code>event-${eventId}.png</code>);
+fs.writeFileSync(filePath, qrBuffer);</code></pre><h3>9.2 S3 Storage (Production)</h3><p><strong>Bucket Structure:</strong>
+<pre><code>s3://expo-project-prod-frontend/
+└── qr/
+    ├── event_1.png
+    ├── event_2.png
+    ├── event_3.png
+    └── ...</code></pre><p><strong>File Naming Convention:</strong>
+<pre><code>qr/event_{eventId}.png</code></pre><p><strong>Access URL:</strong>
+<pre><code>https://d2ux36xl31uki3.cloudfront.net/qr/event_{eventId}.png</code></pre><p><strong>Upload Code:</strong>
+<pre><code>const params = {
+  Bucket: 'expo-project-prod-frontend',
+  Key: <code>qr/event_${eventId}.png</code>,
+  Body: qrBuffer,
+  ContentType: 'image/png',
+  CacheControl: 'max-age=31536000'
+};
+await s3Client.send(new PutObjectCommand(params));</code></pre><h3>9.3 Database Storage</h3><p><strong>Table: <code>events</code></strong>
+<pre><code>CREATE TABLE events (
+  id SERIAL PRIMARY KEY,
+  qr_token VARCHAR(255) UNIQUE,      -- UUID token
+  qr_image_path TEXT,                 -- Path or URL to QR image
+  registration_link TEXT,             -- Full registration URL
+  ...
+);</code></pre><p><strong>Example Data:</strong>
+<pre><code>-- Local Development
+qr_token: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+qr_image_path: '/uploads/qrs/event-1.png'
+registration_link: 'http://localhost:5173?action=register&token=a1b2...'</p><p>-- Production
+qr_token: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+qr_image_path: 'https://d2ux36xl31uki3.cloudfront.net/qr/event_1.png'
+registration_link: 'https://d2ux36xl31uki3.cloudfront.net?action=register&token=a1b2...'</code></pre><h3>9.4 Comparison Table</h3><p>| Aspect | Local Storage | S3 Storage |
+|--------|---------------|------------|
+| <strong>Location</strong> | Server filesystem | AWS S3 Bucket |
+| <strong>Access</strong> | HTTP server | CloudFront CDN |
+| <strong>Scalability</strong> | Limited by disk | Unlimited |
+| <strong>Reliability</strong> | Single point of failure | 99.999999999% durability |
+| <strong>Speed</strong> | Fast (local) | Fast (CDN cached) |
+| <strong>Cost</strong> | Free (disk space) | ~$0.023/GB/month |
+| <strong>Backup</strong> | Manual | Automatic (S3 versioning) |
+| <strong>Global Access</strong> | No | Yes (CloudFront) |</p><p>---</p><h2>10. Troubleshooting Guide</h2><h3>10.1 Common Issues</h3><h4>Issue 1: QR Code Not Generating</h4></p><p><strong>Symptoms:</strong>
+<ul>
+<li>Event created but no QR code</li>
+<li><code>qr_image_path</code> is NULL in database</li>
+</ul><p><strong>Diagnosis:</strong>
+<pre><code><h1>Check server logs</h1>
+tail -f server/server.log | grep "QR"</p><h1>Check if qrcode library is installed</h1>
+npm list qrcode</code></pre><p><strong>Solutions:</strong>
+<pre><code><h1>Install qrcode library</h1>
+npm install qrcode</p><h1>Restart server</h1>
+npm start</code></pre><h4>Issue 2: 403 Forbidden on QR URL (Production)</h4></p><p><strong>Symptoms:</strong>
+<ul>
+<li>QR code generates successfully</li>
+<li>URL returns 403 Forbidden</li>
+<li>Email shows broken image</li>
+</ul><p><strong>Diagnosis:</strong>
+<pre><code><h1>Test QR URL</h1>
+curl -I https://d2ux36xl31uki3.cloudfront.net/qr/event_1.png</p><h1>Check S3 bucket policy</h1>
+aws s3api get-bucket-policy --bucket expo-project-prod-frontend</code></pre><p><strong>Solutions:</strong>
+<pre><code><h1>Apply public read policy</h1>
+cd server
+./configure-s3-public-access.sh</p><h1>Disable Block Public Access</h1>
+aws s3api put-public-access-block \
+  --bucket expo-project-prod-frontend \
+  --public-access-block-configuration \
+    "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"</code></pre><h4>Issue 3: QR Code Not Displaying in Email</h4></p><p><strong>Symptoms:</strong>
+<ul>
+<li>QR code generated</li>
+<li>Email received</li>
+<li>QR code section is blank</li>
+</ul><p><strong>Diagnosis:</strong>
+<pre><code>// Check if base64 is being generated
+console.log('Base64 length:', qrBase64 ? qrBase64.length : 0);</p><p>// Check email HTML source
+// Look for: <img src="data:image/png;base64,..."</code></pre><p><strong>Solutions:</strong>
+1. Verify base64 conversion:
+<pre><code>const base64Data = qrBuffer.toString('base64');
+console.log('Base64:', base64Data.substring(0, 50) + '...');</code></pre><p>2. Check email template:
+<pre><code>const qrSrc = qrBase64 ? <code>data:image/png;base64,${qrBase64}</code> : qrImageUrl;</code></pre><p>3. Test with diagnostic script:
+<pre><code>node server/test-qr-email-diagnostic.js</code></pre><h4>Issue 4: Local QR Files Not Accessible</h4></p><p><strong>Symptoms:</strong>
+<ul>
+<li>QR code saved to <code>/uploads/qrs/</code></li>
+<li>404 error when accessing URL</li>
+</ul><p><strong>Diagnosis:</strong>
+<pre><code><h1>Check if file exists</h1>
+ls -la server/uploads/qrs/</p><h1>Check server static file serving</h1>
+curl http://localhost:5000/uploads/qrs/event-1.png</code></pre><p><strong>Solutions:</strong>
+<pre><code>// Ensure static middleware is configured
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));</code></pre><h4>Issue 5: S3 Upload Fails</h4></p><p><strong>Symptoms:</strong>
+<ul>
+<li>Error: "Access Denied" or "Invalid credentials"</li>
+<li>QR code falls back to local storage</li>
+</ul><p><strong>Diagnosis:</strong>
+<pre><code><h1>Check AWS credentials</h1>
+aws sts get-caller-identity</p><h1>Check environment variables</h1>
+echo $AWS_ACCESS_KEY_ID
+echo $AWS_SECRET_ACCESS_KEY</code></pre><p><strong>Solutions:</strong>
+<pre><code><h1>Configure AWS credentials</h1>
+aws configure</p><h1>Or set in .env file</h1>
+AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXX
+AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+AWS_REGION=ap-south-1</code></pre><h3>10.2 Debugging Checklist</h3><pre><code>□ QR code library installed (qrcode)
+□ Environment variables set correctly
+□ Database connection working
+□ AWS credentials configured (production)
+□ S3 bucket exists and accessible
+□ S3 bucket policy allows public read
+□ CloudFront distribution configured
+□ Email service (SES) configured
+□ Static file serving enabled (local)
+□ Server logs checked for errors</code></pre><h3>10.3 Diagnostic Commands</h3><pre><code><h1>Test QR generation locally</h1>
+node -e "const QRCode = require('qrcode'); QRCode.toFile('test.png', 'https://example.com', () => console.log('Success'));"</p><h1>Test S3 upload</h1>
+aws s3 cp test.png s3://expo-project-prod-frontend/qr/test.png</p><h1>Test S3 public access</h1>
+curl -I https://d2ux36xl31uki3.cloudfront.net/qr/test.png</p><h1>Test email sending</h1>
+node server/test-qr-email-diagnostic.js</p><h1>Check database</h1>
+psql expo_db -c "SELECT id, qr_token, qr_image_path FROM events WHERE id = 1;"</code></pre><p>---</p><h2>11. Testing & Verification</h2><h3>11.1 Unit Testing</h3><p><strong>Test QR Generation:</strong>
+<pre><code>// test/qr-generation.test.js
+const { generateQRBuffer } = require('../services/qrStorageService');</p><p>describe('QR Code Generation', () => {
+  it('should generate QR code buffer', async () => {
+    const url = 'https://example.com';
+    const buffer = await generateQRBuffer(url);
+    
+    expect(buffer).toBeInstanceOf(Buffer);
+    expect(buffer.length).toBeGreaterThan(0);
+  });
+  
+  it('should generate PNG format', async () => {
+    const buffer = await generateQRBuffer('https://example.com');
+    const header = buffer.toString('hex', 0, 8);
+    
+    // PNG header: 89504e470d0a1a0a
+    expect(header).toBe('89504e470d0a1a0a');
+  });
+});</code></pre><h3>11.2 Integration Testing</h3><p><strong>Test Event Creation with QR:</strong>
+<pre><code>// test/event-creation.test.js
+const request = require('supertest');
+const app = require('../server');</p><p>describe('Event Creation', () => {
+  it('should create event with QR code', async () => {
+    const response = await request(app)
+      .post('/api/events')
+      .send({
+        organizationId: 1,
+        eventName: 'Test Event',
+        organizerEmail: 'test@example.com'
+      });
+    
+    expect(response.status).toBe(201);
+    expect(response.body.qr_image_path).toBeDefined();
+    expect(response.body.qr_token).toBeDefined();
+    expect(response.body.registration_link).toBeDefined();
+  });
+});</code></pre><h3>11.3 Manual Testing</h3><p><strong>Local Environment:</strong>
+<pre><code><h1>1. Start server</h1>
+npm start</p><h1>2. Create event</h1>
+curl -X POST http://localhost:5000/api/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organizationId": 1,
+    "eventName": "Test Event",
+    "organizerEmail": "your-email@example.com"
+  }'</p><h1>3. Check uploads directory</h1>
+ls -la server/uploads/qrs/</p><h1>4. Open QR code in browser</h1>
+xdg-open http://localhost:5000/uploads/qrs/event-1.png</p><h1>5. Check email inbox</h1>
+<h1>Look for email with QR code</h1></code></pre><p><strong>Production Environment:</strong>
+<pre><code><h1>1. Create event via dashboard</h1>
+<h1>https://d2ux36xl31uki3.cloudfront.net</h1><h1>2. Check S3 bucket</h1>
+aws s3 ls s3://expo-project-prod-frontend/qr/</p><h1>3. Test QR URL</h1>
+curl -I https://d2ux36xl31uki3.cloudfront.net/qr/event_1.png</p><h1>4. Check email</h1>
+<h1>Verify QR code displays correctly</h1><h1>5. Scan QR code</h1>
+<h1>Use phone camera to scan and verify redirect</h1></code></pre><h3>11.4 Diagnostic Scripts</h3><p><strong>Test QR Email (Complete Flow):</strong>
+<pre><code>cd server
+node test-qr-email-diagnostic.js</code></pre><p><strong>Output:</strong>
+<pre><code>🔍 QR CODE EMAIL DIAGNOSTIC TEST</p><p>1️⃣ ENVIRONMENT CONFIGURATION:
+   NODE_ENV: production
+   CLOUDFRONT_DOMAIN: d2ux36xl31uki3.cloudfront.net
+   S3_QR_BUCKET: expo-project-prod-frontend
+   AWS_REGION: ap-south-1
+   AWS_ACCESS_KEY_ID: ✅ SET
+   SES_FROM_EMAIL: noreply@example.com</p><p>2️⃣ GENERATING TEST QR CODE:
+   ✅ QR Code Generated Successfully!
+   Path: https://d2ux36xl31uki3.cloudfront.net/qr/event_999999.png
+   Base64 Length: 4944 characters</p><p>3️⃣ SENDING TEST EMAIL:
+   ✅ Email Sent Successfully!
+   Recipient: test@example.com</code></pre><p>---</p><h2>12. Best Practices</h2><h3>12.1 Development Best Practices</h3><p>1. <strong>Always Use Base64 for Emails</strong>
+   <pre><code>   // ✅ Good: Base64 primary, URL fallback
+   const qrSrc = qrBase64 ? <code>data:image/png;base64,${qrBase64}</code> : qrImageUrl;
+   
+   // ❌ Bad: URL only
+   const qrSrc = qrImageUrl;
+   ``<code></p><p>2. <strong>Handle Errors Gracefully</strong>
+   </code>`<code>javascript
+   try {
+     const qrResult = await generateAndStoreQR(url, eventId);
+   } catch (error) {
+     console.error('QR generation failed:', error);
+     // Continue event creation even if QR fails
+   }
+   </code>`<code></p><p>3. <strong>Log Everything</strong>
+   </code>`<code>javascript
+   console.log(</code>✅ QR code uploaded: ${qrUrl}<code>);
+   console.log(</code>📧 Email sent to: ${email}<code>);
+   console.error(</code>❌ S3 upload failed: ${error.message}<code>);
+   </code>`<code></p><p>4. <strong>Use Environment Variables</strong>
+   </code>`<code>javascript
+   // ✅ Good: Configurable
+   const bucket = process.env.S3_QR_BUCKET;
+   
+   // ❌ Bad: Hardcoded
+   const bucket = 'expo-project-prod-frontend';
+   </code>`<code></p><h3>12.2 Production Best Practices</h3><p>1. <strong>Enable S3 Versioning</strong>
+   </code>`<code>bash
+   aws s3api put-bucket-versioning \
+     --bucket expo-project-prod-frontend \
+     --versioning-configuration Status=Enabled
+   </code>`<code></p><p>2. <strong>Set Appropriate Cache Headers</strong>
+   </code>`<code>javascript
+   CacheControl: 'max-age=31536000' // 1 year for QR codes
+   </code>`<code></p><p>3. <strong>Use CloudFront for Distribution</strong>
+<ul>
+<li>Faster global access</li>
+<li>Reduced S3 costs</li>
+<li>HTTPS by default</li>
+</ul><p>4. <strong>Monitor S3 Costs</strong>
+   </code>`<code>bash
+   # Check S3 storage usage
+   aws s3 ls s3://expo-project-prod-frontend/qr/ --summarize --human-readable --recursive
+   </code>`<code></p><p>5. <strong>Implement Cleanup for Old QR Codes</strong>
+   </code>`<code>javascript
+   // Delete QR codes for deleted events
+   const deleteQR = async (qrPath) => {
+     if (qrPath.startsWith('https://')) {
+       // Delete from S3
+       const key = qrPath.split('.net/')[1];
+       await s3Client.send(new DeleteObjectCommand({
+         Bucket: process.env.S3_QR_BUCKET,
+         Key: key
+       }));
+     } else {
+       // Delete local file
+       fs.unlinkSync(path.join(process.cwd(), qrPath));
+     }
+   };
+   </code>`<code></p><h3>12.3 Security Best Practices</h3><p>1. <strong>Use Unique Tokens</strong>
+   </code>`<code>javascript
+   const token = uuidv4(); // Cryptographically secure
+   </code>`<code></p><p>2. <strong>Validate QR Scans</strong>
+   </code>`<code>javascript
+   // Verify token exists in database
+   const event = await pool.query(
+     'SELECT * FROM events WHERE qr_token = $1',
+     [token]
+   );
+   if (!event.rows.length) {
+     throw new Error('Invalid QR code');
+   }
+   </code>`<code></p><p>3. <strong>Secure S3 Bucket</strong>
+<ul>
+<li>Only allow public read for </code>/qr/*<code> folder</li>
+<li>Block public write access</li>
+<li>Enable logging</li>
+</ul><p>4. <strong>Use HTTPS Only</strong>
+   </code>`<code>javascript
+   // Force HTTPS in production
+   if (process.env.NODE_ENV === 'production' && req.protocol !== 'https') {
+     return res.redirect(</code>https://${req.hostname}${req.url}<code>);
+   }
+   </code>`<code></p><h3>12.4 Performance Best Practices</h3><p>1. <strong>Generate QR Asynchronously</strong>
+   </code>`<code>javascript
+   // Don't block event creation
+   generateAndStoreQR(url, eventId)
+     .then(result => updateDatabase(result))
+     .catch(error => console.error(error));
+   </code>`<code></p><p>2. <strong>Use Appropriate QR Size</strong>
+   </code>`<code>javascript
+   // 300x300 is optimal for scanning and file size
+   width: 300 // ~3-5KB file size
+   </code>`<code></p><p>3. <strong>Enable Compression</strong>
+   </code>`<code>javascript
+   // PNG is already compressed, but ensure optimal settings
+   errorCorrectionLevel: 'H' // High correction, slightly larger but more reliable
+   </code>`<code></p><p>4. <strong>Cache QR Codes</strong>
+   </code>`<code>javascript
+   // CloudFront caching
+   CacheControl: 'max-age=31536000'
+   
+   // Browser caching
+   res.setHeader('Cache-Control', 'public, max-age=31536000');
+   </code>`<code></p><p>---</p><h2>Appendix A: Environment Variables Reference</h2><h3>Local Development (.env)</h3></code></pre>bash
+PORT=5000
+NODE_ENV=development
+DATABASE_URL=postgresql://postgres:password@localhost:5432/expo_db
+API_BASE_URL=http://localhost:5000
+SES_FROM_EMAIL=test@example.com
+<pre><code>
+<h3>Production (.env)</h3></code></pre>bash
+PORT=5000
+NODE_ENV=production
+DATABASE_URL=postgresql://user:pass@rds-endpoint:5432/expo_db
+AWS_REGION=ap-south-1
+AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXX
+AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+CLOUDFRONT_DOMAIN=d2ux36xl31uki3.cloudfront.net
+S3_QR_BUCKET=expo-project-prod-frontend
+SES_FROM_EMAIL=noreply@yourdomain.com
+INVITE_LINK_BASE=https://d2ux36xl31uki3.cloudfront.net
+<pre><code>
+---</p><h2>Appendix B: Useful Commands</h2>
+</code></pre>bash
+<h1>Local Development</h1>
+npm start                                    # Start server
+ls -la server/uploads/qrs/                  # List QR codes
+xdg-open server/uploads/qrs/event-1.png    # View QR code</p><h1>Production</h1>
+aws s3 ls s3://expo-project-prod-frontend/qr/  # List S3 QR codes
+aws s3 cp s3://expo-project-prod-frontend/qr/event_1.png ./  # Download QR
+curl -I https://d2ux36xl31uki3.cloudfront.net/qr/event_1.png  # Test access</p><h1>Testing</h1>
+node server/test-qr-email-diagnostic.js     # Test QR email
+curl -X POST http://localhost:5000/api/events  # Create test event</p><h1>Debugging</h1>
+tail -f server/server.log | grep "QR"       # Watch QR logs
+psql expo_db -c "SELECT id, qr_token, qr_image_path FROM events;"  # Check DB
+</code>``</p><p>---</p><h2>Appendix C: QR Code Specifications</h2><p>| Property | Value | Notes |
+|----------|-------|-------|
+| <strong>Format</strong> | PNG | Lossless compression |
+| <strong>Size</strong> | 300x300 pixels | Optimal for scanning |
+| <strong>File Size</strong> | 3-5 KB | Depends on content |
+| <strong>Color</strong> | Black on white | Standard QR colors |
+| <strong>Error Correction</strong> | High (H) | 30% damage tolerance |
+| <strong>Margin</strong> | 2 modules | White border around QR |
+| <strong>Encoding</strong> | UTF-8 | Supports international characters |</p><p>---</p><p><strong>End of Documentation</strong></p><p>For questions or issues, refer to the troubleshooting section or contact the development team.</p><p>---</p><p><strong>Document Version:</strong> 2.0  
+<strong>Last Updated:</strong> February 4, 2026  
+<strong>Maintained By:</strong> Billiton Event Management Team
+</p>
+
+    </div>
+</body>
+</html>
+

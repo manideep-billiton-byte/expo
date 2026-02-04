@@ -98,8 +98,8 @@ const uploadQRToS3 = async (qrBuffer, eventId) => {
         Key: fileName,
         Body: qrBuffer,
         ContentType: 'image/png',
-        CacheControl: 'max-age=31536000', // Cache for 1 year (QR codes don't change)
-        ACL: 'public-read' // Make the QR image publicly readable for email clients
+        CacheControl: 'max-age=31536000' // Cache for 1 year (QR codes don't change)
+        // Note: ACL removed - bucket should have public read policy configured instead
     };
 
     try {
@@ -110,7 +110,7 @@ const uploadQRToS3 = async (qrBuffer, eventId) => {
         const cloudFrontDomain = process.env.CLOUDFRONT_DOMAIN || 'd36p7i1koir3da.cloudfront.net';
         const qrUrl = `https://${cloudFrontDomain}/${fileName}`;
 
-        console.log(`✅ QR code uploaded to S3 with public-read ACL: ${qrUrl}`);
+        console.log(`✅ QR code uploaded to S3: ${qrUrl}`);
         return qrUrl;
     } catch (error) {
         console.error('❌ Error uploading QR to S3:', error.message);

@@ -204,16 +204,22 @@ const createEvent = async (req, res) => {
                 </div>
             </div>
 
-            ${qrBase64 || qrImageUrl ? `
+            ${(() => {
+                    // ALWAYS prefer Base64 for emails - it's embedded directly and guaranteed to display
+                    // External URLs can be deleted during deployments or blocked by email clients
+                    const qrSrc = qrBase64 ? `data:image/png;base64,${qrBase64}` : qrImageUrl;
+
+                    return qrSrc ? `
             <div class="qr-section">
                 <h3>📱 Scan to Register</h3>
                 <p>Share this QR code with your attendees for quick registration</p>
                 <div class="qr-code-img">
-                    <img src="${qrBase64 ? `data:image/png;base64,${qrBase64}` : qrImageUrl}" alt="Event Registration QR Code" width="200" style="display: block; margin: 0 auto;">
+                    <img src="${qrSrc}" alt="Event Registration QR Code" width="200" style="display: block; margin: 0 auto;">
                 </div>
                 <p style="margin-top: 15px; font-size: 12px;">Attendees can scan this code with their phone camera to access the registration page instantly.</p>
             </div>
-            ` : ''}
+            ` : '';
+                })()}
 
             <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
         </div>
@@ -242,7 +248,7 @@ ${registration_link}
 
 Share this link with your attendees via email, social media, WhatsApp, or your website.
 
-${qrBase64 || qrImageUrl ? `QR Code: Included in email (scan to register)` : ''}
+${qrBase64 ? `QR Code: Included in email (scan to register)` : ''}
 
 Powered by Billiton Event Management Platform
             `;
