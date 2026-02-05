@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Shield, Building2, Store, User, CheckCircle } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 
 const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
+    const navigate = useNavigate();
     const [selectedRole, setSelectedRole] = useState(initialLoginType);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -11,6 +13,14 @@ const Login = ({ onLogin, loginType: initialLoginType = 'master' }) => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    // Check for registration action in URL
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('action') === 'register') {
+            navigate(`/register${window.location.search}`, { replace: true });
+        }
+    }, [navigate]);
 
     // Listen for window resize to update mobile state
     useEffect(() => {

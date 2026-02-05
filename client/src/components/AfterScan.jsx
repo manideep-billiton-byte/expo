@@ -81,45 +81,56 @@ const AfterScan = ({ scannedData, scanType = 'QR_SCAN', onClose, onSave }) => {
         try {
             const exhibitorId = localStorage.getItem('exhibitorId');
             const eventId = localStorage.getItem('eventId');
-            const organizationId = localStorage.getItem('organizationId');
+            // const organizationId = localStorage.getItem('organizationId'); // Unused in scanned_visitors table
 
-            // Note: Scan data is already saved to exhibitor_scanned_visitors immediately when scan happens
-            // This form now only saves to the leads table with any additional details user fills in
-
-            // Save to leads table
-            const leadData = {
-                exhibitorId: exhibitorId ? parseInt(exhibitorId) : null,
-                eventId: eventId ? parseInt(eventId) : null,
-                organizationId: organizationId ? parseInt(organizationId) : null,
-                name: formData.name,
-                email: formData.email || null,
-                phone: formData.phone || null,
-                company: formData.company || null,
-                designation: formData.designation || null,
-                city: formData.city || null,
-                state: formData.state || null,
-                country: formData.country || null,
-                industry: formData.industry || null,
-                notes: formData.notes || null,
-                rating: formData.rating || null,
-                followUpDate: formData.followUpDate || null,
-                source: scanType === 'OCR' ? 'OCR Scan' : 'QR Scan',
-                status: 'New'
+            // Prepare payload for scanned_visitors table
+            const payload = {
+                visitorName: formData.name,
+                visitorEmail: formData.email,
+                visitorPhone: formData.phone,
+                visitorCompany: formData.company,
+                visitorDesignation: formData.designation,
+                notes: formData.notes,
+                interestLevel: formData.rating,
+                // lead_status: 'Contacted', // Can perform status update logic separately if needed
+                followUpDate: formData.followUpDate
+                // Extra fields like city/state aren't in scanned_visitors currently, 
+                // but can be added if schema is updated. For now we stick to schema.
             };
 
-            const response = await apiFetch('/api/leads', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(leadData)
-            });
+            let response;
+
+            // If we have an ID, update the existing record
+            if (scannedData && scannedData.id) {
+                console.log('Updating existing scan:', scannedData.id);
+                response = await apiFetch(`/api/scanned-visitors/${scannedData.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                // Fallback: This shouldn't happen often if saveScannedVisitorImmediately works,
+                // but if it does, create a new record in scanned_visitors
+                console.log('Creating new scan (fallback)');
+                response = await apiFetch('/api/scanned-visitors', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...payload,
+                        exhibitorId,
+                        eventId,
+                        scanType: scanType, // 'QR_SCAN' or 'OCR'
+                        // map fields to create payload
+                        visitorUniqueCode: scannedData?.uniqueCode || null
+                    })
+                });
+            }
 
             const result = await response.json();
 
             if (response.ok && result.success) {
-                alert('Lead saved successfully!');
-                if (onSave) onSave(result.lead);
+                // alert('Lead saved successfully!'); // Optional, maybe too noisy
+                if (onSave) onSave(result.scan || result.lead); // Adjust based on API response structure
                 if (onClose) onClose();
             } else {
                 alert('Failed to save lead: ' + (result.error || 'Unknown error'));

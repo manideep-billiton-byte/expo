@@ -50,10 +50,20 @@ const Scanner = ({ onBack }) => {
     const loadRecentScans = async () => {
         try {
             const exhibitorId = localStorage.getItem('exhibitorId');
-            const response = await apiFetch(`/api/leads?exhibitorId=${exhibitorId}`);
+            const response = await apiFetch(`/api/scanned-visitors?exhibitorId=${exhibitorId}`);
             if (response.ok) {
-                const leads = await response.json();
-                setRecentScans(leads.slice(0, 8)); // Get latest 8 scans
+                const data = await response.json();
+                if (data.success && data.scans) {
+                    // Map scanned visitor data to the format expected by the UI
+                    const formattedScans = data.scans.map(scan => ({
+                        id: scan.id,
+                        name: scan.visitor_name || 'Unknown',
+                        company: scan.visitor_company || '',
+                        scanned_at: scan.scanned_at,
+                        rating: scan.interest_level || 0
+                    }));
+                    setRecentScans(formattedScans.slice(0, 8)); // Get latest 8 scans
+                }
             }
         } catch (error) {
             console.error('Error loading recent scans:', error);
@@ -210,6 +220,9 @@ const Scanner = ({ onBack }) => {
         console.log('🎯 Scanned QR code:', decodedText);
         console.log('🎯 Code starts with VIS-:', decodedText.startsWith('VIS-'));
 
+        let finalVisitorData = null;
+        let scanType = 'QR_SCAN';
+
         // Check if it's a unique code format (e.g., VIS-XXXXXXXX)
         if (decodedText.startsWith('VIS-')) {
             // alert(`Debug: Scanning visitor code ${decodedText}`); // Commented out to reduce noise, enable if needed
@@ -220,10 +233,8 @@ const Scanner = ({ onBack }) => {
                 const eventId = localStorage.getItem('eventId');
                 // Include eventId in API call for event validation
                 const apiUrl = getApiUrl(`/api/visitors/code/${decodedText}${eventId ? `?eventId=${eventId}` : ''}`);
-                console.log('🌐 API URL:', apiUrl);
 
                 const response = await fetch(apiUrl);
-                console.log('🌐 API Response Status:', response.status, response.statusText);
 
                 // Handle event mismatch (403 Forbidden)
                 if (response.status === 403) {
@@ -241,12 +252,9 @@ const Scanner = ({ onBack }) => {
 
                 if (response.ok) {
                     const result = await response.json();
-                    console.log('📦 API Response Data:', result);
-
                     if (result.success && result.visitor) {
-                        console.log('✅ Visitor found:', result.visitor);
                         // Format visitor data for display
-                        const visitorData = {
+                        finalVisitorData = {
                             name: `${result.visitor.first_name || ''} ${result.visitor.last_name || ''}`.trim(),
                             email: result.visitor.email,
                             phone: result.visitor.mobile,
@@ -256,55 +264,43 @@ const Scanner = ({ onBack }) => {
                             uniqueCode: result.visitor.unique_code,
                             visitorId: result.visitor.id
                         };
-
-                        setScannedData(visitorData);
-                        setCurrentScanType('QR_SCAN');
-                        // Save immediately to database
-                        saveScannedVisitorImmediately(visitorData, 'QR_SCAN');
-                        setShowAfterScan(true);
-                        return;
                     } else {
-                        console.error('❌ Invalid response structure:', result);
                         alert('Invalid response from server. Please contact support.');
                         return;
                     }
                 } else {
                     const errorData = await response.json().catch(() => ({}));
-                    console.error('❌ API Error:', response.status, errorData);
-                    alert(`Invalid or expired QR code.\n\nError: ${errorData.message || errorData.error || 'Visitor not found'}\n\nPlease ask the visitor to re-register or contact support.`);
+                    alert(`Invalid or expired QR code.\n\nError: ${errorData.message || errorData.error || 'Visitor not found'}`);
                     return;
                 }
             } catch (error) {
                 console.error('❌ Error fetching visitor data:', error);
-                alert(`Failed to fetch visitor details.\n\nError: ${error.message}\n\nPlease check:\n1. Server is running\n2. Network connection\n3. API endpoint is accessible`);
+                alert(`Failed to fetch visitor details.\n\nError: ${error.message}`);
                 return;
             }
         } else {
-            console.log('⚠️ Not a visitor code (does not start with VIS-), trying JSON parse...');
-        }
-
-        // Try to parse as JSON (backward compatibility for old QR codes)
-        try {
-            const visitorData = JSON.parse(decodedText);
-            // Check if it's a visitor QR code
-            if (visitorData.name || visitorData.email) {
-                setScannedData(visitorData);
-                setCurrentScanType('QR_SCAN');
-                // Save immediately to database
-                saveScannedVisitorImmediately(visitorData, 'QR_SCAN');
-                setShowAfterScan(true);
-                return;
+            // Try to parse as JSON (backward compatibility)
+            try {
+                const jsonVisitor = JSON.parse(decodedText);
+                if (jsonVisitor.name || jsonVisitor.email) {
+                    finalVisitorData = jsonVisitor;
+                }
+            } catch (e) {
+                // Not JSON, treat as raw text
             }
-        } catch (e) {
-            // Not JSON, treat as regular lead scan
         }
 
-        // Regular lead scan - show AfterScan form
-        const parsedScannedData = typeof decodedText === 'string' ? { rawData: decodedText } : decodedText;
-        setScannedData(decodedText);
-        setCurrentScanType('QR_SCAN');
-        // Save immediately to database  
-        saveScannedVisitorImmediately(parsedScannedData, 'QR_SCAN');
+        // Fallback for raw text
+        if (!finalVisitorData) {
+            finalVisitorData = typeof decodedText === 'string' ? { rawData: decodedText } : decodedText;
+        }
+
+        // Save immediately and get ID
+        const savedRecord = await saveScannedVisitorImmediately(finalVisitorData, scanType);
+
+        // Use the saved record if available (includes ID), otherwise local data
+        setScannedData(savedRecord || finalVisitorData);
+        setCurrentScanType(scanType);
         setShowAfterScan(true);
     };
 
@@ -318,7 +314,9 @@ const Scanner = ({ onBack }) => {
 
     const handleLeadSaved = (lead) => {
         // Add to recent scans
-        setRecentScans(prev => [lead, ...prev.slice(0, 7)]);
+        // But since we reload recent scans in handleAfterScanClose, this might be redundant
+        // tailored to just update UI instantly if needed
+        loadRecentScans();
     };
 
     // Save scanned visitor data immediately to database
@@ -356,12 +354,16 @@ const Scanner = ({ onBack }) => {
             const result = await response.json();
 
             if (response.ok && result.success) {
-                console.log(`✅ ${scanType} scan saved successfully to exhibitor_scanned_visitors`);
+                console.log(`✅ ${scanType} scan saved successfully`);
+                return { ...visitorData, id: result.scan.id }; // Return merged data with DB ID
             } else {
                 console.error(`❌ Failed to save ${scanType} scan:`, result);
+                alert('Warning: Failed to save scan to database. Please try again.');
+                return null;
             }
         } catch (error) {
             console.error('Error saving scanned visitor immediately:', error);
+            return null;
         }
     };
 

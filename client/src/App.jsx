@@ -13,9 +13,17 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [loginType, setLoginType] = useState('master'); // 'master', 'organization', 'exhibitor', 'visitor'
     const [userType, setUserType] = useState('master');
-    const [isRegistering, setIsRegistering] = useState(false);
 
     useEffect(() => {
+        // DEBUG: Log valid routes and current path
+        console.log('🔄 App Routing Debug:', {
+            path: window.location.pathname,
+            search: window.location.search,
+            isAuthenticated,
+            userType,
+            timestamp: new Date().toISOString()
+        });
+
         // Check if user is already authenticated (from localStorage)
         const storedAuth = localStorage.getItem('isAuthenticated');
         const storedUserType = localStorage.getItem('userType');
@@ -40,10 +48,6 @@ function App() {
                 setLoginType('exhibitor');
             } else if (loginTypeParam === 'visitor') {
                 setLoginType('visitor');
-            }
-
-            if (urlParams.get('action') === 'register') {
-                setIsRegistering(true);
             }
         }
 

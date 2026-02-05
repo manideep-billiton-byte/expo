@@ -27,18 +27,32 @@ const PublicVisitorRegistration = () => {
     });
 
     useEffect(() => {
+        console.log('👋 PublicVisitorRegistration MOUNTED');
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
+        const eventId = urlParams.get('eventId');
+        const eventName = urlParams.get('eventName');
+        const eventDate = urlParams.get('eventDate');
 
         if (token) {
-            // Fetch event details using the token
+            // Fetch event details using the token (from QR scan)
+            console.log('📱 QR scan detected - fetching event by token:', token);
             fetchEventByToken(token);
-        } else {
-            // Fallback to URL params (for backward compatibility)
+        } else if (eventId) {
+            // Use URL params directly (for backward compatibility)
+            console.log('📝 Using URL parameters for event details');
             setEventDetails({
-                id: urlParams.get('eventId') || '',
-                name: urlParams.get('eventName') || 'Event',
-                date: urlParams.get('eventDate') || ''
+                id: eventId,
+                name: eventName || 'Event',
+                date: eventDate || ''
+            });
+        } else {
+            // No event info found
+            console.warn('⚠️ No event information found in URL');
+            setEventDetails({
+                id: '',
+                name: 'Event',
+                date: ''
             });
         }
     }, []);

@@ -34,7 +34,7 @@ const testRealEventCreation = async () => {
         // 2. Generate token and registration link
         const token = uuidv4();
         const base = process.env.INVITE_LINK_BASE || 'https://d2ux36xl31uki3.cloudfront.net';
-        const registration_link = `${base}?action=register&eventId=${encodeURIComponent(testEventData.eventName)}&token=${token}`;
+        const registration_link = `${base}/register?eventId=${encodeURIComponent(testEventData.eventName)}&token=${token}`;
 
         console.log('\n2️⃣ REGISTRATION LINK:');
         console.log('   Token:', token);

@@ -10,7 +10,7 @@ const testEmailQRMethod = async () => {
     console.log('\n🔍 TESTING QR CODE EMAIL METHOD\n');
     console.log('='.repeat(60));
 
-    const testUrl = 'https://d2ux36xl31uki3.cloudfront.net?action=register&eventId=test&token=test123';
+    const testUrl = 'https://d2ux36xl31uki3.cloudfront.net/register?eventId=test&token=test123';
     const testEventId = 888888;
 
     try {

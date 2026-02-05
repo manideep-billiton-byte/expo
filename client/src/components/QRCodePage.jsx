@@ -39,7 +39,11 @@ const QRCodePage = () => {
     const getQRImageUrl = () => {
         if (!data) return null;
 
-        const qrPath = type === 'event' ? data.qr_image_path : data.qr_code;
+        // Check for qr_image_url first (full URL from backend), then qr_image_path
+        const qrPath = type === 'event'
+            ? (data.qr_image_url || data.qr_image_path)
+            : (data.qr_code_url || data.qr_code);
+
         if (!qrPath) return null;
 
         // If it's already a full URL, return it

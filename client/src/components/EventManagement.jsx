@@ -473,7 +473,7 @@ const EventManagement = () => {
 
             // Generate registration link with event details
             const baseUrl = window.location.origin;
-            const regUrl = `${baseUrl}/?action=register&eventId=${data.id}&eventName=${encodeURIComponent(eventData.eventName)}&eventDate=${encodeURIComponent(eventData.startDate)}`;
+            const regUrl = `${baseUrl}/register?eventId=${data.id}&eventName=${encodeURIComponent(eventData.eventName)}&eventDate=${encodeURIComponent(eventData.startDate)}&token=${data.qr_token}`;
 
             setRegistrationLink(regUrl);
 

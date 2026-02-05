@@ -23,7 +23,7 @@ const testQREmail = async () => {
 
     // 2. Generate test QR code
     console.log('\n2️⃣ GENERATING TEST QR CODE:');
-    const testUrl = 'https://d2ux36xl31uki3.cloudfront.net?action=register&eventId=test&token=test123';
+    const testUrl = 'https://d2ux36xl31uki3.cloudfront.net/register?eventId=test&token=test123';
     const testEventId = 999999; // Use a test ID
 
     try {

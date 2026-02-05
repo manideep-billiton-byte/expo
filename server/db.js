@@ -33,7 +33,7 @@ const dbConfig = {
 };
 
 console.log(`DB: Connected to ${nodeEnv.toUpperCase()} database`);
-console.log(`DB: Host: ${databaseUrl.includes('staging') ? 'STAGING' : databaseUrl.includes('prod') ? 'PRODUCTION' : 'OTHER'}`);
+console.log(`DB: Host: ${databaseUrl.includes('prod') ? 'PRODUCTION' : nodeEnv.toUpperCase()}`);
 
 const pool = new Pool(dbConfig);
 

@@ -68,7 +68,7 @@ async function generateQRCodeDataURL(url) {
 
 // Example usage
 if (require.main === module) {
-    const testUrl = 'https://d2ux36xl31uki3.cloudfront.net?action=register&token=example-token-123';
+    const testUrl = 'https://d2ux36xl31uki3.cloudfront.net/register?token=example-token-123';
     const outputDir = path.join(__dirname, 'qr-codes');
 
     // Create output directory if it doesn't exist

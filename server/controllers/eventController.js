@@ -41,7 +41,7 @@ const createEvent = async (req, res) => {
         // generate QR token and registration link
         const token = uuidv4();
         const base = process.env.INVITE_LINK_BASE || 'https://d36p7i1koir3da.cloudfront.net';
-        const registration_link = `${base.replace(/\/$/, '')}?action=register&eventId=${payload.eventName || 'event'}&eventName=${encodeURIComponent(payload.eventName || 'Event')}&eventDate=${payload.startDate || ''}&token=${token}`;
+        const registration_link = `${base.replace(/\/$/, '')}/register?eventId=${payload.eventName || 'event'}&eventName=${encodeURIComponent(payload.eventName || 'Event')}&eventDate=${payload.startDate || ''}&token=${token}`;
 
         // Note: 'name' column exists for legacy reasons with NOT NULL constraint
         const eventName = payload.eventName || payload.event_name || 'Untitled Event';
@@ -383,7 +383,14 @@ const getEventById = async (req, res) => {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        return res.json(result.rows[0]);
+        const event = result.rows[0];
+
+        // Convert qr_image_path to full URL if it exists
+        if (event.qr_image_path) {
+            event.qr_image_url = getQRFullUrl(event.qr_image_path);
+        }
+
+        return res.json(event);
     } catch (dbErr) {
         console.error('Error fetching event by ID:', dbErr);
         return res.status(500).json({ error: 'Failed to fetch event details', details: dbErr.message });
