@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, User, Info, Search, Download, MoreHorizontal, Plus, X, Check, ChevronRight, Mail, MessageSquare, Send, Smartphone, Calendar, MapPin, Building2, Download as DownloadIcon, Share2, Copy } from 'lucide-react';
+import { Eye, User, Info, Search, Download, MoreHorizontal, Plus, X, Check, ChevronRight, Mail, MessageSquare, Send, Smartphone, Calendar, MapPin, Building2, Download as DownloadIcon, Share2, Copy, Edit, Trash2 } from 'lucide-react';
 import { apiFetch } from '../utils/api';
+
 
 const VisitorsManagement = () => {
     const [activeTab, setActiveTab] = useState('All Visitors');
@@ -38,6 +39,17 @@ const VisitorsManagement = () => {
     // View Visitor Modal State
     const [selectedVisitor, setSelectedVisitor] = useState(null);
     const [viewVisitorModal, setViewVisitorModal] = useState(false);
+
+    // Actions dropdown and modals
+    const [openDropdown, setOpenDropdown] = useState(null);
+    const [editVisitorModal, setEditVisitorModal] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+    // Toast notification helper
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+    };
 
     const [visitorData, setVisitorData] = useState({
         ...defaultVisitorData
@@ -163,6 +175,83 @@ const VisitorsManagement = () => {
         loadEvents();
         loadVisitors();
     }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (openDropdown !== null) {
+                setOpenDropdown(null);
+            }
+        };
+
+        if (openDropdown !== null) {
+            document.addEventListener('click', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [openDropdown]);
+
+    // Handle Edit Visitor
+    const handleEditVisitor = async (visitorId) => {
+        try {
+            const visitor = visitors.find(v => v.id === visitorId);
+            if (visitor) {
+                setSelectedVisitor(visitor);
+                setEditVisitorModal(true);
+                setOpenDropdown(null);
+            }
+        } catch (error) {
+            showToast(error.message || 'Failed to load visitor details', 'error');
+        }
+    };
+
+    // Handle Update Visitor
+    const handleUpdateVisitor = async (e) => {
+        e.preventDefault();
+        if (!selectedVisitor) return;
+
+        try {
+            const response = await apiFetch(`/api/visitors/${selectedVisitor.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedVisitor)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to update visitor');
+
+            showToast('✅ Visitor updated successfully!', 'success');
+            setEditVisitorModal(false);
+            setSelectedVisitor(null);
+            await loadVisitors();
+        } catch (error) {
+            showToast('❌ ' + (error.message || 'Failed to update visitor'), 'error');
+        }
+    };
+
+    // Handle Delete Visitor
+    const handleDeleteVisitor = async (visitorId, visitorName) => {
+        if (!confirm(`⚠️ Are you sure you want to DELETE "${visitorName}"?\n\nThis action cannot be undone and will remove all associated data.`)) {
+            setOpenDropdown(null);
+            return;
+        }
+
+        try {
+            const response = await apiFetch(`/api/visitors/${visitorId}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to delete visitor');
+
+            showToast('✅ Visitor deleted successfully!', 'success');
+            setOpenDropdown(null);
+            await loadVisitors();
+        } catch (error) {
+            showToast('❌ ' + (error.message || 'Failed to delete visitor'), 'error');
+            setOpenDropdown(null);
+        }
+    };
 
     const handleViewVisitor = (visitor) => {
         setSelectedVisitor(visitor);
@@ -442,10 +531,111 @@ const VisitorsManagement = () => {
                                     <td style={{ color: '#475569' }}>{visitor.registered}</td>
                                     <td style={{ fontSize: '13px', color: '#64748b' }}>{visitor.checkIn}</td>
                                     <td style={{ fontSize: '13px', color: '#64748b' }}>{visitor.checkOut}</td>
-                                    <td onClick={(e) => e.stopPropagation()}>
-                                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                    <td style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenDropdown(openDropdown === visitor.id ? null : visitor.id);
+                                            }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                                        >
                                             <MoreHorizontal size={18} color="#64748b" />
                                         </button>
+
+                                        {/* Dropdown Menu */}
+                                        {openDropdown === visitor.id && (
+                                            <div
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: '0',
+                                                    top: '100%',
+                                                    marginTop: '4px',
+                                                    background: '#ffffff',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                                    border: '1px solid #e5e7eb',
+                                                    minWidth: '200px',
+                                                    zIndex: 9999,
+                                                    overflow: 'visible',
+                                                    backdropFilter: 'none',
+                                                    WebkitBackdropFilter: 'none'
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <div style={{ padding: '8px 0' }}>
+                                                    <button
+                                                        onClick={() => handleViewVisitor(visitor)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#334155',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Eye size={16} color="#64748b" />
+                                                        <span>View Details</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleEditVisitor(visitor.id)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#334155',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Edit size={16} color="#64748b" />
+                                                        <span>Edit Visitor</span>
+                                                    </button>
+
+                                                    <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }}></div>
+
+                                                    <button
+                                                        onClick={() => handleDeleteVisitor(visitor.id, visitor.name)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#ef4444',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Trash2 size={16} color="#ef4444" />
+                                                        <span>Delete Visitor</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -809,6 +999,79 @@ const VisitorsManagement = () => {
                             </div>
                         </div>
 
+
+                        {/* QR Code Button */}
+                        <div style={{
+                            marginTop: '24px',
+                            padding: '20px',
+                            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                            border: '2px solid #f59e0b',
+                            borderRadius: '16px',
+                            textAlign: 'center'
+                        }}>
+                            <h3 style={{
+                                fontSize: '16px',
+                                fontWeight: 600,
+                                color: '#92400e',
+                                margin: '0 0 8px 0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px'
+                            }}>
+                                👤 Visitor QR Code
+                            </h3>
+                            {selectedVisitor.unique_code && (
+                                <div style={{
+                                    background: 'white',
+                                    padding: '8px 16px',
+                                    borderRadius: '8px',
+                                    marginBottom: '12px',
+                                    display: 'inline-block'
+                                }}>
+                                    <span style={{ fontSize: '12px', color: '#78350f', fontWeight: 500 }}>Code: </span>
+                                    <span style={{ fontSize: '16px', color: '#f59e0b', fontWeight: 700, fontFamily: 'monospace' }}>
+                                        {selectedVisitor.unique_code}
+                                    </span>
+                                </div>
+                            )}
+                            <p style={{
+                                fontSize: '13px',
+                                color: '#b45309',
+                                marginBottom: '16px'
+                            }}>
+                                Share this visitor's QR code for easy check-in
+                            </p>
+                            <button
+                                onClick={() => window.open(`/qr/visitor/${selectedVisitor.id}`, '_blank')}
+                                style={{
+                                    padding: '12px 24px',
+                                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    color: 'white',
+                                    fontSize: '15px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    transition: 'transform 0.2s'
+                                }}
+                                onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+                                onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <rect x="3" y="3" width="7" height="7" />
+                                    <rect x="14" y="3" width="7" height="7" />
+                                    <rect x="14" y="14" width="7" height="7" />
+                                    <rect x="3" y="14" width="7" height="7" />
+                                </svg>
+                                View & Share QR Code
+                            </button>
+                        </div>
+
+
                         <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
                             <button
                                 onClick={() => { setViewVisitorModal(false); setSelectedVisitor(null); }}
@@ -818,6 +1081,26 @@ const VisitorsManagement = () => {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Toast Notification */}
+            {toast.show && (
+                <div style={{
+                    position: 'fixed',
+                    top: '20px',
+                    right: '20px',
+                    background: toast.type === 'success' ? '#10b981' : '#ef4444',
+                    color: 'white',
+                    padding: '16px 24px',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    zIndex: 10000,
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    animation: 'slideIn 0.3s ease-out'
+                }}>
+                    {toast.message}
                 </div>
             )}
         </div>

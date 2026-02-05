@@ -218,6 +218,9 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/users', organizationController.getUsers);
 app.get('/api/users/:id', organizationController.getUserById);
 app.post('/api/users', organizationController.createUser);
+app.put('/api/users/:id', organizationController.updateUser);
+app.patch('/api/users/:id/status', organizationController.updateUserStatus);
+app.delete('/api/users/:id', organizationController.deleteUser);
 
 // Plans & Coupons
 app.post('/api/create-plan', organizationController.createPlan);
@@ -229,6 +232,9 @@ app.get('/api/events/:id', eventController.getEventById);
 app.post('/api/events', eventController.createEvent);
 app.get('/api/events/by-token/:token', eventController.getEventByToken);
 app.put('/api/events/:id/ground-layout', eventController.updateEventGroundLayout);
+app.put('/api/events/:id', eventController.updateEvent);
+app.patch('/api/events/:id/status', eventController.updateEventStatus);
+app.delete('/api/events/:id', eventController.deleteEvent);
 
 // Exhibitors
 app.get('/api/exhibitors', exhibitorController.getExhibitors);
@@ -246,6 +252,9 @@ app.delete('/api/exhibitors/:id', exhibitorController.deleteExhibitor);
 app.get('/api/visitors', visitorController.getVisitors);
 app.post('/api/visitors', visitorController.createVisitor);
 app.get('/api/visitors/code/:uniqueCode', visitorController.getVisitorByCode);
+app.get('/api/visitors/:id', visitorController.getVisitorById);
+app.put('/api/visitors/:id', visitorController.updateVisitor);
+app.delete('/api/visitors/:id', visitorController.deleteVisitor);
 
 // Invoices
 app.get('/api/invoices', invoiceController.getInvoices);

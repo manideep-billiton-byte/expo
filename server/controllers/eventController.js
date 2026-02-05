@@ -96,10 +96,25 @@ const createEvent = async (req, res) => {
         let qrImageUrl = null;
         let qrBase64 = null;
         try {
+            console.log(`🔄 Generating QR code for event ${created.id}...`);
             const qrResult = await generateAndStoreQR(registration_link, created.id);
             qrImagePath = qrResult.path;
             qrImageUrl = qrResult.fullUrl;
             qrBase64 = qrResult.base64; // Get base64 for email embedding
+
+            // ✅ Enhanced validation and logging
+            console.log(`✅ QR Generation Result for event ${created.id}:`);
+            console.log(`   - Path: ${qrImagePath || 'MISSING'}`);
+            console.log(`   - Full URL: ${qrImageUrl || 'MISSING'}`);
+            console.log(`   - Base64 available: ${qrBase64 ? 'YES' : 'NO'}`);
+            console.log(`   - Base64 length: ${qrBase64 ? qrBase64.length : 0} bytes`);
+
+            if (!qrBase64) {
+                console.error(`⚠️ WARNING: QR base64 is MISSING for event ${created.id}!`);
+                console.error(`   This means QR code will NOT appear in the email!`);
+            } else {
+                console.log(`   - Base64 preview: ${qrBase64.substring(0, 50)}...`);
+            }
 
             // Update the event with the QR image path
             await pool.query(
@@ -107,9 +122,11 @@ const createEvent = async (req, res) => {
                 [qrImagePath, created.id]
             );
             created.qr_image_path = qrImagePath;
-            console.log(`QR code stored for event ${created.id}: ${qrImagePath}`);
+            console.log(`✅ QR code stored for event ${created.id}: ${qrImagePath}`);
         } catch (qrError) {
-            console.error('Failed to generate/store QR code:', qrError);
+            console.error(`❌ Failed to generate/store QR code for event ${created.id}:`, qrError);
+            console.error(`   Error details:`, qrError.message);
+            console.error(`   Stack:`, qrError.stack);
         }
 
         // Send email notification to organizer
@@ -208,6 +225,18 @@ const createEvent = async (req, res) => {
                     // ALWAYS prefer Base64 for emails - it's embedded directly and guaranteed to display
                     // External URLs can be deleted during deployments or blocked by email clients
                     const qrSrc = qrBase64 ? `data:image/png;base64,${qrBase64}` : qrImageUrl;
+
+                    // ✅ Log which method is being used
+                    if (qrSrc) {
+                        if (qrSrc.startsWith('data:image/png;base64,')) {
+                            console.log(`📧 Email QR Method: BASE64 embedding (${qrBase64.length} bytes) ✅`);
+                        } else {
+                            console.log(`📧 Email QR Method: External URL (${qrSrc}) ⚠️`);
+                            console.warn(`   WARNING: External URL may not work if S3 is not publicly accessible!`);
+                        }
+                    } else {
+                        console.error(`❌ Email QR Method: NONE - QR code will NOT appear in email!`);
+                    }
 
                     return qrSrc ? `
             <div class="qr-section">
@@ -361,4 +390,164 @@ const getEventById = async (req, res) => {
     }
 };
 
-module.exports = { getEvents, createEvent, getEventByToken, updateEventGroundLayout, getEventById };
+// Update event
+const updateEvent = async (req, res) => {
+    const { id } = req.params;
+    const payload = req.body || {};
+
+    try {
+        // Build dynamic update query based on provided fields
+        const updates = [];
+        const values = [];
+        let paramCount = 1;
+
+        const fieldMap = {
+            eventName: 'event_name',
+            event_name: 'event_name',
+            description: 'description',
+            eventType: 'event_type',
+            event_type: 'event_type',
+            eventMode: 'event_mode',
+            event_mode: 'event_mode',
+            industry: 'industry',
+            organizerName: 'organizer_name',
+            organizer_name: 'organizer_name',
+            contactPerson: 'contact_person',
+            contact_person: 'contact_person',
+            organizerEmail: 'organizer_email',
+            organizer_email: 'organizer_email',
+            organizerMobile: 'organizer_mobile',
+            organizer_mobile: 'organizer_mobile',
+            venue: 'venue',
+            city: 'city',
+            state: 'state',
+            country: 'country',
+            startDate: 'start_date',
+            start_date: 'start_date',
+            endDate: 'end_date',
+            end_date: 'end_date',
+            status: 'status'
+        };
+
+        // Process simple fields
+        for (const [key, dbColumn] of Object.entries(fieldMap)) {
+            if (payload[key] !== undefined) {
+                updates.push(`${dbColumn} = $${paramCount}`);
+                values.push(payload[key]);
+                paramCount++;
+            }
+        }
+
+        // Process JSONB fields
+        const jsonbFields = {
+            registration: 'registration',
+            leadCapture: 'lead_capture',
+            lead_capture: 'lead_capture',
+            communication: 'communication',
+            stallConfig: 'stall_config',
+            stall_config: 'stall_config',
+            stallTypes: 'stall_types',
+            stall_types: 'stall_types'
+        };
+
+        for (const [key, dbColumn] of Object.entries(jsonbFields)) {
+            if (payload[key] !== undefined) {
+                updates.push(`${dbColumn} = $${paramCount}`);
+                values.push(JSON.stringify(payload[key]));
+                paramCount++;
+            }
+        }
+
+        // Process boolean fields
+        if (payload.enableStalls !== undefined || payload.enable_stalls !== undefined) {
+            updates.push(`enable_stalls = $${paramCount}`);
+            values.push(payload.enableStalls || payload.enable_stalls);
+            paramCount++;
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+
+        // Add ID as last parameter
+        values.push(id);
+
+        const query = `UPDATE events SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+        const result = await pool.query(query, values);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        console.log(`Event ${id} updated successfully`);
+        return res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error updating event:', error);
+        return res.status(500).json({ error: 'Failed to update event', details: error.message });
+    }
+};
+
+// Update event status (suspend/activate)
+const updateEventStatus = async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+        if (!status) {
+            return res.status(400).json({ error: 'Status is required' });
+        }
+
+        const result = await pool.query(
+            'UPDATE events SET status = $1 WHERE id = $2 RETURNING *',
+            [status, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        console.log(`Event ${id} status updated to: ${status}`);
+        return res.json({
+            success: true,
+            message: `Event ${status.toLowerCase()} successfully`,
+            event: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Error updating event status:', error);
+        return res.status(500).json({ error: 'Failed to update event status', details: error.message });
+    }
+};
+
+// Delete event
+const deleteEvent = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const result = await pool.query('DELETE FROM events WHERE id = $1 RETURNING *', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        console.log(`Event ${id} deleted successfully`);
+        return res.json({
+            success: true,
+            message: 'Event deleted successfully',
+            event: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Error deleting event:', error);
+        return res.status(500).json({ error: 'Failed to delete event', details: error.message });
+    }
+};
+
+module.exports = {
+    getEvents,
+    createEvent,
+    getEventByToken,
+    updateEventGroundLayout,
+    getEventById,
+    updateEvent,
+    updateEventStatus,
+    deleteEvent
+};

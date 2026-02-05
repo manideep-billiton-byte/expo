@@ -1279,5 +1279,132 @@ module.exports = {
         } finally {
             client.release();
         }
+    },
+
+    // Update user
+    updateUser: async (req, res) => {
+        const { id } = req.params;
+        const payload = req.body || {};
+
+        try {
+            const updates = [];
+            const values = [];
+            let paramCount = 1;
+
+            const fieldMap = {
+                role: 'role',
+                firstName: 'first_name',
+                first_name: 'first_name',
+                lastName: 'last_name',
+                last_name: 'last_name',
+                email: 'email',
+                mobile: 'mobile',
+                department: 'department',
+                organizationId: 'organization_id',
+                organization_id: 'organization_id'
+            };
+
+            // Process simple fields
+            for (const [key, dbColumn] of Object.entries(fieldMap)) {
+                if (payload[key] !== undefined) {
+                    updates.push(`${dbColumn} = $${paramCount}`);
+                    values.push(payload[key]);
+                    paramCount++;
+                }
+            }
+
+            // Process JSONB fields
+            if (payload.permissions !== undefined) {
+                updates.push(`permissions = $${paramCount}`);
+                values.push(JSON.stringify(payload.permissions));
+                paramCount++;
+            }
+
+            if (payload.additionalPermissions !== undefined || payload.additional_permissions !== undefined) {
+                updates.push(`additional_permissions = $${paramCount}`);
+                values.push(JSON.stringify(payload.additionalPermissions || payload.additional_permissions));
+                paramCount++;
+            }
+
+            if (payload.security !== undefined) {
+                updates.push(`security = $${paramCount}`);
+                values.push(JSON.stringify(payload.security));
+                paramCount++;
+            }
+
+            if (updates.length === 0) {
+                return res.status(400).json({ error: 'No fields to update' });
+            }
+
+            // Add ID as last parameter
+            values.push(id);
+
+            const query = `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+            const result = await pool.query(query, values);
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            console.log(`User ${id} updated successfully`);
+            return res.json(result.rows[0]);
+        } catch (error) {
+            console.error('Error updating user:', error);
+            return res.status(500).json({ error: 'Failed to update user', details: error.message });
+        }
+    },
+
+    // Update user status (suspend/activate)
+    updateUserStatus: async (req, res) => {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        try {
+            if (!status) {
+                return res.status(400).json({ error: 'Status is required' });
+            }
+
+            const result = await pool.query(
+                'UPDATE users SET status = $1 WHERE id = $2 RETURNING *',
+                [status, id]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            console.log(`User ${id} status updated to: ${status}`);
+            return res.json({
+                success: true,
+                message: `User ${status.toLowerCase()} successfully`,
+                user: result.rows[0]
+            });
+        } catch (error) {
+            console.error('Error updating user status:', error);
+            return res.status(500).json({ error: 'Failed to update user status', details: error.message });
+        }
+    },
+
+    // Delete user
+    deleteUser: async (req, res) => {
+        const { id } = req.params;
+
+        try {
+            const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            console.log(`User ${id} deleted successfully`);
+            return res.json({
+                success: true,
+                message: 'User deleted successfully',
+                user: result.rows[0]
+            });
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            return res.status(500).json({ error: 'Failed to delete user', details: error.message });
+        }
     }
 };

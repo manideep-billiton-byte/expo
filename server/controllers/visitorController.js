@@ -326,4 +326,129 @@ const getVisitorByCode = async (req, res) => {
     }
 };
 
-module.exports = { getVisitors, createVisitor, loginVisitor, getVisitorByCode };
+// Get visitor by ID
+const getVisitorById = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const result = await pool.query(`
+            SELECT
+                v.*,
+                ev.event_name,
+                ev.organization_id
+            FROM visitors v
+            LEFT JOIN events ev ON ev.id = v.event_id
+            WHERE v.id = $1
+        `, [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Visitor not found' });
+        }
+
+        return res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error fetching visitor by ID:', err);
+        return res.status(500).json({ error: 'Failed to fetch visitor details', details: err.message });
+    }
+};
+
+// Update visitor
+const updateVisitor = async (req, res) => {
+    const { id } = req.params;
+    const payload = req.body || {};
+
+    try {
+        const updates = [];
+        const values = [];
+        let paramCount = 1;
+
+        const fieldMap = {
+            firstName: 'first_name',
+            first_name: 'first_name',
+            lastName: 'last_name',
+            last_name: 'last_name',
+            email: 'email',
+            mobile: 'mobile',
+            gender: 'gender',
+            age: 'age_group',
+            age_group: 'age_group',
+            organization: 'organization',
+            designation: 'designation',
+            visitorCategory: 'visitor_category',
+            visitor_category: 'visitor_category',
+            validDates: 'valid_dates',
+            valid_dates: 'valid_dates',
+            eventId: 'event_id',
+            event_id: 'event_id'
+        };
+
+        // Process simple fields
+        for (const [key, dbColumn] of Object.entries(fieldMap)) {
+            if (payload[key] !== undefined) {
+                updates.push(`${dbColumn} = $${paramCount}`);
+                values.push(payload[key]);
+                paramCount++;
+            }
+        }
+
+        // Process JSONB field
+        if (payload.communication !== undefined) {
+            updates.push(`communication = $${paramCount}`);
+            values.push(JSON.stringify(payload.communication));
+            paramCount++;
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+
+        // Add ID as last parameter
+        values.push(id);
+
+        const query = `UPDATE visitors SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+        const result = await pool.query(query, values);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Visitor not found' });
+        }
+
+        console.log(`Visitor ${id} updated successfully`);
+        return res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error updating visitor:', error);
+        return res.status(500).json({ error: 'Failed to update visitor', details: error.message });
+    }
+};
+
+// Delete visitor
+const deleteVisitor = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const result = await pool.query('DELETE FROM visitors WHERE id = $1 RETURNING *', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Visitor not found' });
+        }
+
+        console.log(`Visitor ${id} deleted successfully`);
+        return res.json({
+            success: true,
+            message: 'Visitor deleted successfully',
+            visitor: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Error deleting visitor:', error);
+        return res.status(500).json({ error: 'Failed to delete visitor', details: error.message });
+    }
+};
+
+module.exports = {
+    getVisitors,
+    createVisitor,
+    loginVisitor,
+    getVisitorByCode,
+    getVisitorById,
+    updateVisitor,
+    deleteVisitor
+};

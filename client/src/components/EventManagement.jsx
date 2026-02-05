@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2, Upload, Edit2, Trash2, Save, Grid } from 'lucide-react';
+import { Calendar, TrendingUp, FileText, Send, Search, Download, Plus, MoreHorizontal, X, Check, ChevronRight, ChevronDown, MapPin, Building2, Users, Image as ImageIcon, Eye, Clock, Laptop, Copy, CheckCircle2, Upload, Edit2, Trash2, Save, Grid, Edit, Ban } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 import StallSelector from './StallSelector';
+
 
 const EventManagement = () => {
     const [activeTab, setActiveTab] = useState('All Events');
@@ -91,6 +92,7 @@ const EventManagement = () => {
         price: 50000
     });
 
+
     // View Event Modal State
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [viewEventModal, setViewEventModal] = useState(false);
@@ -98,6 +100,18 @@ const EventManagement = () => {
     // Interactive Stall Selector State
     const [showStallSelector, setShowStallSelector] = useState(false);
     const [stallAssignments, setStallAssignments] = useState({});
+
+    // Actions dropdown and modals
+    const [openDropdown, setOpenDropdown] = useState(null);
+    const [editEventModal, setEditEventModal] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+    // Toast notification helper
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+    };
+
 
     // Handle View Event
     const handleViewEvent = async (eventId) => {
@@ -288,6 +302,112 @@ const EventManagement = () => {
         loadOrgs();
         loadEvents();
     }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (openDropdown !== null) {
+                setOpenDropdown(null);
+            }
+        };
+
+        if (openDropdown !== null) {
+            document.addEventListener('click', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [openDropdown]);
+
+    // Handle Edit Event
+    const handleEditEvent = async (eventId) => {
+        try {
+            const response = await apiFetch(`/api/events/${eventId}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to fetch event details');
+            setSelectedEvent(data.event || data);
+            setEditEventModal(true);
+            setOpenDropdown(null);
+        } catch (error) {
+            showToast(error.message || 'Failed to load event details', 'error');
+        }
+    };
+
+    // Handle Update Event
+    const handleUpdateEvent = async (e) => {
+        e.preventDefault();
+        if (!selectedEvent) return;
+
+        try {
+            const response = await apiFetch(`/api/events/${selectedEvent.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedEvent)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to update event');
+
+            showToast('✅ Event updated successfully!', 'success');
+            setEditEventModal(false);
+            setSelectedEvent(null);
+            await loadEvents();
+        } catch (error) {
+            showToast('❌ ' + (error.message || 'Failed to update event'), 'error');
+        }
+    };
+
+    // Handle Suspend/Activate Event
+    const handleSuspendEvent = async (eventId, currentStatus) => {
+        const newStatus = currentStatus === 'Suspended' ? 'Draft' : 'Suspended';
+        const action = newStatus === 'Suspended' ? 'suspend' : 'activate';
+
+        if (!confirm(`Are you sure you want to ${action} this event?`)) {
+            setOpenDropdown(null);
+            return;
+        }
+
+        try {
+            const response = await apiFetch(`/api/events/${eventId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || `Failed to ${action} event`);
+
+            showToast(`✅ Event ${action}d successfully!`, 'success');
+            setOpenDropdown(null);
+            await loadEvents();
+        } catch (error) {
+            showToast('❌ ' + (error.message || `Failed to ${action} event`), 'error');
+            setOpenDropdown(null);
+        }
+    };
+
+    // Handle Delete Event
+    const handleDeleteEvent = async (eventId, eventName) => {
+        if (!confirm(`⚠️ Are you sure you want to DELETE "${eventName}"?\n\nThis action cannot be undone and will remove all associated data.`)) {
+            setOpenDropdown(null);
+            return;
+        }
+
+        try {
+            const response = await apiFetch(`/api/events/${eventId}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to delete event');
+
+            showToast('✅ Event deleted successfully!', 'success');
+            setOpenDropdown(null);
+            await loadEvents();
+        } catch (error) {
+            showToast('❌ ' + (error.message || 'Failed to delete event'), 'error');
+            setOpenDropdown(null);
+        }
+    };
+
 
     const handleCreateEvent = async () => {
         setCreateEventLoading(true);
@@ -606,10 +726,134 @@ const EventManagement = () => {
                                     <td style={{ fontWeight: 600 }}>{event.visitors}</td>
                                     <td style={{ fontSize: '13px', color: '#64748b' }}>{event.createdDate}</td>
                                     <td style={{ fontSize: '13px', color: '#64748b' }}>{event.lastDate}</td>
-                                    <td onClick={(e) => e.stopPropagation()}>
-                                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                    <td style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenDropdown(openDropdown === event.id ? null : event.id);
+                                            }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                                        >
                                             <MoreHorizontal size={18} color="#64748b" />
                                         </button>
+
+                                        {/* Dropdown Menu */}
+                                        {openDropdown === event.id && (
+                                            <div
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: '0',
+                                                    top: '100%',
+                                                    marginTop: '4px',
+                                                    background: '#ffffff',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                                    border: '1px solid #e5e7eb',
+                                                    minWidth: '200px',
+                                                    zIndex: 9999,
+                                                    overflow: 'visible',
+                                                    backdropFilter: 'none',
+                                                    WebkitBackdropFilter: 'none'
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <div style={{ padding: '8px 0' }}>
+                                                    <button
+                                                        onClick={() => handleViewEvent(event.id)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#334155',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Eye size={16} color="#64748b" />
+                                                        <span>View Details</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleEditEvent(event.id)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#334155',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Edit size={16} color="#64748b" />
+                                                        <span>Edit Event</span>
+                                                    </button>
+
+                                                    <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }}></div>
+
+                                                    <button
+                                                        onClick={() => handleSuspendEvent(event.id, event.status)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#f59e0b',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#fffbeb'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Ban size={16} color="#f59e0b" />
+                                                        <span>{event.status === 'Suspended' ? 'Activate Event' : 'Suspend Event'}</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleDeleteEvent(event.id, event.name)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#ef4444',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Trash2 size={16} color="#ef4444" />
+                                                        <span>Delete Event</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -958,10 +1202,15 @@ const EventManagement = () => {
                                                 </select>
                                             </div>
                                         </div>
+                                    </div>
+                                )}
 
+                                {/* Step 2: Stall Config */}
+                                {modalStep === 2 && (
+                                    <div style={{ textAlign: 'left' }}>
                                         {/* Total Number of Stalls */}
                                         <div style={{
-                                            marginBottom: '20px',
+                                            marginBottom: '24px',
                                             padding: '20px',
                                             background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
                                             borderRadius: '12px',
@@ -1005,14 +1254,15 @@ const EventManagement = () => {
                                                     borderRadius: '10px',
                                                     fontSize: '15px',
                                                     fontWeight: 600,
+                                                    color: '#0c4a6e',
                                                     outline: 'none',
                                                     background: 'white',
-                                                    color: '#0c4a6e'
+                                                    transition: 'all 0.2s'
                                                 }}
                                             />
                                             <div style={{
                                                 marginTop: '12px',
-                                                padding: '10px 14px',
+                                                padding: '12px',
                                                 background: 'white',
                                                 borderRadius: '8px',
                                                 border: '1px solid #bae6fd'
@@ -1022,12 +1272,7 @@ const EventManagement = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
 
-                                {/* Step 2: Stall Config */}
-                                {modalStep === 2 && (
-                                    <div style={{ textAlign: 'left' }}>
                                         {/* Stall Types List */}
                                         <div style={{
                                             border: '1.5px solid #e2e8f0',
@@ -1194,8 +1439,8 @@ const EventManagement = () => {
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* Second Row: Number of Stalls, Start Number, Stall Color */}
-                                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '20px', marginBottom: '24px' }}>
+                                                                    {/* Second Row: Number of Stalls, Stall Color */}
+                                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '20px', marginBottom: '24px' }}>
                                                                         <div>
                                                                             <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Number of Stalls</label>
                                                                             <input
@@ -1203,24 +1448,6 @@ const EventManagement = () => {
                                                                                 min="1"
                                                                                 value={stallTypeForm.stallCount}
                                                                                 onChange={e => setStallTypeForm({ ...stallTypeForm, stallCount: parseInt(e.target.value) || 1 })}
-                                                                                style={{
-                                                                                    width: '100%',
-                                                                                    padding: '12px 14px',
-                                                                                    border: '1.5px solid #e2e8f0',
-                                                                                    borderRadius: '10px',
-                                                                                    fontSize: '14px',
-                                                                                    outline: 'none',
-                                                                                    background: 'white'
-                                                                                }}
-                                                                            />
-                                                                        </div>
-                                                                        <div>
-                                                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Start Number</label>
-                                                                            <input
-                                                                                type="number"
-                                                                                min="1"
-                                                                                value={stallTypeForm.startNumber}
-                                                                                onChange={e => setStallTypeForm({ ...stallTypeForm, startNumber: parseInt(e.target.value) || 1 })}
                                                                                 style={{
                                                                                     width: '100%',
                                                                                     padding: '12px 14px',
@@ -1442,8 +1669,8 @@ const EventManagement = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Second Row: Number of Stalls, Start Number, Stall Color */}
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: '20px', marginBottom: '24px' }}>
+                                                {/* Second Row: Number of Stalls, Stall Color */}
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '20px', marginBottom: '24px' }}>
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Number of Stalls</label>
                                                         <input
@@ -1451,24 +1678,6 @@ const EventManagement = () => {
                                                             min="1"
                                                             value={stallTypeForm.stallCount}
                                                             onChange={e => setStallTypeForm({ ...stallTypeForm, stallCount: parseInt(e.target.value) || 1 })}
-                                                            style={{
-                                                                width: '100%',
-                                                                padding: '12px 14px',
-                                                                border: '1.5px solid #e2e8f0',
-                                                                borderRadius: '10px',
-                                                                fontSize: '14px',
-                                                                outline: 'none',
-                                                                background: 'white'
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#1e293b', marginBottom: '8px' }}>Start Number</label>
-                                                        <input
-                                                            type="number"
-                                                            min="1"
-                                                            value={stallTypeForm.startNumber}
-                                                            onChange={e => setStallTypeForm({ ...stallTypeForm, startNumber: parseInt(e.target.value) || 1 })}
                                                             style={{
                                                                 width: '100%',
                                                                 padding: '12px 14px',
@@ -2141,6 +2350,65 @@ const EventManagement = () => {
                                 </div>
                             </div>
 
+
+                            {/* QR Code Button */}
+                            <div style={{
+                                marginTop: '24px',
+                                padding: '20px',
+                                background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                                border: '2px solid #10b981',
+                                borderRadius: '16px',
+                                textAlign: 'center'
+                            }}>
+                                <h3 style={{
+                                    fontSize: '16px',
+                                    fontWeight: 600,
+                                    color: '#047857',
+                                    margin: '0 0 12px 0',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px'
+                                }}>
+                                    📱 Event QR Code
+                                </h3>
+                                <p style={{
+                                    fontSize: '13px',
+                                    color: '#059669',
+                                    marginBottom: '16px'
+                                }}>
+                                    Share this event's QR code for easy registration
+                                </p>
+                                <button
+                                    onClick={() => window.open(`/qr/event/${selectedEvent.id}`, '_blank')}
+                                    style={{
+                                        padding: '12px 24px',
+                                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        color: 'white',
+                                        fontSize: '15px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                    onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+                                    onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                                >
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <rect x="3" y="3" width="7" height="7" />
+                                        <rect x="14" y="3" width="7" height="7" />
+                                        <rect x="14" y="14" width="7" height="7" />
+                                        <rect x="3" y="14" width="7" height="7" />
+                                    </svg>
+                                    View & Share QR Code
+                                </button>
+                            </div>
+
+
                             <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
                                 <button
                                     onClick={() => { setViewEventModal(false); setSelectedEvent(null); }}
@@ -2168,6 +2436,26 @@ const EventManagement = () => {
                     onSave={handleStallSelectorSave}
                     onClose={() => setShowStallSelector(false)}
                 />
+            )}
+
+            {/* Toast Notification */}
+            {toast.show && (
+                <div style={{
+                    position: 'fixed',
+                    top: '20px',
+                    right: '20px',
+                    background: toast.type === 'success' ? '#10b981' : '#ef4444',
+                    color: 'white',
+                    padding: '16px 24px',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    zIndex: 10000,
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    animation: 'slideIn 0.3s ease-out'
+                }}>
+                    {toast.message}
+                </div>
             )}
         </div>
     );

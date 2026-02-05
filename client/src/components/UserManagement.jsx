@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, User, Search, Download, Plus, MoreHorizontal, X, ArrowLeft, Check, Shield, ShieldCheck, Mail, Lock, Globe, Settings, CreditCard, MessageSquare, Cpu, LineChart, Receipt, Calendar, Image, Eye, UserCheck, LifeBuoy, Building2, Send, Copy, ChevronDown } from 'lucide-react';
+import { Users, User, Search, Download, Plus, MoreHorizontal, X, ArrowLeft, Check, Shield, ShieldCheck, Mail, Lock, Globe, Settings, CreditCard, MessageSquare, Cpu, LineChart, Receipt, Calendar, Image, Eye, UserCheck, LifeBuoy, Building2, Send, Copy, ChevronDown, Edit, Ban, Trash2 } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 
 const UserManagement = () => {
@@ -43,6 +43,17 @@ const UserManagement = () => {
     // View User Modal State
     const [selectedUser, setSelectedUser] = useState(null);
     const [viewUserModal, setViewUserModal] = useState(false);
+
+    // Actions dropdown and modals
+    const [openDropdown, setOpenDropdown] = useState(null);
+    const [editUserModal, setEditUserModal] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+    // Toast notification helper
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+    };
 
     const [userData, setUserData] = useState({
         ...defaultUserData
@@ -149,6 +160,111 @@ const UserManagement = () => {
         loadOrgs();
         loadUsers();
     }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (openDropdown !== null) {
+                setOpenDropdown(null);
+            }
+        };
+
+        if (openDropdown !== null) {
+            document.addEventListener('click', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [openDropdown]);
+
+    // Handle Edit User
+    const handleEditUser = async (userId) => {
+        try {
+            const response = await apiFetch(`/api/users/${userId}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to fetch user details');
+            setSelectedUser(data.user || data);
+            setEditUserModal(true);
+            setOpenDropdown(null);
+        } catch (error) {
+            showToast(error.message || 'Failed to load user details', 'error');
+        }
+    };
+
+    // Handle Update User
+    const handleUpdateUser = async (e) => {
+        e.preventDefault();
+        if (!selectedUser) return;
+
+        try {
+            const response = await apiFetch(`/api/users/${selectedUser.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedUser)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to update user');
+
+            showToast('✅ User updated successfully!', 'success');
+            setEditUserModal(false);
+            setSelectedUser(null);
+            await loadUsers();
+        } catch (error) {
+            showToast('❌ ' + (error.message || 'Failed to update user'), 'error');
+        }
+    };
+
+    // Handle Suspend/Activate User
+    const handleSuspendUser = async (userId, currentStatus) => {
+        const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
+        const action = newStatus === 'suspended' ? 'suspend' : 'activate';
+
+        if (!confirm(`Are you sure you want to ${action} this user?`)) {
+            setOpenDropdown(null);
+            return;
+        }
+
+        try {
+            const response = await apiFetch(`/api/users/${userId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || `Failed to ${action} user`);
+
+            showToast(`✅ User ${action}d successfully!`, 'success');
+            setOpenDropdown(null);
+            await loadUsers();
+        } catch (error) {
+            showToast('❌ ' + (error.message || `Failed to ${action} user`), 'error');
+            setOpenDropdown(null);
+        }
+    };
+
+    // Handle Delete User
+    const handleDeleteUser = async (userId, userName) => {
+        if (!confirm(`⚠️ Are you sure you want to DELETE "${userName}"?\n\nThis action cannot be undone and will remove all associated data.`)) {
+            setOpenDropdown(null);
+            return;
+        }
+
+        try {
+            const response = await apiFetch(`/api/users/${userId}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to delete user');
+
+            showToast('✅ User deleted successfully!', 'success');
+            setOpenDropdown(null);
+            await loadUsers();
+        } catch (error) {
+            showToast('❌ ' + (error.message || 'Failed to delete user'), 'error');
+            setOpenDropdown(null);
+        }
+    };
 
     const handleCreateUser = async () => {
         setCreateUserLoading(true);
@@ -372,8 +488,8 @@ const UserManagement = () => {
                         </thead>
                         <tbody>
                             {users.map((user, idx) => (
-                                <tr 
-                                    key={idx} 
+                                <tr
+                                    key={idx}
                                     className="hover-lift"
                                     style={{ cursor: 'pointer' }}
                                     onClick={() => handleViewUser(user.id)}
@@ -406,10 +522,134 @@ const UserManagement = () => {
                                     <td>{getRoleBadge(user.role)}</td>
                                     <td style={{ fontSize: '13px', color: '#64748b' }}>{user.lastLogin}</td>
                                     <td style={{ color: '#475569' }}>{user.organization}</td>
-                                    <td onClick={(e) => e.stopPropagation()}>
-                                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                    <td style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenDropdown(openDropdown === user.id ? null : user.id);
+                                            }}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                                        >
                                             <MoreHorizontal size={18} color="#64748b" />
                                         </button>
+
+                                        {/* Dropdown Menu */}
+                                        {openDropdown === user.id && (
+                                            <div
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: '0',
+                                                    top: '100%',
+                                                    marginTop: '4px',
+                                                    background: '#ffffff',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                                    border: '1px solid #e5e7eb',
+                                                    minWidth: '200px',
+                                                    zIndex: 9999,
+                                                    overflow: 'visible',
+                                                    backdropFilter: 'none',
+                                                    WebkitBackdropFilter: 'none'
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <div style={{ padding: '8px 0' }}>
+                                                    <button
+                                                        onClick={() => handleViewUser(user.id)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#334155',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Eye size={16} color="#64748b" />
+                                                        <span>View Details</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleEditUser(user.id)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#334155',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Edit size={16} color="#64748b" />
+                                                        <span>Edit User</span>
+                                                    </button>
+
+                                                    <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }}></div>
+
+                                                    <button
+                                                        onClick={() => handleSuspendUser(user.id, user.status)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#f59e0b',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#fffbeb'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Ban size={16} color="#f59e0b" />
+                                                        <span>{user.status === 'suspended' ? 'Activate User' : 'Suspend User'}</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleDeleteUser(user.id, user.name)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 16px',
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '12px',
+                                                            fontSize: '14px',
+                                                            color: '#ef4444',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <Trash2 size={16} color="#ef4444" />
+                                                        <span>Delete User</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -436,528 +676,552 @@ const UserManagement = () => {
                 <p style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>Powered By Billiton</p>
             </div>
             {/* Modal Overlay */}
-            {showModal && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
-                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
-                    backdropFilter: 'blur(4px)'
-                }}>
+            {
+                showModal && (
                     <div style={{
-                        background: 'white', borderRadius: '24px', padding: '40px',
-                        width: '800px', maxWidth: '95%', maxHeight: '90vh',
-                        overflowY: 'auto', position: 'relative',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                        animation: 'fadeIn 0.2s ease-out'
-                    }} onClick={e => e.stopPropagation()}>
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                        justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                        backdropFilter: 'blur(4px)'
+                    }}>
+                        <div style={{
+                            background: 'white', borderRadius: '24px', padding: '40px',
+                            width: '800px', maxWidth: '95%', maxHeight: '90vh',
+                            overflowY: 'auto', position: 'relative',
+                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                            animation: 'fadeIn 0.2s ease-out'
+                        }} onClick={e => e.stopPropagation()}>
 
-                        {/* Close Button */}
-                        <button onClick={handleCloseModal} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
-                            <X size={24} />
-                        </button>
+                            {/* Close Button */}
+                            <button onClick={handleCloseModal} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                                <X size={24} />
+                            </button>
 
-                        {/* Modal Header */}
-                        <div style={{ marginBottom: '32px' }}>
-                            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Create New User</h2>
-                            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Add a new user with role-based permissions</p>
-                        </div>
-
-                        {/* Named Tabs Navigation */}
-                        <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', marginBottom: '40px' }}>
-                            {['Basic Information', 'Role Selection', 'Permissions Configuration', 'Login & Invite'].map((tabName, idx) => {
-                                const stepNum = idx + 1;
-                                const isActive = modalStep === stepNum;
-                                const isCompleted = modalStep > stepNum;
-                                return (
-                                    <div
-                                        key={tabName}
-                                        onClick={() => setModalStep(stepNum)}
-                                        style={{
-                                            padding: '12px 16px',
-                                            fontSize: '14px',
-                                            fontWeight: 600,
-                                            color: isActive ? '#0d89a4' : (isCompleted ? '#0d89a4' : '#64748b'),
-                                            borderBottom: isActive ? '2.5px solid #0d89a4' : '2.5px solid transparent',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            flex: 1,
-                                            justifyContent: 'center',
-                                            whiteSpace: 'nowrap'
-                                        }}
-                                    >
-                                        <div style={{
-                                            width: '20px', height: '20px', borderRadius: '50%',
-                                            background: (isActive || isCompleted) ? '#0d89a4' : '#f1f5f9',
-                                            color: (isActive || isCompleted) ? 'white' : '#94a3b8',
-                                            fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                        }}>
-                                            {isCompleted ? <Check size={12} /> : stepNum}
-                                        </div>
-                                        {tabName}
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Step 1: Basic Information */}
-                        {modalStep === 1 && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', textAlign: 'left' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>First Name *</label>
-                                    <input
-                                        type="text" placeholder="Enter first name"
-                                        value={userData.firstName}
-                                        onChange={e => setUserData({ ...userData, firstName: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Last Name *</label>
-                                    <input
-                                        type="text" placeholder="Enter last name"
-                                        value={userData.lastName}
-                                        onChange={e => setUserData({ ...userData, lastName: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Email ID *</label>
-                                    <input
-                                        type="email" placeholder="Enter email"
-                                        value={userData.email}
-                                        onChange={e => setUserData({ ...userData, email: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Mobile Number *</label>
-                                    <input
-                                        type="tel" placeholder="+91 XXXXX XXXXX"
-                                        value={userData.mobile}
-                                        onChange={e => setUserData({ ...userData, mobile: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Assign Organization</label>
-                                    <select
-                                        value={userData.organization}
-                                        onChange={e => setUserData({ ...userData, organization: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
-                                    >
-                                        <option value="">Select organization</option>
-                                        {orgs.map((o) => (
-                                            <option key={o.id} value={String(o.id)}>
-                                                {o.org_name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Department</label>
-                                    <input
-                                        type="text" placeholder="Enter department"
-                                        value={userData.department}
-                                        onChange={e => setUserData({ ...userData, department: e.target.value })}
-                                        style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
-                                    />
-                                </div>
+                            {/* Modal Header */}
+                            <div style={{ marginBottom: '32px' }}>
+                                <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Create New User</h2>
+                                <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Add a new user with role-based permissions</p>
                             </div>
-                        )}
 
-                        {/* Step 2: Role Selection */}
-                        {modalStep === 2 && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                                <label style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '8px', display: 'block', textAlign: 'left' }}>Select Role *</label>
-                                {roles.map(role => (
-                                    <div
-                                        key={role.id}
-                                        onClick={() => setUserData({ ...userData, role: role.id })}
-                                        style={{
-                                            padding: '16px 20px', borderRadius: '12px', border: '1.5px solid',
-                                            borderColor: userData.role === role.id ? '#0d89a4' : '#e2e8f0',
-                                            background: userData.role === role.id ? '#f0f9fa' : 'white',
-                                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        <div style={{
-                                            width: '20px', height: '20px', borderRadius: '50%', border: '2px solid',
-                                            borderColor: userData.role === role.id ? '#0d89a4' : '#cbd5e1',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
-                                        }}>
-                                            {userData.role === role.id && <div style={{ width: '10px', height: '10px', background: '#0d89a4', borderRadius: '50%' }} />}
+                            {/* Named Tabs Navigation */}
+                            <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', marginBottom: '40px' }}>
+                                {['Basic Information', 'Role Selection', 'Permissions Configuration', 'Login & Invite'].map((tabName, idx) => {
+                                    const stepNum = idx + 1;
+                                    const isActive = modalStep === stepNum;
+                                    const isCompleted = modalStep > stepNum;
+                                    return (
+                                        <div
+                                            key={tabName}
+                                            onClick={() => setModalStep(stepNum)}
+                                            style={{
+                                                padding: '12px 16px',
+                                                fontSize: '14px',
+                                                fontWeight: 600,
+                                                color: isActive ? '#0d89a4' : (isCompleted ? '#0d89a4' : '#64748b'),
+                                                borderBottom: isActive ? '2.5px solid #0d89a4' : '2.5px solid transparent',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                flex: 1,
+                                                justifyContent: 'center',
+                                                whiteSpace: 'nowrap'
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: '20px', height: '20px', borderRadius: '50%',
+                                                background: (isActive || isCompleted) ? '#0d89a4' : '#f1f5f9',
+                                                color: (isActive || isCompleted) ? 'white' : '#94a3b8',
+                                                fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}>
+                                                {isCompleted ? <Check size={12} /> : stepNum}
+                                            </div>
+                                            {tabName}
                                         </div>
-                                        <div>
-                                            <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '15px' }}>{role.title}</div>
-                                            <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>{role.desc}</div>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
-                        )}
 
-                        {/* Step 3: Permissions Configuration */}
-                        {modalStep === 3 && (
-                            <div style={{ textAlign: 'left' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                    <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', margin: 0 }}>Module Permissions</h4>
-                                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Based on: <span style={{ color: '#0d89a4', fontWeight: 600 }}>{roles.find(r => r.id === userData.role)?.title || 'Selected Role'}</span></span>
+                            {/* Step 1: Basic Information */}
+                            {modalStep === 1 && (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', textAlign: 'left' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>First Name *</label>
+                                        <input
+                                            type="text" placeholder="Enter first name"
+                                            value={userData.firstName}
+                                            onChange={e => setUserData({ ...userData, firstName: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Last Name *</label>
+                                        <input
+                                            type="text" placeholder="Enter last name"
+                                            value={userData.lastName}
+                                            onChange={e => setUserData({ ...userData, lastName: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Email ID *</label>
+                                        <input
+                                            type="email" placeholder="Enter email"
+                                            value={userData.email}
+                                            onChange={e => setUserData({ ...userData, email: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Mobile Number *</label>
+                                        <input
+                                            type="tel" placeholder="+91 XXXXX XXXXX"
+                                            value={userData.mobile}
+                                            onChange={e => setUserData({ ...userData, mobile: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Assign Organization</label>
+                                        <select
+                                            value={userData.organization}
+                                            onChange={e => setUserData({ ...userData, organization: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                        >
+                                            <option value="">Select organization</option>
+                                            {orgs.map((o) => (
+                                                <option key={o.id} value={String(o.id)}>
+                                                    {o.org_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>Department</label>
+                                        <input
+                                            type="text" placeholder="Enter department"
+                                            value={userData.department}
+                                            onChange={e => setUserData({ ...userData, department: e.target.value })}
+                                            style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    </div>
                                 </div>
-                                <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
-                                    <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                                            <thead style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 1 }}>
-                                                <tr>
-                                                    <th style={{ padding: '12px 16px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Module</th>
-                                                    <th style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>View</th>
-                                                    <th style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>Create</th>
-                                                    <th style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>Edit</th>
-                                                    <th style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>Delete</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {modules.map((mod) => (
-                                                    <tr key={mod.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                                        <td style={{ padding: '12px 16px' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                                <mod.icon size={16} color="#64748b" />
-                                                                <span style={{ fontWeight: 500, color: '#1e293b' }}>{mod.label}</span>
-                                                            </div>
-                                                        </td>
-                                                        {['view', 'create', 'edit', 'delete'].map(perm => (
-                                                            <td key={perm} style={{ padding: '12px 16px', textAlign: 'center' }}>
-                                                                <div style={{
-                                                                    width: '18px', height: '18px', border: '2px solid #cbd5e1', borderRadius: '4px',
-                                                                    margin: '0 auto', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                    background: userData.permissions[mod.id]?.[perm] ? '#0d89a4' : 'transparent',
-                                                                    borderColor: userData.permissions[mod.id]?.[perm] ? '#0d89a4' : '#cbd5e1'
-                                                                }} onClick={() => {
-                                                                    const newPerms = { ...userData.permissions };
-                                                                    if (!newPerms[mod.id]) newPerms[mod.id] = {};
-                                                                    newPerms[mod.id][perm] = !newPerms[mod.id][perm];
-                                                                    setUserData({ ...userData, permissions: newPerms });
-                                                                }}>
-                                                                    {userData.permissions[mod.id]?.[perm] && <Check size={14} color="white" />}
+                            )}
+
+                            {/* Step 2: Role Selection */}
+                            {modalStep === 2 && (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                                    <label style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '8px', display: 'block', textAlign: 'left' }}>Select Role *</label>
+                                    {roles.map(role => (
+                                        <div
+                                            key={role.id}
+                                            onClick={() => setUserData({ ...userData, role: role.id })}
+                                            style={{
+                                                padding: '16px 20px', borderRadius: '12px', border: '1.5px solid',
+                                                borderColor: userData.role === role.id ? '#0d89a4' : '#e2e8f0',
+                                                background: userData.role === role.id ? '#f0f9fa' : 'white',
+                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '16px',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: '20px', height: '20px', borderRadius: '50%', border: '2px solid',
+                                                borderColor: userData.role === role.id ? '#0d89a4' : '#cbd5e1',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+                                            }}>
+                                                {userData.role === role.id && <div style={{ width: '10px', height: '10px', background: '#0d89a4', borderRadius: '50%' }} />}
+                                            </div>
+                                            <div>
+                                                <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '15px' }}>{role.title}</div>
+                                                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>{role.desc}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Step 3: Permissions Configuration */}
+                            {modalStep === 3 && (
+                                <div style={{ textAlign: 'left' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', margin: 0 }}>Module Permissions</h4>
+                                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Based on: <span style={{ color: '#0d89a4', fontWeight: 600 }}>{roles.find(r => r.id === userData.role)?.title || 'Selected Role'}</span></span>
+                                    </div>
+                                    <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+                                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                                                <thead style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 1 }}>
+                                                    <tr>
+                                                        <th style={{ padding: '12px 16px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Module</th>
+                                                        <th style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>View</th>
+                                                        <th style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>Create</th>
+                                                        <th style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>Edit</th>
+                                                        <th style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>Delete</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {modules.map((mod) => (
+                                                        <tr key={mod.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                            <td style={{ padding: '12px 16px' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                    <mod.icon size={16} color="#64748b" />
+                                                                    <span style={{ fontWeight: 500, color: '#1e293b' }}>{mod.label}</span>
                                                                 </div>
                                                             </td>
-                                                        ))}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                            {['view', 'create', 'edit', 'delete'].map(perm => (
+                                                                <td key={perm} style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                                                    <div style={{
+                                                                        width: '18px', height: '18px', border: '2px solid #cbd5e1', borderRadius: '4px',
+                                                                        margin: '0 auto', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        background: userData.permissions[mod.id]?.[perm] ? '#0d89a4' : 'transparent',
+                                                                        borderColor: userData.permissions[mod.id]?.[perm] ? '#0d89a4' : '#cbd5e1'
+                                                                    }} onClick={() => {
+                                                                        const newPerms = { ...userData.permissions };
+                                                                        if (!newPerms[mod.id]) newPerms[mod.id] = {};
+                                                                        newPerms[mod.id][perm] = !newPerms[mod.id][perm];
+                                                                        setUserData({ ...userData, permissions: newPerms });
+                                                                    }}>
+                                                                        {userData.permissions[mod.id]?.[perm] && <Check size={14} color="white" />}
+                                                                    </div>
+                                                                </td>
+                                                            ))}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginTop: '24px', padding: '20px', background: '#f8fafc', borderRadius: '12px', border: '1.5px solid #e2e8f0' }}>
+                                        <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '16px' }}>Additional Permission Scopes</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            {[
+                                                { id: 'globalAccess', label: 'Global Access (All Organizations)', desc: 'Allow user to manage data across all registered organizations.' },
+                                                { id: 'crossEvent', label: 'Cross-Event Access', desc: 'Allow user to access data between different events of same organization.' },
+                                                { id: 'dataExport', label: 'Data Export Permission', desc: 'Enable user to export sensitive platform data into downloadable formats.' }
+                                            ].map(item => (
+                                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>{item.label}</div>
+                                                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{item.desc}</div>
+                                                    </div>
+                                                    <div
+                                                        onClick={() => setUserData({
+                                                            ...userData,
+                                                            additionalPermissions: { ...userData.additionalPermissions, [item.id]: !userData.additionalPermissions[item.id] }
+                                                        })}
+                                                        style={{
+                                                            width: '40px', height: '22px', borderRadius: '20px',
+                                                            background: userData.additionalPermissions[item.id] ? '#0d89a4' : '#cbd5e1',
+                                                            position: 'relative', cursor: 'pointer', transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        <div style={{
+                                                            width: '18px', height: '18px', background: 'white', borderRadius: '50%',
+                                                            position: 'absolute', top: '2px',
+                                                            left: userData.additionalPermissions[item.id] ? '20px' : '2px',
+                                                            transition: 'all 0.2s'
+                                                        }} />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
+                            )}
 
-                                <div style={{ marginTop: '24px', padding: '20px', background: '#f8fafc', borderRadius: '12px', border: '1.5px solid #e2e8f0' }}>
-                                    <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '16px' }}>Additional Permission Scopes</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        {[
-                                            { id: 'globalAccess', label: 'Global Access (All Organizations)', desc: 'Allow user to manage data across all registered organizations.' },
-                                            { id: 'crossEvent', label: 'Cross-Event Access', desc: 'Allow user to access data between different events of same organization.' },
-                                            { id: 'dataExport', label: 'Data Export Permission', desc: 'Enable user to export sensitive platform data into downloadable formats.' }
-                                        ].map(item => (
-                                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            {/* Step 4: Login & Invite */}
+                            {modalStep === 4 && (
+                                <div style={{ textAlign: 'left' }}>
+                                    <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+                                        <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '20px' }}>Login Credentials Setup</h4>
+                                        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+                                            <button
+                                                onClick={() => setUserData({ ...userData, loginType: 'invite' })}
+                                                style={{
+                                                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                                    padding: '12px', borderRadius: '10px', border: '1.5px solid',
+                                                    borderColor: userData.loginType === 'invite' ? '#0d89a4' : '#e2e8f0',
+                                                    background: userData.loginType === 'invite' ? '#0d89a4' : 'white',
+                                                    color: userData.loginType === 'invite' ? 'white' : '#64748b',
+                                                    fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <Send size={18} style={{ color: userData.loginType === 'invite' ? 'white' : '#cbd5e1' }} />
+                                                Send Invite Email
+                                            </button>
+                                            <button
+                                                onClick={() => setUserData({ ...userData, loginType: 'manual' })}
+                                                style={{
+                                                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                                    padding: '12px', borderRadius: '10px', border: '1.5px solid',
+                                                    borderColor: userData.loginType === 'manual' ? '#0d89a4' : '#e2e8f0',
+                                                    background: userData.loginType === 'manual' ? '#0d89a4' : 'white',
+                                                    color: userData.loginType === 'manual' ? 'white' : '#64748b',
+                                                    fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <Lock size={18} style={{ color: userData.loginType === 'manual' ? 'white' : '#cbd5e1' }} />
+                                                Set Password Manually
+                                            </button>
+                                        </div>
+
+                                        {userData.loginType === 'manual' ? (
+                                            <div style={{ marginTop: '20px' }}>
+                                                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Password *</label>
+                                                <div style={{ position: 'relative' }}>
+                                                    <input
+                                                        type={showPassword ? 'text' : 'password'}
+                                                        placeholder="Enter password"
+                                                        value={userData.password}
+                                                        onChange={e => setUserData({ ...userData, password: e.target.value })}
+                                                        style={{ width: '100%', padding: '12px 80px 12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
+                                                    />
+                                                    <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '8px' }}>
+                                                        <button onClick={() => setShowPassword(!showPassword)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><Eye size={18} /></button>
+                                                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><Copy size={18} /></button>
+                                                    </div>
+                                                </div>
+                                                <div
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}
+                                                    onClick={() => setUserData({ ...userData, forceReset: !userData.forceReset })}
+                                                >
+                                                    <div style={{
+                                                        width: '18px', height: '18px', borderRadius: '4px', border: '2px solid',
+                                                        borderColor: userData.forceReset ? '#0d89a4' : '#cbd5e1',
+                                                        background: userData.forceReset ? '#0d89a4' : 'transparent',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                    }}>
+                                                        {userData.forceReset && <Check size={14} color="white" />}
+                                                    </div>
+                                                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Force password reset on first login</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div style={{
+                                                background: '#f8fafc', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0',
+                                                display: 'flex', gap: '16px', alignItems: 'flex-start'
+                                            }}>
+                                                <div style={{ padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                                    <Mail size={20} color="#0d89a4" />
+                                                </div>
                                                 <div>
-                                                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>{item.label}</div>
-                                                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{item.desc}</div>
+                                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Email Invitation</div>
+                                                    <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0', lineHeight: 1.5 }}>
+                                                        An invitation email will be sent to the user with a secure link to set their password and complete account setup.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '24px' }}>
+                                        <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '20px' }}>Security Settings</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Require MFA</div>
+                                                    <div style={{ fontSize: '12px', color: '#64748b' }}>Two-factor authentication</div>
                                                 </div>
                                                 <div
                                                     onClick={() => setUserData({
                                                         ...userData,
-                                                        additionalPermissions: { ...userData.additionalPermissions, [item.id]: !userData.additionalPermissions[item.id] }
+                                                        security: { ...userData.security, requireMFA: !userData.security.requireMFA }
                                                     })}
                                                     style={{
                                                         width: '40px', height: '22px', borderRadius: '20px',
-                                                        background: userData.additionalPermissions[item.id] ? '#0d89a4' : '#cbd5e1',
+                                                        background: userData.security.requireMFA ? '#0d89a4' : '#cbd5e1',
                                                         position: 'relative', cursor: 'pointer', transition: 'all 0.2s'
                                                     }}
                                                 >
                                                     <div style={{
                                                         width: '18px', height: '18px', background: 'white', borderRadius: '50%',
                                                         position: 'absolute', top: '2px',
-                                                        left: userData.additionalPermissions[item.id] ? '20px' : '2px',
+                                                        left: userData.security.requireMFA ? '20px' : '2px',
                                                         transition: 'all 0.2s'
                                                     }} />
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
-                        {/* Step 4: Login & Invite */}
-                        {modalStep === 4 && (
-                            <div style={{ textAlign: 'left' }}>
-                                <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
-                                    <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '20px' }}>Login Credentials Setup</h4>
-                                    <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-                                        <button
-                                            onClick={() => setUserData({ ...userData, loginType: 'invite' })}
-                                            style={{
-                                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                                padding: '12px', borderRadius: '10px', border: '1.5px solid',
-                                                borderColor: userData.loginType === 'invite' ? '#0d89a4' : '#e2e8f0',
-                                                background: userData.loginType === 'invite' ? '#0d89a4' : 'white',
-                                                color: userData.loginType === 'invite' ? 'white' : '#64748b',
-                                                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            <Send size={18} style={{ color: userData.loginType === 'invite' ? 'white' : '#cbd5e1' }} />
-                                            Send Invite Email
-                                        </button>
-                                        <button
-                                            onClick={() => setUserData({ ...userData, loginType: 'manual' })}
-                                            style={{
-                                                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                                padding: '12px', borderRadius: '10px', border: '1.5px solid',
-                                                borderColor: userData.loginType === 'manual' ? '#0d89a4' : '#e2e8f0',
-                                                background: userData.loginType === 'manual' ? '#0d89a4' : 'white',
-                                                color: userData.loginType === 'manual' ? 'white' : '#64748b',
-                                                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            <Lock size={18} style={{ color: userData.loginType === 'manual' ? 'white' : '#cbd5e1' }} />
-                                            Set Password Manually
-                                        </button>
-                                    </div>
-
-                                    {userData.loginType === 'manual' ? (
-                                        <div style={{ marginTop: '20px' }}>
-                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Password *</label>
-                                            <div style={{ position: 'relative' }}>
-                                                <input
-                                                    type={showPassword ? 'text' : 'password'}
-                                                    placeholder="Enter password"
-                                                    value={userData.password}
-                                                    onChange={e => setUserData({ ...userData, password: e.target.value })}
-                                                    style={{ width: '100%', padding: '12px 80px 12px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none' }}
-                                                />
-                                                <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: '8px' }}>
-                                                    <button onClick={() => setShowPassword(!showPassword)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><Eye size={18} /></button>
-                                                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><Copy size={18} /></button>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>IP Restriction</div>
+                                                    <div style={{ fontSize: '12px', color: '#64748b' }}>Limit access by IP</div>
+                                                </div>
+                                                <div
+                                                    onClick={() => setUserData({
+                                                        ...userData,
+                                                        security: { ...userData.security, ipRestriction: !userData.security.ipRestriction }
+                                                    })}
+                                                    style={{
+                                                        width: '40px', height: '22px', borderRadius: '20px',
+                                                        background: userData.security.ipRestriction ? '#0d89a4' : '#cbd5e1',
+                                                        position: 'relative', cursor: 'pointer', transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        width: '18px', height: '18px', background: 'white', borderRadius: '50%',
+                                                        position: 'absolute', top: '2px',
+                                                        left: userData.security.ipRestriction ? '20px' : '2px',
+                                                        transition: 'all 0.2s'
+                                                    }} />
                                                 </div>
                                             </div>
-                                            <div
-                                                style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}
-                                                onClick={() => setUserData({ ...userData, forceReset: !userData.forceReset })}
-                                            >
-                                                <div style={{
-                                                    width: '18px', height: '18px', borderRadius: '4px', border: '2px solid',
-                                                    borderColor: userData.forceReset ? '#0d89a4' : '#cbd5e1',
-                                                    background: userData.forceReset ? '#0d89a4' : 'transparent',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                }}>
-                                                    {userData.forceReset && <Check size={14} color="white" />}
-                                                </div>
-                                                <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Force password reset on first login</span>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div style={{
-                                            background: '#f8fafc', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0',
-                                            display: 'flex', gap: '16px', alignItems: 'flex-start'
-                                        }}>
-                                            <div style={{ padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                                <Mail size={20} color="#0d89a4" />
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Email Invitation</div>
-                                                <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0', lineHeight: 1.5 }}>
-                                                    An invitation email will be sent to the user with a secure link to set their password and complete account setup.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
 
-                                <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '24px' }}>
-                                    <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '20px' }}>Security Settings</h4>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div>
-                                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>Require MFA</div>
-                                                <div style={{ fontSize: '12px', color: '#64748b' }}>Two-factor authentication</div>
+                                                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Session Timeout</label>
+                                                <select
+                                                    value={userData.security.sessionTimeout}
+                                                    onChange={e => setUserData({
+                                                        ...userData,
+                                                        security: { ...userData.security, sessionTimeout: e.target.value }
+                                                    })}
+                                                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
+                                                >
+                                                    <option value="15 minutes">15 minutes</option>
+                                                    <option value="30 minutes">30 minutes</option>
+                                                    <option value="1 hour">1 hour</option>
+                                                    <option value="4 hours">4 hours</option>
+                                                </select>
                                             </div>
-                                            <div
-                                                onClick={() => setUserData({
-                                                    ...userData,
-                                                    security: { ...userData.security, requireMFA: !userData.security.requireMFA }
-                                                })}
-                                                style={{
-                                                    width: '40px', height: '22px', borderRadius: '20px',
-                                                    background: userData.security.requireMFA ? '#0d89a4' : '#cbd5e1',
-                                                    position: 'relative', cursor: 'pointer', transition: 'all 0.2s'
-                                                }}
-                                            >
-                                                <div style={{
-                                                    width: '18px', height: '18px', background: 'white', borderRadius: '50%',
-                                                    position: 'absolute', top: '2px',
-                                                    left: userData.security.requireMFA ? '20px' : '2px',
-                                                    transition: 'all 0.2s'
-                                                }} />
-                                            </div>
-                                        </div>
-
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div>
-                                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>IP Restriction</div>
-                                                <div style={{ fontSize: '12px', color: '#64748b' }}>Limit access by IP</div>
-                                            </div>
-                                            <div
-                                                onClick={() => setUserData({
-                                                    ...userData,
-                                                    security: { ...userData.security, ipRestriction: !userData.security.ipRestriction }
-                                                })}
-                                                style={{
-                                                    width: '40px', height: '22px', borderRadius: '20px',
-                                                    background: userData.security.ipRestriction ? '#0d89a4' : '#cbd5e1',
-                                                    position: 'relative', cursor: 'pointer', transition: 'all 0.2s'
-                                                }}
-                                            >
-                                                <div style={{
-                                                    width: '18px', height: '18px', background: 'white', borderRadius: '50%',
-                                                    position: 'absolute', top: '2px',
-                                                    left: userData.security.ipRestriction ? '20px' : '2px',
-                                                    transition: 'all 0.2s'
-                                                }} />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>Session Timeout</label>
-                                            <select
-                                                value={userData.security.sessionTimeout}
-                                                onChange={e => setUserData({
-                                                    ...userData,
-                                                    security: { ...userData.security, sessionTimeout: e.target.value }
-                                                })}
-                                                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '14px', outline: 'none', background: 'white' }}
-                                            >
-                                                <option value="15 minutes">15 minutes</option>
-                                                <option value="30 minutes">30 minutes</option>
-                                                <option value="1 hour">1 hour</option>
-                                                <option value="4 hours">4 hours</option>
-                                            </select>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Modal Footer */}
-                        <div style={{
-                            marginTop: '40px', paddingTop: '24px', borderTop: '1px solid #f1f5f9',
-                            display: 'flex', justifyContent: 'flex-end', gap: '12px'
-                        }}>
-                            {modalStep === 1 ? (
-                                <button onClick={handleCloseModal} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                            ) : (
-                                <button onClick={() => setModalStep(modalStep - 1)} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Back</button>
                             )}
 
-                            <button
-                                onClick={() => modalStep < 4 ? setModalStep(modalStep + 1) : handleCreateUser()}
-                                disabled={createUserLoading}
-                                style={{
-                                    padding: '10px 32px', borderRadius: '8px', border: 'none',
-                                    background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: '8px'
-                                }}
-                            >
-                                {modalStep === 4 ? (
-                                    <>
-                                        {userData.loginType === 'manual'
-                                            ? (createUserLoading ? 'Creating...' : 'Create User')
-                                            : (createUserLoading ? 'Sending...' : 'Send Invite')}
-                                        <ChevronDown size={16} />
-                                    </>
-                                ) : 'Next'}
-                            </button>
+                            {/* Modal Footer */}
+                            <div style={{
+                                marginTop: '40px', paddingTop: '24px', borderTop: '1px solid #f1f5f9',
+                                display: 'flex', justifyContent: 'flex-end', gap: '12px'
+                            }}>
+                                {modalStep === 1 ? (
+                                    <button onClick={handleCloseModal} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                                ) : (
+                                    <button onClick={() => setModalStep(modalStep - 1)} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Back</button>
+                                )}
+
+                                <button
+                                    onClick={() => modalStep < 4 ? setModalStep(modalStep + 1) : handleCreateUser()}
+                                    disabled={createUserLoading}
+                                    style={{
+                                        padding: '10px 32px', borderRadius: '8px', border: 'none',
+                                        background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '8px'
+                                    }}
+                                >
+                                    {modalStep === 4 ? (
+                                        <>
+                                            {userData.loginType === 'manual'
+                                                ? (createUserLoading ? 'Creating...' : 'Create User')
+                                                : (createUserLoading ? 'Sending...' : 'Send Invite')}
+                                            <ChevronDown size={16} />
+                                        </>
+                                    ) : 'Next'}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* View User Details Modal */}
-            {viewUserModal && selectedUser && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
-                    justifyContent: 'center', alignItems: 'center', zIndex: 1000,
-                    backdropFilter: 'blur(4px)'
-                }}>
+            {
+                viewUserModal && selectedUser && (
                     <div style={{
-                        background: 'white', borderRadius: '24px', padding: '40px',
-                        width: '700px', maxWidth: '95%', maxHeight: '90vh',
-                        overflowY: 'auto', position: 'relative',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-                    }} onClick={e => e.stopPropagation()}>
-                        
-                        <button onClick={() => { setViewUserModal(false); setSelectedUser(null); }} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
-                            <X size={24} />
-                        </button>
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex',
+                        justifyContent: 'center', alignItems: 'center', zIndex: 1000,
+                        backdropFilter: 'blur(4px)'
+                    }}>
+                        <div style={{
+                            background: 'white', borderRadius: '24px', padding: '40px',
+                            width: '700px', maxWidth: '95%', maxHeight: '90vh',
+                            overflowY: 'auto', position: 'relative',
+                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                        }} onClick={e => e.stopPropagation()}>
 
-                        <div style={{ marginBottom: '32px' }}>
-                            <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>User Details</h2>
-                            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>View user profile and permissions</p>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>USER ID</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.id}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ROLE</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.role || '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>FIRST NAME</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.first_name || selectedUser.firstName}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>LAST NAME</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.last_name || selectedUser.lastName}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EMAIL ADDRESS</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.email}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>MOBILE NUMBER</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.mobile || '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZATION</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.organization_name || selectedUser.organization || '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>DEPARTMENT</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.department || '-'}</div>
-                            </div>
-                            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATUS</div>
-                                <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.status || 'Active'}</div>
-                            </div>
-                        </div>
-
-                        <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
-                            <button 
-                                onClick={() => { setViewUserModal(false); setSelectedUser(null); }}
-                                style={{ padding: '12px 24px', borderRadius: '10px', border: 'none', background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer' }}
-                            >
-                                Close
+                            <button onClick={() => { setViewUserModal(false); setSelectedUser(null); }} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                                <X size={24} />
                             </button>
+
+                            <div style={{ marginBottom: '32px' }}>
+                                <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>User Details</h2>
+                                <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>View user profile and permissions</p>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>USER ID</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.id}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ROLE</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.role || '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>FIRST NAME</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.first_name || selectedUser.firstName}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>LAST NAME</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.last_name || selectedUser.lastName}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>EMAIL ADDRESS</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.email}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>MOBILE NUMBER</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.mobile || '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>ORGANIZATION</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.organization_name || selectedUser.organization || '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>DEPARTMENT</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.department || '-'}</div>
+                                </div>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>STATUS</div>
+                                    <div style={{ fontSize: '15px', color: '#1e293b', fontWeight: 600 }}>{selectedUser.status || 'Active'}</div>
+                                </div>
+                            </div>
+
+                            <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
+                                <button
+                                    onClick={() => { setViewUserModal(false); setSelectedUser(null); }}
+                                    style={{ padding: '12px 24px', borderRadius: '10px', border: 'none', background: '#0d89a4', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     </div>
+                )
+            }
+
+            {/* Toast Notification */}
+            {toast.show && (
+                <div style={{
+                    position: 'fixed',
+                    top: '20px',
+                    right: '20px',
+                    background: toast.type === 'success' ? '#10b981' : '#ef4444',
+                    color: 'white',
+                    padding: '16px 24px',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    zIndex: 10000,
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    animation: 'slideIn 0.3s ease-out'
+                }}>
+                    {toast.message}
                 </div>
             )}
-        </div>
+        </div >
     );
 };
 
