@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Download, Share2, Copy, Check, ArrowLeft, Calendar, MapPin, User, Mail, Phone, Building } from 'lucide-react';
+import QRCode from 'qrcode';
 
 const QRCodePage = () => {
     const { id } = useParams();
@@ -9,6 +10,7 @@ const QRCodePage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [copied, setCopied] = useState(false);
+    const [generatedQR, setGeneratedQR] = useState(null);
 
     // Determine type from URL path
     const type = window.location.pathname.includes('/qr/event/') ? 'event' : 'visitor';
@@ -16,6 +18,32 @@ const QRCodePage = () => {
     useEffect(() => {
         fetchData();
     }, [id]);
+
+    // Generate QR code on client side if backend doesn't provide one
+    useEffect(() => {
+        const generateQR = async () => {
+            if (data && type === 'visitor' && data.unique_code && !data.qr_code_url && !data.qr_code) {
+                try {
+                    // For visitors, encode the unique code or a verification URL
+                    // Usually we want to encode the unique code itself for scanning at counters
+                    const qrData = data.unique_code;
+                    const url = await QRCode.toDataURL(qrData, {
+                        width: 300,
+                        margin: 2,
+                        color: {
+                            dark: '#000000',
+                            light: '#ffffff'
+                        }
+                    });
+                    setGeneratedQR(url);
+                } catch (err) {
+                    console.error('Error generating QR code:', err);
+                }
+            }
+        };
+
+        generateQR();
+    }, [data, type]);
 
     const fetchData = async () => {
         try {
@@ -44,14 +72,18 @@ const QRCodePage = () => {
             ? (data.qr_image_url || data.qr_image_path)
             : (data.qr_code_url || data.qr_code);
 
-        if (!qrPath) return null;
+        // If backend provided a path
+        if (qrPath) {
+            // If it's already a full URL, return it
+            if (qrPath.startsWith('http')) return qrPath;
 
-        // If it's already a full URL, return it
-        if (qrPath.startsWith('http')) return qrPath;
+            // Otherwise, prepend the API base URL
+            const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+            return `${baseUrl}${qrPath}`;
+        }
 
-        // Otherwise, prepend the API base URL
-        const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
-        return `${baseUrl}${qrPath}`;
+        // Return client-generated QR if available
+        return generatedQR;
     };
 
     const getShareLink = () => {
@@ -214,6 +246,10 @@ const QRCodePage = () => {
                     ) : (
                         <div style={styles.qrPlaceholder}>
                             <p>QR Code will be generated soon</p>
+                            {/* Fallback specific message */}
+                            {type === 'visitor' && !data.unique_code && (
+                                <p style={{ fontSize: '12px', marginTop: '10px' }}>Unique code is missing</p>
+                            )}
                         </div>
                     )}
 

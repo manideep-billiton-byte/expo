@@ -38,15 +38,15 @@ const createEvent = async (req, res) => {
             });
         }
 
-        // generate QR token and registration link
+        // generate QR token - we'll generate the link AFTER we get the ID
         const token = uuidv4();
         const base = process.env.INVITE_LINK_BASE || 'https://d36p7i1koir3da.cloudfront.net';
-        const registration_link = `${base.replace(/\/$/, '')}/register?eventId=${payload.eventName || 'event'}&eventName=${encodeURIComponent(payload.eventName || 'Event')}&eventDate=${payload.startDate || ''}&token=${token}`;
 
         // Note: 'name' column exists for legacy reasons with NOT NULL constraint
         const eventName = payload.eventName || payload.event_name || 'Untitled Event';
 
-        // First insert the event without qr_image_path (we need the ID first)
+        // 1. Insert the event with a TEMPORARY registration link first
+        // We will update it immediately after with the correct ID
         const insertSql = `INSERT INTO events(
                 organization_id, name, event_name, description, event_type, event_mode, industry,
                 organizer_name, contact_person, organizer_email, organizer_mobile,
@@ -78,7 +78,7 @@ const createEvent = async (req, res) => {
             JSON.stringify(payload.leadCapture || payload.lead_capture || {}),
             JSON.stringify(payload.communication || {}),
             token,
-            registration_link,
+            'PENDING_ID_GENERATION', // Temporary placeholder
             payload.status || 'Draft',
             // New stall configuration fields
             payload.enableStalls || payload.enable_stalls || false,
@@ -89,7 +89,12 @@ const createEvent = async (req, res) => {
 
         const result = await pool.query(insertSql, values);
         let created = result.rows[0];
-        console.log('Event created successfully:', created.id);
+        console.log('Event created successfully, ID:', created.id);
+
+        // 2. Generate the CORRECT registration link using the real ID
+        const registration_link = `${base.replace(/\/$/, '')}/register?eventId=${created.id}&eventName=${encodeURIComponent(eventName)}&eventDate=${created.start_date || ''}&token=${token}`;
+
+        console.log(`Generated registration link for event ${created.id}: ${registration_link}`);
 
         // Generate and store QR code
         let qrImagePath = null;
@@ -107,26 +112,27 @@ const createEvent = async (req, res) => {
             console.log(`   - Path: ${qrImagePath || 'MISSING'}`);
             console.log(`   - Full URL: ${qrImageUrl || 'MISSING'}`);
             console.log(`   - Base64 available: ${qrBase64 ? 'YES' : 'NO'}`);
-            console.log(`   - Base64 length: ${qrBase64 ? qrBase64.length : 0} bytes`);
 
-            if (!qrBase64) {
-                console.error(`⚠️ WARNING: QR base64 is MISSING for event ${created.id}!`);
-                console.error(`   This means QR code will NOT appear in the email!`);
-            } else {
-                console.log(`   - Base64 preview: ${qrBase64.substring(0, 50)}...`);
-            }
-
-            // Update the event with the QR image path
-            await pool.query(
-                'UPDATE events SET qr_image_path = $1 WHERE id = $2',
-                [qrImagePath, created.id]
+            // 3. Update the event with the correct registration link AND QR image path
+            const updateResult = await pool.query(
+                'UPDATE events SET registration_link = $1, qr_image_path = $2 WHERE id = $3 RETURNING *',
+                [registration_link, qrImagePath, created.id]
             );
-            created.qr_image_path = qrImagePath;
-            console.log(`✅ QR code stored for event ${created.id}: ${qrImagePath}`);
+
+            // Update local object with latest data
+            created = updateResult.rows[0];
+
+            console.log(`✅ Event updated with registration link and QR code`);
         } catch (qrError) {
             console.error(`❌ Failed to generate/store QR code for event ${created.id}:`, qrError);
             console.error(`   Error details:`, qrError.message);
-            console.error(`   Stack:`, qrError.stack);
+
+            // Still try to update the registration link even if QR fails
+            await pool.query(
+                'UPDATE events SET registration_link = $1 WHERE id = $2',
+                [registration_link, created.id]
+            );
+            created.registration_link = registration_link;
         }
 
         // Send email notification to organizer
