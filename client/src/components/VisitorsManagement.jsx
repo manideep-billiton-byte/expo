@@ -1019,7 +1019,7 @@ const VisitorsManagement = () => {
                                 justifyContent: 'center',
                                 gap: '8px'
                             }}>
-                                👤 Visitor QR Code
+                                👤 Visitor QR Code fgfgf
                             </h3>
                             {selectedVisitor.unique_code && (
                                 <div style={{

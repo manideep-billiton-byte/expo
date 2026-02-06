@@ -174,7 +174,7 @@ const getQRFullUrl = (qrPath) => {
     }
 
     // Otherwise, construct the full URL (development)
-    const baseUrl = process.env.API_BASE_URL || 'http://localhost:5000';
+    const baseUrl = process.env.API_BASE_URL || 'https://d36p7i1koir3da.cloudfront.net/';
     return `${baseUrl}${qrPath}`;
 };
 

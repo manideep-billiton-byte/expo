@@ -78,7 +78,7 @@ const QRCodePage = () => {
             if (qrPath.startsWith('http')) return qrPath;
 
             // Otherwise, prepend the API base URL
-            const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+            const baseUrl = process.env.REACT_APP_API_BASE_URL || 'https://d36p7i1koir3da.cloudfront.net';
             return `${baseUrl}${qrPath}`;
         }
 
@@ -245,7 +245,7 @@ const QRCodePage = () => {
                         </div>
                     ) : (
                         <div style={styles.qrPlaceholder}>
-                            <p>QR Code will be generated soon</p>
+                            <p>QR Code will be generated soon uuiyiu</p>
                             {/* Fallback specific message */}
                             {type === 'visitor' && !data.unique_code && (
                                 <p style={{ fontSize: '12px', marginTop: '10px' }}>Unique code is missing</p>
@@ -254,7 +254,7 @@ const QRCodePage = () => {
                     )}
 
                     <p style={styles.qrHint}>
-                        📱 Scan this QR code with your phone camera
+                        📱 Scan this QR code with your phone camera  jk
                     </p>
                 </div>
 
