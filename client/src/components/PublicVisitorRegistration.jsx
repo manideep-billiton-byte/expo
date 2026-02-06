@@ -26,6 +26,7 @@ const PublicVisitorRegistration = () => {
         visitorCategory: 'General Visitor'
     });
 
+
     useEffect(() => {
         console.log('👋 PublicVisitorRegistration MOUNTED');
         const urlParams = new URLSearchParams(window.location.search);

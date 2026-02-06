@@ -145,7 +145,7 @@ const generateAndStoreQR = async (registrationUrl, eventId) => {
             // Development: Save locally
             qrPath = saveQRLocally(qrBuffer, eventId);
             // Construct full URL for local development
-            const baseUrl = process.env.API_BASE_URL || 'http://localhost:5000';
+            const baseUrl = process.env.API_BASE_URL || 'https://d36p7i1koir3da.cloudfront.net/';
             fullUrl = `${baseUrl}${qrPath}`;
         }
 
