@@ -1004,7 +1004,7 @@ const ExhibitorsManagement = () => {
 
                                                 const selectedEvent = events.find(ev => String(ev.id) === exhibitorData.assignedEvent);
                                                 const groundLayoutUrl = selectedEvent?.ground_layout_url;
-                                                const apiBase = import.meta.env.VITE_API_URL || 'https://d36p7i1koir3da.cloudfront.net';
+                                                const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
 
                                                 // Parse stall configuration
                                                 let stallConfig = { rows: 10, columns: 10, stallPrefix: 'S', totalStalls: 100 };

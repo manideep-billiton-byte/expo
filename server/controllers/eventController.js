@@ -40,7 +40,7 @@ const createEvent = async (req, res) => {
 
         // generate QR token - we'll generate the link AFTER we get the ID
         const token = uuidv4();
-        const base = process.env.INVITE_LINK_BASE || 'https://d36p7i1koir3da.cloudfront.net';
+        const base = process.env.INVITE_LINK_BASE || 'https://localhost:5000/';
 
         // Note: 'name' column exists for legacy reasons with NOT NULL constraint
         const eventName = payload.eventName || payload.event_name || 'Untitled Event';

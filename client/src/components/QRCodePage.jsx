@@ -22,11 +22,22 @@ const QRCodePage = () => {
     // Generate QR code on client side if backend doesn't provide one
     useEffect(() => {
         const generateQR = async () => {
-            if (data && type === 'visitor' && data.unique_code && !data.qr_code_url && !data.qr_code) {
+            // Check if we have valid data to generate a QR
+            const hasBackendQR = (data?.qr_code_url && data.qr_code_url !== 'null') || (data?.qr_code && data.qr_code !== 'null');
+            const hasUniqueCode = data && data.unique_code;
+
+            if (type === 'visitor' && hasUniqueCode && !hasBackendQR) {
                 try {
+                    console.log('Generating local QR for:', data.unique_code);
                     // For visitors, encode the unique code or a verification URL
                     // Usually we want to encode the unique code itself for scanning at counters
                     const qrData = data.unique_code;
+
+                    if (!QRCode || typeof QRCode.toDataURL !== 'function') {
+                        console.error('QRCode library not loaded correctly', QRCode);
+                        return;
+                    }
+
                     const url = await QRCode.toDataURL(qrData, {
                         width: 300,
                         margin: 2,
@@ -39,6 +50,8 @@ const QRCodePage = () => {
                 } catch (err) {
                     console.error('Error generating QR code:', err);
                 }
+            } else if (hasBackendQR) {
+                console.log('Using backend QR path');
             }
         };
 
@@ -78,7 +91,7 @@ const QRCodePage = () => {
             if (qrPath.startsWith('http')) return qrPath;
 
             // Otherwise, prepend the API base URL
-            const baseUrl = process.env.REACT_APP_API_BASE_URL || 'https://d36p7i1koir3da.cloudfront.net';
+            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/';
             return `${baseUrl}${qrPath}`;
         }
 
@@ -245,7 +258,7 @@ const QRCodePage = () => {
                         </div>
                     ) : (
                         <div style={styles.qrPlaceholder}>
-                            <p>QR Code will be generated soon uuiyiu</p>
+                            <p>QR Code will be generated soon</p>
                             {/* Fallback specific message */}
                             {type === 'visitor' && !data.unique_code && (
                                 <p style={{ fontSize: '12px', marginTop: '10px' }}>Unique code is missing</p>
